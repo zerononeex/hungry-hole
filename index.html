@@ -2715,7 +2715,7 @@ function grain() {
 function paintGround(rect) {
   const C = G.C, ctx = V3.gctx, w = rect[2] - rect[0], h = rect[3] - rect[1];
   const sx = REG_W / w, sy = REG_H / h;
-  V3.menuPaint = 0;
+  V3.menuPaint = 0; V3.repaints = (V3.repaints || 0) + 1;
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = C.bgc || '#000'; ctx.fillRect(0, 0, REG_W, REG_H);
   if (C.space) {                                     // a space floor: stars fixed in world space
     const cs = 180 / G.cam.z;
