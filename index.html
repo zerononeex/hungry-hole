@@ -270,7 +270,7 @@ function wpick(list, r) { let tot = 0; for (const e of list) tot += e[1]; let v 
 /* =====================================================================
    2. DATA: THE 7 CHAPTERS
    Each chapter: sizes (tier diameters, world units), real (metres per tier,
-   for "How big am I?"), types {id:[emoji,name,tier,opts]}, zones (procedural
+   for "How big am I?"), types {id:[name,tier,opts]}, zones (procedural
    filler by tier), zoneAt(), build() (authored places), check (3-item
    checklist), quests (40 Tiny Quests), bg() (code-drawn background).
    Quest strings: c:what:n collect · a:what:n avoid · t:n total · s:n score ·
@@ -324,7 +324,6 @@ const CH = [null];
     const nx = ddx / d, ny = ddy / d, vn = G.vx * nx + G.vy * ny; if (vn < 0) { G.vx -= vn * nx; G.vy -= vn * ny; }
   }
   const say = (s) => { if (G.now - msgT > 2600) { msgT = G.now; toast(s, '#ffd96a'); } };
-  const box = (w, h, c, d) => ({ draw: 'box', box: [w, h, c, d] });
 
   CH.push({
     n: 1, name: 'The House', short: 'House', c1: '#4f7fd6', c2: '#2a3f8f', bgc: '#231a33', rim: '#9b6bff',
@@ -332,25 +331,25 @@ const CH = [null];
     sizes: [0, 16, 24, 36, 54, 80, 115, 165, 230],
     real: [0, 0.03, 0.05, 0.09, 0.2, 0.45, 0.9, 1.4, 2.1],
     types: {
-      lego: ['🧱', 'Lego brick', 1], marble: ['🔵', 'marble', 1, { s: .7 }], die: ['🎲', 'dice', 1, { pl: 'dice' }], crayon: ['🖍️', 'crayon', 1],
-      button: ['🔘', 'button', 1, { s: .7 }], paperclip: ['📎', 'paper clip', 1], pin: ['📌', 'pin', 1], key: ['🔑', 'key', 1],
-      cookie: ['🍪', 'cookie', 1], grape: ['🍇', 'grapes', 1, { pl: 'bunches of grapes' }], sweet: ['🍬', 'candy', 1, { pl: 'candies' }],
-      soldier: ['💂', 'toy soldier', 2], sock: ['🧦', 'sock', 2], pencil: ['✏️', 'pencil', 2], spoon: ['🥄', 'spoon', 2], battery: ['🔋', 'battery', 2],
-      scissors: ['✂️', 'scissors', 2, { pl: 'pairs of scissors' }], lipstick: ['💄', 'lipstick', 2], apple: ['🍎', 'apple', 2], egg: ['🥚', 'egg', 2], cupcake: ['🧁', 'cupcake', 2],
-      toycar: ['🚗', 'toy car', 3], book: ['📕', 'book', 3], shoe: ['👟', 'shoe', 3], teddy: ['🧸', 'teddy bear', 3], robot: ['🤖', 'toy robot', 3],
-      yoyo: ['🪀', 'yo-yo', 3], phone: ['📱', 'phone', 3], glasses: ['👓', 'glasses', 3, { pl: 'pairs of glasses' }], mug: ['☕', 'mug', 3],
-      banana: ['🍌', 'banana', 3], bread: ['🍞', 'bread', 3, { pl: 'loaves of bread' }], bottle: ['🍼', 'bottle', 3],
-      toytruck: ['🚚', 'toy truck', 4], dino: ['🦖', 'toy dinosaur', 4], backpack: ['🎒', 'backpack', 4], basketball: ['🏀', 'basketball', 4],
-      soccer: ['⚽', 'soccer ball', 4], camera: ['📷', 'camera', 4], laptop: ['💻', 'laptop', 4], teapot: ['🫖', 'teapot', 4], pot: ['🍲', 'soup pot', 4],
-      pineapple: ['🍍', 'pineapple', 4], drum: ['🥁', 'drum', 4], hat: ['🎩', 'top hat', 4],
-      nerf: ['🔫', 'Nerf gun', 5], guitar: ['🎸', 'guitar', 5], skateboard: ['🛹', 'skateboard', 5], plant: ['🪴', 'potted plant', 5],
-      basket: ['🧺', 'laundry basket', 5], bucket: ['🪣', 'bucket', 5], toolbox: ['🧰', 'toolbox', 5, { pl: 'toolboxes' }], printer: ['🖨️', 'printer', 5], computer: ['🖥️', 'computer', 5],
-      chair: ['🪑', 'chair', 6], door: ['🚪', 'door', 6], scooter: ['🛴', 'scooter', 6], bike: ['🚲', 'bike', 6], mirror: ['🪞', 'mirror', 6],
-      desk: ['', 'desk', 7, box(.95, .55, '#a0703c', '#7a5028')], dresser: ['', 'dresser', 7, box(.8, .5, '#c49a6c', '#9d7650')],
-      tv: ['📺', 'TV', 7], armchair: ['🛋️', 'armchair', 7, { s: .8 }], ctable: ['', 'coffee table', 7, box(.9, .5, '#8b5a2b', '#a0703c')], oven: ['', 'stove', 7, box(.7, .65, '#cfd3d6', '#333')],
-      bed: ['🛏️', 'bed', 8], sofa: ['🛋️', 'couch', 8, { s: 1.2, pl: 'couches' }], fridge: ['', 'fridge', 8, box(.55, .9, '#e8eef2', '#9aa5ad')],
-      table: ['', 'dining table', 8, box(.95, .6, '#9c6b3e', '#b58150')], piano: ['🎹', 'piano', 8], bookshelf: ['', 'bookshelf', 8, box(.9, .5, '#7a5028', '#000')],
-      island: ['', 'kitchen island', 8, box(.95, .45, '#dcd6c8', '#b5ad9c')], backdoor: ['🚪', 'back door', 8, { s: 1.3 }],
+      lego: ['Lego brick', 1], marble: ['marble', 1, { s: .7 }], die: ['dice', 1, { pl: 'dice' }], crayon: ['crayon', 1],
+      button: ['button', 1, { s: .7 }], paperclip: ['paper clip', 1], pin: ['pin', 1], key: ['key', 1],
+      cookie: ['cookie', 1], grape: ['grapes', 1, { pl: 'bunches of grapes' }], sweet: ['candy', 1, { pl: 'candies' }],
+      soldier: ['toy soldier', 2], sock: ['sock', 2], pencil: ['pencil', 2], spoon: ['spoon', 2], battery: ['battery', 2],
+      scissors: ['scissors', 2, { pl: 'pairs of scissors' }], lipstick: ['lipstick', 2], apple: ['apple', 2], egg: ['egg', 2], cupcake: ['cupcake', 2],
+      toycar: ['toy car', 3], book: ['book', 3], shoe: ['shoe', 3], teddy: ['teddy bear', 3], robot: ['toy robot', 3],
+      yoyo: ['yo-yo', 3], phone: ['phone', 3], glasses: ['glasses', 3, { pl: 'pairs of glasses' }], mug: ['mug', 3],
+      banana: ['banana', 3], bread: ['bread', 3, { pl: 'loaves of bread' }], bottle: ['bottle', 3],
+      toytruck: ['toy truck', 4], dino: ['toy dinosaur', 4], backpack: ['backpack', 4], basketball: ['basketball', 4],
+      soccer: ['soccer ball', 4], camera: ['camera', 4], laptop: ['laptop', 4], teapot: ['teapot', 4], pot: ['soup pot', 4],
+      pineapple: ['pineapple', 4], drum: ['drum', 4], hat: ['top hat', 4],
+      nerf: ['Nerf gun', 5], guitar: ['guitar', 5], skateboard: ['skateboard', 5], plant: ['potted plant', 5],
+      basket: ['laundry basket', 5], bucket: ['bucket', 5], toolbox: ['toolbox', 5, { pl: 'toolboxes' }], printer: ['printer', 5], computer: ['computer', 5],
+      chair: ['chair', 6], door: ['door', 6], scooter: ['scooter', 6], bike: ['bike', 6], mirror: ['mirror', 6],
+      desk: ['desk', 7], dresser: ['dresser', 7],
+      tv: ['TV', 7], armchair: ['armchair', 7, { s: .8 }], ctable: ['coffee table', 7], oven: ['stove', 7],
+      bed: ['bed', 8], sofa: ['couch', 8, { s: 1.2, pl: 'couches' }], fridge: ['fridge', 8],
+      table: ['dining table', 8], piano: ['piano', 8], bookshelf: ['bookshelf', 8],
+      island: ['kitchen island', 8], backdoor: ['back door', 8, { s: 1.3 }],
     },
     zones: {
       kids: { d: 1.3, t: ['lego:8,marble:2,die:2,crayon:2,button', 'soldier:7,sock,pencil,cupcake', 'toycar:4,book,teddy:2,robot,yoyo', 'toytruck:3,dino:3,backpack,basketball,soccer', 'nerf:4,guitar,skateboard,toolbox'] },
@@ -470,19 +469,19 @@ const CH = [null];
     real: [0, 0.15, 0.8, 3, 4.5, 6, 10, 15],
     tagN: { tree: 'tree', house: 'house' },
     types: {
-      flower: ['🌷', 'flower', 1], shoe: ['👟', 'shoe', 1], boot: ['🥾', 'boot', 1], sprout: ['🌱', 'sprout', 1], mushroom: ['🍄', 'mushroom', 1],
-      snail: ['🐌', 'snail', 1], ball: ['⚾', 'baseball', 1], leaf: ['🍂', 'leaf', 1, { pl: 'leaves' }], ladybug: ['🐞', 'ladybug', 1], butterfly: ['🦋', 'butterfly', 1, { mv: 'w' }],
-      frisbee: ['🥏', 'frisbee', 1], tomato: ['🍅', 'tomato', 1, { pl: 'tomatoes' }], carrot: ['🥕', 'carrot', 1],
-      bbq: ['', 'BBQ', 2, { draw: 'bbq', pl: 'BBQs' }], doghouse: ['', 'dog house', 2, { draw: 'doghouse' }], dog: ['🐕', 'dog', 2, { mv: 'w' }], cat: ['🐈', 'cat', 2, { mv: 'w' }],
-      bucket: ['🪣', 'bucket', 2], lawnchair: ['🪑', 'lawn chair', 2], umbrella: ['⛱️', 'patio umbrella', 2], pumpkin: ['🎃', 'pumpkin', 2],
-      sunflower: ['🌻', 'sunflower', 2], mailbox: ['📫', 'mailbox', 2, { pl: 'mailboxes' }], duck: ['🦆', 'duck', 2, { mv: 'w' }],
-      yardtree: ['🌳', 'backyard tree', 3, { tags: 'tree', sway: 1 }], pine: ['🌲', 'pine tree', 3, { tags: 'tree' }], tent: ['⛺', 'tent', 3], shed: ['', 'shed', 3, { draw: 'shed' }], swan: ['🦢', 'swan', 3, { mv: 'w' }],
-      car: ['🚗', 'car', 4], familycar: ['🚙', 'family car', 4],
-      bike: ['🚲', 'bike', 5, { s: .55 }], bin: ['🗑️', 'garbage bin', 5, { s: .45 }], person: ['🚶', 'neighbour', 5, { s: .5, mv: 'w' }], jogger: ['🏃', 'jogger', 5, { s: .5, mv: 'w' }],
-      kid: ['🧒', 'kid', 5, { s: .45, mv: 'w' }], scooter: ['🛴', 'scooter', 5, { s: .5 }], motorbike: ['🏍️', 'motorbike', 5, { s: .65 }], slide: ['🛝', 'playground slide', 5],
-      truck: ['🚚', 'delivery truck', 6], firetruck: ['🚒', 'fire truck', 6], bus: ['🚌', 'school bus', 6, { pl: 'school buses' }], ambulance: ['🚑', 'ambulance', 6],
-      police: ['🚓', 'police car', 6], bigtruck: ['🚛', 'big truck', 6], fountain: ['⛲', 'fountain', 6], carousel: ['🎠', 'carousel', 6],
-      house: ['🏠', 'house', 7, { tags: 'house' }], house2: ['🏡', 'house', 7, { tags: 'house' }],
+      flower: ['flower', 1], shoe: ['shoe', 1], boot: ['boot', 1], sprout: ['sprout', 1], mushroom: ['mushroom', 1],
+      snail: ['snail', 1], ball: ['baseball', 1], leaf: ['leaf', 1, { pl: 'leaves' }], ladybug: ['ladybug', 1], butterfly: ['butterfly', 1, { mv: 'w' }],
+      frisbee: ['frisbee', 1], tomato: ['tomato', 1, { pl: 'tomatoes' }], carrot: ['carrot', 1],
+      bbq: ['BBQ', 2, { pl: 'BBQs' }], doghouse: ['dog house', 2, {}], dog: ['dog', 2, { mv: 'w' }], cat: ['cat', 2, { mv: 'w' }],
+      bucket: ['bucket', 2], lawnchair: ['lawn chair', 2], umbrella: ['patio umbrella', 2], pumpkin: ['pumpkin', 2],
+      sunflower: ['sunflower', 2], mailbox: ['mailbox', 2, { pl: 'mailboxes' }], duck: ['duck', 2, { mv: 'w' }],
+      yardtree: ['backyard tree', 3, { tags: 'tree', sway: 1 }], pine: ['pine tree', 3, { tags: 'tree' }], tent: ['tent', 3], shed: ['shed', 3, {}], swan: ['swan', 3, { mv: 'w' }],
+      car: ['car', 4], familycar: ['family car', 4],
+      bike: ['bike', 5, { s: .55 }], bin: ['garbage bin', 5, { s: .45 }], person: ['neighbour', 5, { s: .5, mv: 'w' }], jogger: ['jogger', 5, { s: .5, mv: 'w' }],
+      kid: ['kid', 5, { s: .45, mv: 'w' }], scooter: ['scooter', 5, { s: .5 }], motorbike: ['motorbike', 5, { s: .65 }], slide: ['playground slide', 5],
+      truck: ['delivery truck', 6], firetruck: ['fire truck', 6], bus: ['school bus', 6, { pl: 'school buses' }], ambulance: ['ambulance', 6],
+      police: ['police car', 6], bigtruck: ['big truck', 6], fountain: ['fountain', 6], carousel: ['carousel', 6],
+      house: ['house', 7, { tags: 'house' }], house2: ['house', 7, { tags: 'house' }],
     },
     zones: {
       yard: { d: 1, t: ['flower:3,shoe,sprout:2,snail,ball,leaf,ladybug,butterfly,frisbee,tomato,carrot', 'bbq,doghouse,dog,cat,bucket,lawnchair,umbrella,pumpkin,sunflower', 'yardtree:3,tent,shed', 'car:.3', 'bike:2,kid,scooter'] },
@@ -654,27 +653,27 @@ const CH = [null];
     tagN: { house: 'house', tree: 'tree' }, regionAt, P, inv,
     regionPos: rg => { const r = REGIONS.find(r => r[0] === rg); return r && P(r[1], r[2]); },
     types: {
-      manhole: ['', 'manhole cover', 1, { draw: 'manhole' }], drain: ['', 'storm drain', 1, { draw: 'drain' }], cup: ['🥤', 'cup', 1], can: ['🥫', 'can', 1],
-      leaf: ['🍁', 'maple leaf', 1, { pl: 'maple leaves' }], flower: ['🌸', 'cherry blossom', 1], shell: ['🐚', 'shell', 1], mushroom: ['🍄', 'mushroom', 1], corn: ['🌽', 'corn', 1, { pl: 'corn cobs' }],
-      newspaper: ['📰', 'newspaper', 1],
-      cone: ['', 'traffic cone', 2, { draw: 'cone' }], hydrant: ['', 'fire hydrant', 2, { draw: 'hydrant' }], lamp: ['', 'lamppost', 2, { draw: 'lamp' }], light: ['🚦', 'traffic light', 2],
-      mailbox: ['📮', 'mailbox', 2, { pl: 'mailboxes' }], squirrel: ['🐿️', 'squirrel', 2, { mv: 'w' }], duck: ['🦆', 'duck', 2, { mv: 'w' }], chicken: ['🐔', 'chicken', 2, { mv: 'w' }],
-      umbrella: ['⛱️', 'beach umbrella', 2], luggage: ['🧳', 'suitcase', 2],
-      person: ['🚶', 'person', 3, { mv: 'w', pl: 'people' }], jogger: ['🏃', 'jogger', 3, { mv: 'w' }], bin: ['🗑️', 'garbage bin', 3], bike: ['🚲', 'bike', 3], scooter: ['🛴', 'scooter', 3],
-      dog: ['🐕', 'dog', 3, { mv: 'w' }], raccoon: ['🦝', 'raccoon', 3, { mv: 'w' }], seal: ['🦭', 'seal', 3, { mv: 'w' }], kayak: ['🛶', 'kayak', 3, { mv: 'w' }],
-      sheep: ['🐑', 'sheep', 3], pig: ['🐖', 'pig', 3], goat: ['🐐', 'goat', 3],
-      car: ['🚗', 'car', 4], taxi: ['🚕', 'taxi', 4], bus: ['🚌', 'bus', 4, { pl: 'buses' }], skytrain: ['🚈', 'SkyTrain', 4, { s: 1.4 }], cow: ['🐄', 'cow', 4], horse: ['🐎', 'horse', 4],
-      tractor: ['🚜', 'tractor', 4], deer: ['🦌', 'deer', 4, { mv: 'w' }], sailboat: ['⛵', 'sailboat', 4, { mv: 'w' }], foodtruck: ['🚚', 'food truck', 4], van: ['🚐', 'van', 4],
-      truck: ['🚛', 'big truck', 5], house: ['🏠', 'house', 5, { tags: 'house' }], house2: ['🏡', 'house', 5, { tags: 'house' }], firetruck: ['🚒', 'fire truck', 5],
-      speedboat: ['🚤', 'speedboat', 5, { mv: 'w' }], bear: ['🐻', 'black bear', 5, { mv: 'w' }], grizzly: ['🐻', 'grizzly bear', 5, { mv: 'w' }], gondola: ['🚡', 'Skyride gondola', 5],
-      bigtree: ['🌲', 'giant tree', 5, { tags: 'tree' }], barn: ['', 'barn', 5, { draw: 'barn' }],
-      shop: ['🏪', 'corner store', 6], school: ['🏫', 'school', 6], church: ['⛪', 'church', 6, { pl: 'churches' }], hotel: ['🏨', 'hotel', 6], smallplane: ['🛩️', 'small plane', 6],
-      yacht: ['🛥️', 'motor yacht', 6, { mv: 'w' }], orca: ['🐋', 'orca', 6, { mv: 'w' }], cabin: ['🛖', 'cabin', 6], seabus: ['⛴️', 'SeaBus', 6, { pl: 'SeaBuses' }],
-      whiterock: ['', 'White Rock', 6, { draw: 'whiterock' }], quay: ['🏬', 'River Market', 6],
-      tower: ['🏢', 'office tower', 7], airplane: ['✈️', 'airplane', 7], ferry: ['⛴️', 'BC Ferry', 7, { s: 1.3, pl: 'ferries' }], mall: ['🏬', 'mall', 7, { s: 1.6 }],
-      cargo: ['🚢', 'cargo ship', 7, { mv: 'w' }], stadium: ['🏟️', 'stadium', 7, { s: 1.4 }], cruise: ['🛳️', 'cruise ship', 7, { s: 1.3 }], fort: ['🏰', 'fort', 7],
-      university: ['🏫', 'university', 7, { s: 1.5 }], terminal: ['🏢', 'airport terminal', 7, { s: 1.7 }],
-      lodge: ['🏨', 'mountain chalet', 8, { s: 1.1 }], totem: ['', 'totem pole', 3, { draw: 'totem' }],
+      manhole: ['manhole cover', 1, {}], drain: ['storm drain', 1, {}], cup: ['cup', 1], can: ['can', 1],
+      leaf: ['maple leaf', 1, { pl: 'maple leaves' }], flower: ['cherry blossom', 1], shell: ['shell', 1], mushroom: ['mushroom', 1], corn: ['corn', 1, { pl: 'corn cobs' }],
+      newspaper: ['newspaper', 1],
+      cone: ['traffic cone', 2, {}], hydrant: ['fire hydrant', 2, {}], lamp: ['lamppost', 2, {}], light: ['traffic light', 2],
+      mailbox: ['mailbox', 2, { pl: 'mailboxes' }], squirrel: ['squirrel', 2, { mv: 'w' }], duck: ['duck', 2, { mv: 'w' }], chicken: ['chicken', 2, { mv: 'w' }],
+      umbrella: ['beach umbrella', 2], luggage: ['suitcase', 2],
+      person: ['person', 3, { mv: 'w', pl: 'people' }], jogger: ['jogger', 3, { mv: 'w' }], bin: ['garbage bin', 3], bike: ['bike', 3], scooter: ['scooter', 3],
+      dog: ['dog', 3, { mv: 'w' }], raccoon: ['raccoon', 3, { mv: 'w' }], seal: ['seal', 3, { mv: 'w' }], kayak: ['kayak', 3, { mv: 'w' }],
+      sheep: ['sheep', 3], pig: ['pig', 3], goat: ['goat', 3],
+      car: ['car', 4], taxi: ['taxi', 4], bus: ['bus', 4, { pl: 'buses' }], skytrain: ['SkyTrain', 4, { s: 1.4 }], cow: ['cow', 4], horse: ['horse', 4],
+      tractor: ['tractor', 4], deer: ['deer', 4, { mv: 'w' }], sailboat: ['sailboat', 4, { mv: 'w' }], foodtruck: ['food truck', 4], van: ['van', 4],
+      truck: ['big truck', 5], house: ['house', 5, { tags: 'house' }], house2: ['house', 5, { tags: 'house' }], firetruck: ['fire truck', 5],
+      speedboat: ['speedboat', 5, { mv: 'w' }], bear: ['black bear', 5, { mv: 'w' }], grizzly: ['grizzly bear', 5, { mv: 'w' }], gondola: ['Skyride gondola', 5],
+      bigtree: ['giant tree', 5, { tags: 'tree' }], barn: ['barn', 5, {}],
+      shop: ['corner store', 6], school: ['school', 6], church: ['church', 6, { pl: 'churches' }], hotel: ['hotel', 6], smallplane: ['small plane', 6],
+      yacht: ['motor yacht', 6, { mv: 'w' }], orca: ['orca', 6, { mv: 'w' }], cabin: ['cabin', 6], seabus: ['SeaBus', 6, { pl: 'SeaBuses' }],
+      whiterock: ['White Rock', 6, {}], quay: ['River Market', 6],
+      tower: ['office tower', 7], airplane: ['airplane', 7], ferry: ['BC Ferry', 7, { s: 1.3, pl: 'ferries' }], mall: ['mall', 7, { s: 1.6 }],
+      cargo: ['cargo ship', 7, { mv: 'w' }], stadium: ['stadium', 7, { s: 1.4 }], cruise: ['cruise ship', 7, { s: 1.3 }], fort: ['fort', 7],
+      university: ['university', 7, { s: 1.5 }], terminal: ['airport terminal', 7, { s: 1.7 }],
+      lodge: ['mountain chalet', 8, { s: 1.1 }], totem: ['totem pole', 3, {}],
     },
     zones: {
       downtown: { d: 1.5, t: ['manhole:7,drain:2,cup,can,newspaper', 'cone:2,hydrant:2,lamp:2,light,mailbox', 'person:4,bin,bike,scooter,dog', 'car:3,taxi:2,bus:2,van', 'truck,firetruck', 'shop:2,hotel:2,church', 'tower:4'] },
@@ -814,25 +813,25 @@ const CH = [null];
     tagN: { tree: 'tree', whale: 'whale' },
     areas: { cove: COVE },
     types: {
-      pebble: ['🪨', 'pebble', 1, { s: .6 }], shell: ['🐚', 'shell', 1], flower: ['🌼', 'daisy', 1, { pl: 'daisies' }], mushroom: ['🍄', 'mushroom', 1], bug: ['🐛', 'caterpillar', 1],
-      ant: ['🐜', 'ant', 1], berry: ['🫐', 'blueberries', 1, { pl: 'bunches of blueberries' }], acorn: ['🌰', 'acorn', 1], leaf: ['🍃', 'leaf', 1, { pl: 'leaves' }], feather: ['🪶', 'feather', 1],
-      scorpion: ['🦂', 'scorpion', 1], oyster: ['🦪', 'oyster', 1],
-      fish: ['🐟', 'fish', 2, { mv: 'w', pl: 'fish' }], crab: ['🦀', 'crab', 2, { mv: 'w' }], rabbit: ['🐇', 'rabbit', 2, { mv: 'w' }], squirrel: ['🐿️', 'squirrel', 2, { mv: 'w' }], bush: ['🌿', 'bush', 2, { pl: 'bushes' }],
-      cactus: ['🌵', 'cactus', 2, { s: .8, pl: 'cactuses' }], frog: ['🐸', 'frog', 2], snake: ['🐍', 'snake', 2], tropfish: ['🐠', 'tropical fish', 2, { mv: 'w', pl: 'tropical fish' }], coral: ['🪸', 'coral', 2, { pl: 'corals' }],
-      lizard: ['🦎', 'lizard', 2], owl: ['🦉', 'owl', 2], hawk: ['🦅', 'hawk', 2, { mv: 'fly' }], gem: ['💎', 'gem', 2],
-      tent: ['⛺', 'tent', 3], campfire: ['🔥', 'campfire', 3], camper: ['🚶', 'camper', 3, { mv: 'w' }], fox: ['🦊', 'fox', 3, { mv: 'w', pl: 'foxes' }], raccoon: ['🦝', 'raccoon', 3, { mv: 'w' }],
-      beaver: ['🦫', 'beaver', 3], salmon: ['🐟', 'salmon', 3, { s: 1.2, mv: 'w', pl: 'salmon' }], umbrella: ['⛱️', 'beach umbrella', 3], blowfish: ['🐡', 'pufferfish', 3, { mv: 'w', pl: 'pufferfish' }],
-      octopus: ['🐙', 'octopus', 3, { pl: 'octopuses' }], goat: ['🐐', 'mountain goat', 3, { mv: 'w' }], canoe: ['🛶', 'canoe', 3], flamingo: ['🦩', 'flamingo', 3], goblet: ['🏆', 'golden cup', 3], bottle: ['🍾', 'message bottle', 3],
-      deer: ['🦌', 'deer', 4, { mv: 'w', pl: 'deer' }], turtle: ['🐢', 'sea turtle', 4, { mv: 'w' }], wolf: ['🐺', 'wolf', 4, { mv: 'w', pl: 'wolves' }], zebra: ['🦓', 'zebra', 4, { mv: 'w' }],
-      campervan: ['🚐', 'camper van', 4], boulder: ['🪨', 'boulder', 4], seal: ['🦭', 'seal', 4, { mv: 'w' }], warthog: ['🐗', 'warthog', 4], ram: ['🐏', 'bighorn sheep', 4, { pl: 'bighorn sheep' }],
-      chest: ['', 'treasure chest', 4, { draw: 'chest' }], crown: ['👑', 'crown', 4],
-      oak: ['🌳', 'oak tree', 5, { tags: 'tree', sway: 1 }], pine: ['🌲', 'pine tree', 5, { tags: 'tree' }], palm: ['🌴', 'palm tree', 5, { tags: 'tree', sway: 1 }], acacia: ['🌳', 'acacia tree', 5, { tags: 'tree' }],
-      bear: ['🐻', 'bear', 5, { mv: 'w' }], camel: ['🐪', 'camel', 5, { mv: 'w' }], lion: ['🦁', 'lion', 5, { mv: 'w' }], shark: ['🦈', 'shark', 5, { mv: 'w' }], dolphin: ['🐬', 'dolphin', 5, { mv: 'w' }],
-      saguaro: ['🌵', 'giant cactus', 5, { s: 1.2, pl: 'giant cactuses' }], leopard: ['🐆', 'leopard', 5, { mv: 'w' }], anchor: ['⚓', 'anchor', 5],
-      elephant: ['🐘', 'elephant', 6, { mv: 'w' }], giraffe: ['🦒', 'giraffe', 6, { mv: 'w' }], rhino: ['🦏', 'rhino', 6], hippo: ['🦛', 'hippo', 6], bigrock: ['🪨', 'big boulder', 6],
-      cabin: ['🛖', 'log cabin', 6], wreck: ['🚢', 'shipwreck', 6],
-      whale: ['🐋', 'whale', 7, { tags: 'whale', mv: 'w' }], bluewhale: ['🐳', 'blue whale', 7, { tags: 'whale', mv: 'w', s: 1.15 }], island: ['🏝️', 'island', 7],
-      dam: ['', 'dam', 8, { draw: 'dam' }], rockies: ['', 'rocky mountain', 8],
+      pebble: ['pebble', 1, { s: .6 }], shell: ['shell', 1], flower: ['daisy', 1, { pl: 'daisies' }], mushroom: ['mushroom', 1], bug: ['caterpillar', 1],
+      ant: ['ant', 1], berry: ['blueberries', 1, { pl: 'bunches of blueberries' }], acorn: ['acorn', 1], leaf: ['leaf', 1, { pl: 'leaves' }], feather: ['feather', 1],
+      scorpion: ['scorpion', 1], oyster: ['oyster', 1],
+      fish: ['fish', 2, { mv: 'w', pl: 'fish' }], crab: ['crab', 2, { mv: 'w' }], rabbit: ['rabbit', 2, { mv: 'w' }], squirrel: ['squirrel', 2, { mv: 'w' }], bush: ['bush', 2, { pl: 'bushes' }],
+      cactus: ['cactus', 2, { s: .8, pl: 'cactuses' }], frog: ['frog', 2], snake: ['snake', 2], tropfish: ['tropical fish', 2, { mv: 'w', pl: 'tropical fish' }], coral: ['coral', 2, { pl: 'corals' }],
+      lizard: ['lizard', 2], owl: ['owl', 2], hawk: ['hawk', 2, { mv: 'fly' }], gem: ['gem', 2],
+      tent: ['tent', 3], campfire: ['campfire', 3], camper: ['camper', 3, { mv: 'w' }], fox: ['fox', 3, { mv: 'w', pl: 'foxes' }], raccoon: ['raccoon', 3, { mv: 'w' }],
+      beaver: ['beaver', 3], salmon: ['salmon', 3, { s: 1.2, mv: 'w', pl: 'salmon' }], umbrella: ['beach umbrella', 3], blowfish: ['pufferfish', 3, { mv: 'w', pl: 'pufferfish' }],
+      octopus: ['octopus', 3, { pl: 'octopuses' }], goat: ['mountain goat', 3, { mv: 'w' }], canoe: ['canoe', 3], flamingo: ['flamingo', 3], goblet: ['golden cup', 3], bottle: ['message bottle', 3],
+      deer: ['deer', 4, { mv: 'w', pl: 'deer' }], turtle: ['sea turtle', 4, { mv: 'w' }], wolf: ['wolf', 4, { mv: 'w', pl: 'wolves' }], zebra: ['zebra', 4, { mv: 'w' }],
+      campervan: ['camper van', 4], boulder: ['boulder', 4], seal: ['seal', 4, { mv: 'w' }], warthog: ['warthog', 4], ram: ['bighorn sheep', 4, { pl: 'bighorn sheep' }],
+      chest: ['treasure chest', 4, {}], crown: ['crown', 4],
+      oak: ['oak tree', 5, { tags: 'tree', sway: 1 }], pine: ['pine tree', 5, { tags: 'tree' }], palm: ['palm tree', 5, { tags: 'tree', sway: 1 }], acacia: ['acacia tree', 5, { tags: 'tree' }],
+      bear: ['bear', 5, { mv: 'w' }], camel: ['camel', 5, { mv: 'w' }], lion: ['lion', 5, { mv: 'w' }], shark: ['shark', 5, { mv: 'w' }], dolphin: ['dolphin', 5, { mv: 'w' }],
+      saguaro: ['giant cactus', 5, { s: 1.2, pl: 'giant cactuses' }], leopard: ['leopard', 5, { mv: 'w' }], anchor: ['anchor', 5],
+      elephant: ['elephant', 6, { mv: 'w' }], giraffe: ['giraffe', 6, { mv: 'w' }], rhino: ['rhino', 6], hippo: ['hippo', 6], bigrock: ['big boulder', 6],
+      cabin: ['log cabin', 6], wreck: ['shipwreck', 6],
+      whale: ['whale', 7, { tags: 'whale', mv: 'w' }], bluewhale: ['blue whale', 7, { tags: 'whale', mv: 'w', s: 1.15 }], island: ['island', 7],
+      dam: ['dam', 8, {}], rockies: ['rocky mountain', 8],
     },
     zones: {
       forest: { d: 1.1, t: ['mushroom:2,acorn,berry,bug,ant,leaf,flower', 'rabbit,squirrel,frog,bush:2,owl', 'tent,campfire,camper,fox,raccoon', 'deer:2,wolf,campervan', 'oak:4,pine:4,bear', 'cabin,bigrock'] },
@@ -1073,24 +1072,24 @@ const CH = [null];
     real: [0, 800, 2000, 5000, 12000, 30000, 80000, 250000, 800000],
     tagN: { wonder: 'World Wonder', landmark: 'landmark', island: 'island', tree: 'tree' },
     types: Object.assign({
-      car: ['🚗', 'car', 1], taxi: ['🚕', 'taxi', 1], bus: ['🚌', 'bus', 1, { pl: 'buses' }], house: ['🏠', 'house', 1], tree: ['🌳', 'tree', 1, { tags: 'tree' }], cow: ['🐄', 'cow', 1],
-      tractor: ['🚜', 'tractor', 1], sailboat: ['⛵', 'sailboat', 1, { mv: 'w' }], croissant: ['🥐', 'croissant', 1], pizza: ['🍕', 'pizza', 1], guard: ['💂', 'royal guard', 1],
-      doll: ['🪆', 'nesting doll', 1], camel: ['🐪', 'camel', 1], drum: ['🥁', 'drum', 1], penguin: ['🐧', 'penguin', 1, { mv: 'w' }], noodles: ['🍜', 'bowl of noodles', 1, { pl: 'bowls of noodles' }],
-      sushi: ['🍣', 'sushi', 1, { pl: 'sushi' }], moto: ['🛵', 'motor scooter', 1], taco: ['🌮', 'taco', 1], oldcar: ['🚙', 'classic car', 1], dancer: ['💃', 'tango dancer', 1], parrot: ['🦜', 'parrot', 1],
-      hotdog: ['🌭', 'hot dog', 1], kangaroo: ['🦘', 'kangaroo', 1, { mv: 'w' }], panda: ['🐼', 'panda', 1], tuktuk: ['🛺', 'tuk-tuk', 1], llama: ['🦙', 'llama', 1], palm: ['🌴', 'palm tree', 1, { tags: 'tree' }],
-      guitar: ['🎸', 'guitar', 1], pretzel: ['🥨', 'pretzel', 1], leaf: ['🍁', 'maple leaf', 1, { pl: 'maple leaves' }], giraffe: ['🦒', 'giraffe', 1], elephant: ['🐘', 'elephant', 1],
-      lion: ['🦁', 'lion', 1], koala: ['🐨', 'koala', 1], bison: ['🦬', 'bison', 1, { pl: 'bison' }], polarbear: ['🐻‍❄️', 'polar bear', 1],
-      ship: ['🚢', 'ship', 2, { mv: 'w' }], building: ['🏬', 'shopping mall', 2], crane: ['🏗️', 'construction site', 2], church: ['⛪', 'church', 2, { pl: 'churches' }], factory: ['🏭', 'factory', 2, { pl: 'factories' }],
-      barn: ['', 'barn', 2, { draw: 'barn' }], forest: ['🌲', 'forest', 2, { tags: 'tree' }], iceberg: ['🧊', 'iceberg', 2],
-      tower: ['🏢', 'office tower', 3], stadium: ['🏟️', 'stadium', 3], hotel: ['🏨', 'skyscraper hotel', 3], castle: ['🏰', 'castle', 3], temple: ['🛕', 'temple', 3], pagoda: ['🏯', 'pagoda', 3], cruise: ['🛳️', 'cruise ship', 3, { mv: 'w' }],
-      skyline: ['🏙️', 'skyscraper city', 4, { pl: 'skyscraper cities' }], whale: ['🐋', 'whale', 4, { mv: 'w' }], hill: ['⛰️', 'big hill', 4],
-      eiffel: ['🗼', 'Eiffel Tower', 5, { tags: 'landmark', s: 1.3 }], colosseum: ['🏛️', 'Colosseum', 5, { tags: 'landmark,wonder', s: 1.3 }], greatwall: ['', 'Great Wall of China', 6, { tags: 'landmark,wonder', draw: 'wall', s: 1.5 }],
-      taj: ['🕌', 'Taj Mahal', 5, { tags: 'landmark,wonder', s: 1.3 }], pyramids: ['', 'Pyramids of Giza', 5, { tags: 'landmark', draw: 'pyramid', s: 1.3 }], liberty: ['🗽', 'Statue of Liberty', 5, { tags: 'landmark', s: 1.3 }],
-      bigben: ['', 'Big Ben', 5, { tags: 'landmark', draw: 'clock', s: 1.3 }], opera: ['', 'Sydney Opera House', 5, { tags: 'landmark', draw: 'opera', s: 1.3 }], christ: ['', 'Christ the Redeemer', 5, { tags: 'landmark,wonder', draw: 'christ', s: 1.3 }],
-      chichen: ['', 'Chichen Itza', 5, { tags: 'landmark,wonder', draw: 'steppyr', s: 1.3 }], fuji: ['🗻', 'Mount Fuji', 7, { tags: 'landmark' }], marina: ['', 'Marina Bay Sands', 5, { tags: 'landmark', draw: 'marina', s: 1.3 }],
-      petra: ['', 'Petra', 5, { tags: 'landmark,wonder', draw: 'petra', s: 1.3 }], machu: ['', 'Machu Picchu', 5, { tags: 'landmark,wonder', draw: 'machu', s: 1.3 }], basil: ['', "St. Basil's Cathedral", 5, { tags: 'landmark', draw: 'basil', s: 1.3 }],
-      table: ['', 'Table Mountain', 5, { tags: 'landmark', draw: 'tablemtn', s: 1.3 }],
-      island: ['🏝️', 'island', 7, { tags: 'island' }], peak: ['🏔️', 'tall mountain', 8],
+      car: ['car', 1], taxi: ['taxi', 1], bus: ['bus', 1, { pl: 'buses' }], house: ['house', 1], tree: ['tree', 1, { tags: 'tree' }], cow: ['cow', 1],
+      tractor: ['tractor', 1], sailboat: ['sailboat', 1, { mv: 'w' }], croissant: ['croissant', 1], pizza: ['pizza', 1], guard: ['royal guard', 1],
+      doll: ['nesting doll', 1], camel: ['camel', 1], drum: ['drum', 1], penguin: ['penguin', 1, { mv: 'w' }], noodles: ['bowl of noodles', 1, { pl: 'bowls of noodles' }],
+      sushi: ['sushi', 1, { pl: 'sushi' }], moto: ['motor scooter', 1], taco: ['taco', 1], oldcar: ['classic car', 1], dancer: ['tango dancer', 1], parrot: ['parrot', 1],
+      hotdog: ['hot dog', 1], kangaroo: ['kangaroo', 1, { mv: 'w' }], panda: ['panda', 1], tuktuk: ['tuk-tuk', 1], llama: ['llama', 1], palm: ['palm tree', 1, { tags: 'tree' }],
+      guitar: ['guitar', 1], pretzel: ['pretzel', 1], leaf: ['maple leaf', 1, { pl: 'maple leaves' }], giraffe: ['giraffe', 1], elephant: ['elephant', 1],
+      lion: ['lion', 1], koala: ['koala', 1], bison: ['bison', 1, { pl: 'bison' }], polarbear: ['polar bear', 1],
+      ship: ['ship', 2, { mv: 'w' }], building: ['shopping mall', 2], crane: ['construction site', 2], church: ['church', 2, { pl: 'churches' }], factory: ['factory', 2, { pl: 'factories' }],
+      barn: ['barn', 2, {}], forest: ['forest', 2, { tags: 'tree' }], iceberg: ['iceberg', 2],
+      tower: ['office tower', 3], stadium: ['stadium', 3], hotel: ['skyscraper hotel', 3], castle: ['castle', 3], temple: ['temple', 3], pagoda: ['pagoda', 3], cruise: ['cruise ship', 3, { mv: 'w' }],
+      skyline: ['skyscraper city', 4, { pl: 'skyscraper cities' }], whale: ['whale', 4, { mv: 'w' }], hill: ['big hill', 4],
+      eiffel: ['Eiffel Tower', 5, { tags: 'landmark', s: 1.3 }], colosseum: ['Colosseum', 5, { tags: 'landmark,wonder', s: 1.3 }], greatwall: ['Great Wall of China', 6, { tags: 'landmark,wonder', s: 1.5 }],
+      taj: ['Taj Mahal', 5, { tags: 'landmark,wonder', s: 1.3 }], pyramids: ['Pyramids of Giza', 5, { tags: 'landmark', s: 1.3 }], liberty: ['Statue of Liberty', 5, { tags: 'landmark', s: 1.3 }],
+      bigben: ['Big Ben', 5, { tags: 'landmark', s: 1.3 }], opera: ['Sydney Opera House', 5, { tags: 'landmark', s: 1.3 }], christ: ['Christ the Redeemer', 5, { tags: 'landmark,wonder', s: 1.3 }],
+      chichen: ['Chichen Itza', 5, { tags: 'landmark,wonder', s: 1.3 }], fuji: ['Mount Fuji', 7, { tags: 'landmark' }], marina: ['Marina Bay Sands', 5, { tags: 'landmark', s: 1.3 }],
+      petra: ['Petra', 5, { tags: 'landmark,wonder', s: 1.3 }], machu: ['Machu Picchu', 5, { tags: 'landmark,wonder', s: 1.3 }], basil: ["St. Basil's Cathedral", 5, { tags: 'landmark', s: 1.3 }],
+      table: ['Table Mountain', 5, { tags: 'landmark', s: 1.3 }],
+      island: ['island', 7, { tags: 'island' }], peak: ['tall mountain', 8],
     }),
     zones, zoneAt,
     objInit(o) { if (o.zn !== 'ocean') { const [lon, lat] = ll(wrapX(o.x), wrapY(o.y)); o.cc = countryAt(lon, lat); } else o.cc = null; },
@@ -1194,7 +1193,7 @@ const CH = [null];
     if (r > KUIPER) return 'kuiper';
     return 'space';
   }
-  const pl = (n, t, c1, c2, o) => ['', n, t, Object.assign({ draw: 'planet', c1, c2 }, o || {})];
+  const pl = (n, t, c1, c2, o) => [n, t, Object.assign({ planet: 1 }, o || {})];
   CH.push({
     n: 6, name: 'Space', short: 'Space', c1: '#3949ab', c2: '#0d1240', bgc: '#03030c', rim: '#a98bff', space: 1,
     W, H, start: [EARTH[0] + 420, EARTH[1] + 380], cost: 3.6, need: 90, pv: 1.2, view: 13,
@@ -1202,18 +1201,18 @@ const CH = [null];
     real: [0, 3.5e6, 5e6, 7e6, 1e7, 1.4e7, 3e7, 6e7, 1.4e8, 1.4e9],
     tagN: { asteroid: 'asteroid' },
     types: {
-      rock: ['🪨', 'space rock', 1, { s: .6 }], ice: ['🧊', 'ice rock', 1], bolt: ['🔩', 'space bolt', 1], glove: ['🧤', 'lost glove', 1], stardust: ['✨', 'stardust', 1, { pl: 'stardust' }],
-      satellite: ['🛰️', 'satellite', 2], meteor: ['☄️', 'meteor', 2, { s: .7, mv: 'fly' }], astronaut: ['🧑‍🚀', 'astronaut', 2, { mv: 'w' }], asteroid: ['🪨', 'asteroid', 2, { tags: 'asteroid' }],
-      probe: ['📡', 'space probe', 2], telescope: ['🔭', 'space telescope', 2],
-      comet: ['☄️', 'comet', 3, { s: 1.2, mv: 'fly' }], ufo: ['🛸', 'UFO', 3, { mv: 'fly' }], rocket: ['🚀', 'rocket', 3, { mv: 'w' }], alien: ['👽', 'alien', 3, { mv: 'w' }],
-      bigast: ['🪨', 'big asteroid', 3, { tags: 'asteroid', s: 1.1 }], iss: ['🛰️', 'space station', 3, { s: 1.4 }],
-      station: ['', 'space station', 4, { draw: 'ringstation' }], outpost: ['', 'alien outpost', 4, { draw: 'dome' }],
-      giantcomet: ['☄️', 'giant comet', 5, { s: 1.4, mv: 'fly' }], mothership: ['🛸', 'alien mothership', 5, { s: 1.3, mv: 'w' }], ringstation: ['', 'mega space station', 6, { draw: 'ringstation' }],
+      rock: ['space rock', 1, { s: .6 }], ice: ['ice rock', 1], bolt: ['space bolt', 1], glove: ['lost glove', 1], stardust: ['stardust', 1, { pl: 'stardust' }],
+      satellite: ['satellite', 2], meteor: ['meteor', 2, { s: .7, mv: 'fly' }], astronaut: ['astronaut', 2, { mv: 'w' }], asteroid: ['asteroid', 2, { tags: 'asteroid' }],
+      probe: ['space probe', 2], telescope: ['space telescope', 2],
+      comet: ['comet', 3, { s: 1.2, mv: 'fly' }], ufo: ['UFO', 3, { mv: 'fly' }], rocket: ['rocket', 3, { mv: 'w' }], alien: ['alien', 3, { mv: 'w' }],
+      bigast: ['big asteroid', 3, { tags: 'asteroid', s: 1.1 }], iss: ['space station', 3, { s: 1.4 }],
+      station: ['space station', 4, {}], outpost: ['alien outpost', 4, {}],
+      giantcomet: ['giant comet', 5, { s: 1.4, mv: 'fly' }], mothership: ['alien mothership', 5, { s: 1.3, mv: 'w' }], ringstation: ['mega space station', 6, {}],
       moon: pl('the Moon', 4, '#efefe8', '#8d8d88', { s: .7 }), pluto: pl('Pluto', 3, '#e7d2b5', '#8c6f55'),
-      mercury: pl('Mercury', 4, '#c9c3bb', '#6f6a64'), venus: pl('Venus', 5, '#f3dfa2', '#b8893c'), earth: ['🌍', 'Earth', 5], mars: pl('Mars', 4, '#f08a5d', '#a33b1c', { s: 1.1 }),
+      mercury: pl('Mercury', 4, '#c9c3bb', '#6f6a64'), venus: pl('Venus', 5, '#f3dfa2', '#b8893c'), earth: ['Earth', 5], mars: pl('Mars', 4, '#f08a5d', '#a33b1c', { s: 1.1 }),
       jupiter: pl('Jupiter', 8, '#e9caa0', '#a0703c', { band: 'rgba(150,90,40,.45)', s: 1.2 }), saturn: pl('Saturn', 8, '#f1dcaa', '#b99556', { ring: '#d8c08a', s: 1.3 }),
       uranus: pl('Uranus', 7, '#b9f3f3', '#4aa9b5'), neptune: pl('Neptune', 7, '#7fa8ff', '#2340a8'),
-      sun: ['', 'the Sun', 9, { draw: 'star', c1: '#ffcc33', s: 1.5 }],
+      sun: ['the Sun', 9, { c1: '#ffcc33', s: 1.5 }],
     },
     zones: {
       space: { d: .8, t: ['rock:3,ice,bolt,glove,stardust:2', 'satellite,meteor:2,astronaut,probe', 'comet:2,ufo:2,rocket,alien', 'station:.3,outpost:.5', 'giantcomet,mothership', 'ringstation'] },
@@ -1273,8 +1272,8 @@ const CH = [null];
     for (const [cx, cy, r] of NEB) if (Math.hypot(x - cx, y - cy) < r * .7) return 'nebula';
     return 'void';
   }
-  const pl = (n, t, c1, c2, o) => ['', n, t, Object.assign({ draw: 'planet', c1, c2 }, o || {})];
-  const st = (n, t, c1, o) => ['', n, t, Object.assign({ draw: 'star', c1 }, o || {})];
+  const pl = (n, t, c1, c2, o) => [n, t, Object.assign({ planet: 1 }, o || {})];
+  const st = (n, t, c1, o) => [n, t, o || {}];
   CH.push({
     n: 7, name: 'The Humbling', short: 'Humbling', c1: '#8e24aa', c2: '#2a0636', bgc: '#0d0221', rim: '#ff6bd6', space: 1,
     W, H, start: [W / 2, H / 2], cost: 4.5, need: 80, pv: 5, view: 13,
@@ -1282,13 +1281,13 @@ const CH = [null];
     real: [0, 2e9, 5e9, 1.5e10, 4e10, 1e11, 3e11, 1e12, 4e12, 1.5e13],
     tagN: { giantstar: 'giant star', giantufo: 'giant UFO' },
     types: {
-      rock: ['🪨', 'space rock', 1, { s: .6 }], sparkle: ['✨', 'stardust', 1, { pl: 'stardust' }], ice: ['🧊', 'ice chunk', 1], star: ['⭐', 'little star', 1],
-      comet: ['☄️', 'comet', 2, { mv: 'fly' }], ufo: ['🛸', 'UFO', 2, { mv: 'fly' }], satellite: ['🛰️', 'old satellite', 2], alien: ['👽', 'alien', 2, { mv: 'w' }],
-      planet: ['🪐', 'ringed planet', 3], icemoon: pl('ice moon', 3, '#d6f5ff', '#5aa9c9'), redplanet: pl('red planet', 3, '#ff8a65', '#9e2a12'),
+      rock: ['space rock', 1, { s: .6 }], sparkle: ['stardust', 1, { pl: 'stardust' }], ice: ['ice chunk', 1], star: ['little star', 1],
+      comet: ['comet', 2, { mv: 'fly' }], ufo: ['UFO', 2, { mv: 'fly' }], satellite: ['old satellite', 2], alien: ['alien', 2, { mv: 'w' }],
+      planet: ['ringed planet', 3], icemoon: pl('ice moon', 3, '#d6f5ff', '#5aa9c9'), redplanet: pl('red planet', 3, '#ff8a65', '#9e2a12'),
       giantplanet: pl('giant planet', 4, '#c3a6ff', '#5b3fb0', { band: 'rgba(80,40,140,.4)' }), giantmoon: pl('giant moon', 4, '#f0f0e8', '#7d7d78'),
-      yellowstar: st('yellow star', 5, '#ffd23f'), redstar: st('red star', 5, '#ff5e57'), station: ['', 'space station', 5, { draw: 'ringstation' }],
-      bluestar: st('blue star', 6, '#6ad1ff'), crystalmoon: ['', 'crystal moon', 6, { draw: 'crystalmoon' }], ringstation: ['', 'mega space station', 6, { draw: 'ringstation', s: 1.3 }],
-      giantufo: ['🛸', 'giant UFO', 7, { tags: 'giantufo', s: 1.3, mv: 'w' }], superplanet: pl('super planet', 7, '#7cf7c6', '#1b8a6b', { ring: '#bff', band: 'rgba(0,80,60,.3)' }),
+      yellowstar: st('yellow star', 5, '#ffd23f'), redstar: st('red star', 5, '#ff5e57'), station: ['space station', 5, {}],
+      bluestar: st('blue star', 6, '#6ad1ff'), crystalmoon: ['crystal moon', 6, {}], ringstation: ['mega space station', 6, { s: 1.3 }],
+      giantufo: ['giant UFO', 7, { tags: 'giantufo', s: 1.3, mv: 'w' }], superplanet: pl('super planet', 7, '#7cf7c6', '#1b8a6b', { ring: '#bff', band: 'rgba(0,80,60,.3)' }),
       giantstar: st('giant star', 8, '#ff9f43', { tags: 'giantstar', s: 1.2 }), supergiant: st('supergiant star', 9, '#e8f4ff', { s: 1.3 }),
     },
     zones: {
@@ -1469,7 +1468,7 @@ const G = {
   x: 0, y: 0, vx: 0, vy: 0, lvl: 1, xp: 0, cam: { x: 0, y: 0, z: 1 },
   ptr: null, auth: [], agrid: new Map(), cells: new Map(), movers: [], tiles: [], help: [], vis: [],
   toasts: [], flash: null, big: null, combo: [], paused: false, cine: null, trans: null, saveT: 0, relocT: 0, compT: 0, compass: [],
-  gestured: false, bumpT: 0, lastTrig: 0, vr: null,
+  gestured: false, bumpT: 0, lastTrig: 0, vr: null, authR: 0,
 };
 
 /* ---------- chapter preparation (parse the data tables once) ---------- */
@@ -1478,10 +1477,10 @@ function prep(C) {
   C.N = C.sizes.length - 1; C.pv = C.pv || C.cost;
   C.T = {};
   for (const [k, v] of Object.entries(C.types)) {
-    const [e, n, t, o] = v; C.T[k] = Object.assign({ k, e, n, t, tags: [] }, o || {});
+    const [n, t, o] = v; C.T[k] = Object.assign({ k, n, t, tags: [] }, o || {});
     if (typeof C.T[k].tags === 'string') C.T[k].tags = C.T[k].tags.split(',');
   }
-  C.T.coin = { k: 'coin', e: '🪙', n: 'coin', t: 1, tags: [], coin: 1 };
+  C.T.coin = { k: 'coin', n: 'coin', t: 1, tags: [], coin: 1 };
   C.Z = {};
   for (const [z, v] of Object.entries(C.zones)) C.Z[z] = { d: v.d, t: [null, ...v.t.map(s => s ? wlist(s) : null)], coin: v.coin ?? 0.25 };
   C.topT = Math.max(...Object.values(C.Z).map(Z => Z.t.length - 1));
@@ -1574,6 +1573,7 @@ function loadChapter(n) {
     return ob;
   };
   C.build(add, mulberry(9000 + n));
+  G.authR = 0; for (const o of G.auth) G.authR = Math.max(G.authR, o.fw * 0.6);
   if (st.x == null) restartRun(true);
   else if (!st.mv) {                                 // a v2 save: its position was on the bigger v2 map
     const k = C.v2k || 1; st.x *= k; st.y *= k;
@@ -1635,9 +1635,9 @@ function activeLayers(z) {
 /* collect every live object in a world rect (x0..x1, y0..y1 may exceed map when wrapping) */
 function gather(x0, y0, x1, y1, z) {
   const C = G.C, out = [];
-  const A = C.ags;
-  for (let cy = Math.floor((y0 - A) / A); cy <= Math.floor((y1 + A) / A); cy++)
-    for (let cx = Math.floor((x0 - A) / A); cx <= Math.floor((x1 + A) / A); cx++) {
+  const A = C.ags, P = Math.max(A, G.authR || 0);      // pad by the widest authored footprint so a mountain whose centre is off-screen still shows
+  for (let cy = Math.floor((y0 - P) / A); cy <= Math.floor((y1 + P) / A); cy++)
+    for (let cx = Math.floor((x0 - P) / A); cx <= Math.floor((x1 + P) / A); cx++) {
       let kx = cx, ky = cy;
       if (C.wrap) { const nx = Math.ceil(C.W / A), ny = Math.ceil(C.H / A); kx = ((cx % nx) + nx) % nx; ky = ((cy % ny) + ny) % ny; }
       const a = G.agrid.get(akey(kx, ky)); if (a) for (const o of a) if (!o.dead) out.push(o);
@@ -1645,9 +1645,9 @@ function gather(x0, y0, x1, y1, z) {
   for (const o of G.movers) if (!o.dead) out.push(o);
   const rD = holeD() * 4;
   for (const t of activeLayers(z)) {
-    const cs = C.LC[t];
-    for (let cy = Math.floor(y0 / cs); cy <= Math.floor(y1 / cs); cy++)
-      for (let cx = Math.floor(x0 / cs); cx <= Math.floor(x1 / cs); cx++) {
+    const cs = C.LC[t], hp = FIT_K * C.sizes[t] * 0.5;
+    for (let cy = Math.floor((y0 - hp) / cs); cy <= Math.floor((y1 + hp) / cs); cy++)
+      for (let cx = Math.floor((x0 - hp) / cs); cx <= Math.floor((x1 + hp) / cs); cx++) {
         let key = t + ',' + cx + ',' + cy;
         if (C.wrap) { const nx = Math.round(C.W / cs), ny = Math.round(C.H / cs); key = t + ',' + (((cx % nx) + nx) % nx) + ',' + (((cy % ny) + ny) % ny); }
         let a = G.cells.get(key);
@@ -1896,7 +1896,7 @@ function refreshHelpers() {
   for (const [ow, q, p] of owners) {
     const key = ow.ck !== undefined ? 'ck' + ow.ck : 'a' + ow.i;
     live.add(key);
-    const ks = wantTypes(q, p).filter(k => !C.T[k].draw || C.T[k].draw !== 'planet');
+    const ks = wantTypes(q, p).filter(k => !C.T[k].planet);
     if (!ks.length || ks.some(k => layers.includes(C.T[k].t) || C.T[k].t > G.lvl)) continue;
     if (G.auth.some(o => !o.dead && ks.includes(o.k) && (o.keep || o.label))) continue;
     const have = G.help.filter(h => h.hk === key && !h.dead && ks.includes(h.k)).length;
@@ -2389,7 +2389,7 @@ const MODEL = (() => {
     lion: ['quad', { a: '#e0a040', mane: '#a0601a', d: 2, lh: .7 }], shark: ['fish', { a: '#78909c', belly: '#eceff1', fin: .9, d: 3 }], dolphin: ['fish', { a: '#64b5f6', belly: '#e3f2fd', fin: .5, d: 2.6 }], saguaro: ['cactus', { h: 4 }],
     leopard: ['quad', { a: '#f2c14e', b: '#5a3a1a', spots: 1, d: 2, lh: .65 }], anchor: ['anchor', {}], elephant: ['quad', { a: '#9e9e9e', trunk: 1, ears: 1, d: 2.2, lh: 1.2 }], giraffe: ['quad', { a: '#f2c14e', b: '#a0601a', spots: 1, neck: 2.2, lh: 1.6, d: 1.8 }],
     rhino: ['quad', { a: '#8d8d8d', nose: '#e0e0e0', d: 2.2, lh: .7 }], hippo: ['quad', { a: '#8e7c93', d: 2.2, lh: .45 }], bigrock: ['stone', { a: '#7d7872', h: 1, b: '#6d6862' }], wreck: ['wreck', {}],
-    whale: ['fish', { a: '#455a64', belly: '#b0bec5', d: 3.6, h: 1.1 }], bluewhale: ['fish', { a: '#3f6ea5', belly: '#cfe3f0', d: 4, h: 1.1 }], dam: ['dam', {}], rockies: ['mountain', { h: .85, a: '#7d8a7a', b: '#6d7a6a' }],
+    whale: ['fish', { a: '#455a64', belly: '#b0bec5', d: 3.6, h: 1.1 }], bluewhale: ['fish', { a: '#3f6ea5', belly: '#cfe3f0', d: 4, h: 1.1 }], dam: ['dam', {}], rockies: ['mountain', { h: .85, a: '#5f6c8e', b: '#4f5b7c' }],
     // Ch5 world tour (whole-world scale: a "car" is a little car on a continent)
     tree: ['tree', {}], guard: ['fig', { a: '#c62828', c: '#1a237e', hat: '#111', hatH: .7 }], penguin: ['blob', { a: '#263238', h: 1.6 }], moto: ['bike', { a: '#e53935', motor: 1 }], oldcar: ['car', { a: '#26c6da', d: 2.4 }],
     dancer: ['fig', { a: '#c2185b', c: '#111', hair: '#111' }], parrot: ['bird', { a: '#e53935', head: '#fdd835', wing: '#1e88e5', lg: .2 }], kangaroo: ['quad', { a: '#b5824e', d: 1.4, lh: .9, neck: .5, ears: 1 }], panda: ['quad', { a: '#fafafa', head: '#fafafa', leg: '#222', ears: 1, d: 1.6, lh: .4 }],
@@ -2429,7 +2429,7 @@ const MODEL = (() => {
     if (kind === 'box') g = new THREE.BoxGeometry(1, 1, 1);
     else if (kind === 'cyl') g = new THREE.CylinderGeometry(.5 * ((o && o.top) ?? 1), .5, 1, s || 9, 1, false, 0, (o && o.half) ? Math.PI : Math.PI * 2);
     else if (kind === 'cone') g = new THREE.ConeGeometry(.5, 1, s || 9);
-    else if (kind === 'sph') g = (o && o.hemi) ? new THREE.SphereGeometry(.5, 10, 4, 0, Math.PI * 2, 0, Math.PI / 2) : (o && o.ico === 0) ? new THREE.OctahedronGeometry(.5, 0) : new THREE.IcosahedronGeometry(.5, 1);
+    else if (kind === 'sph') g = (o && o.hemi) ? new THREE.SphereGeometry(.5, 10, 4, 0, Math.PI * 2, 0, Math.PI / 2) : (o && o.ico === 0) ? new THREE.OctahedronGeometry(.5, 0) : new THREE.IcosahedronGeometry(.5, (o && o.smooth) ? 1 : 0);
     else if (kind === 'rock') g = new THREE.DodecahedronGeometry(.5, 0);
     else if (kind === 'tor') g = new THREE.TorusGeometry(.5 - ((o && o.tube) || .08), (o && o.tube) || .08, 5, s || 14, (o && o.arc) || Math.PI * 2);
     else { // triangular prism, ridge along z
@@ -2515,7 +2515,7 @@ const CAM_FOV = 38, CAM_TILT = 55 * Math.PI / 180, GL_MAX_PR = 1.6;
 const REG_W = 2048, REG_H = 1536;                  // ground texture (re-painted as the camera travels)
 const V3 = {
   ren: null, scene: null, cam: null, ground: null, gmat: null, pit: null, wall: null, floor: null, ghost: null,
-  inst: new Map(), shadow: null, glowM: null, tiles: new Map(), stat: null, reg: null, gcv: null, gctx: null, tex: null,
+  frus: new THREE.Frustum(), merge: [], quad: null, tiles: new Map(), stat: null, reg: null, gcv: null, gctx: null, tex: null,
   pulseT: -1e9, holeScale: 1, swirl: 1, menu: null, ok: false,
 };
 const LAMBERT = { m: null }, BASIC = { m: null };
@@ -2571,24 +2571,24 @@ void main(){ vec2 p = vUv * 2.0 - 1.0; float r = length(p), a = atan(p.y, p.x);
   float s = 0.5 + 0.5 * sin(a * 3.0 + r * 11.0 - t * 2.4 * spin);
   float f = (1.0 - r) * (0.18 + 0.32 * s) + pulse * 0.25 * (1.0 - r);
   gl_FragColor = vec4(rim * f * 0.9 + vec3(0.02, 0.0, 0.05), 1.0); }`;
-const INST_VS = `varying vec2 vUv; varying vec2 vW; void main(){ vUv = uv; vec4 w = modelMatrix * instanceMatrix * vec4(position,1.0); vW = w.xz; gl_Position = projectionMatrix * viewMatrix * w; }`;
+const QUAD_VS = `varying vec2 vUv; varying vec2 vW; void main(){ vUv = uv; vW = position.xz; gl_Position = projectionMatrix * viewMatrix * vec4(position,1.0); }`;
 const SHADOW_FS = `uniform vec2 hole; uniform float R; varying vec2 vUv; varying vec2 vW;
 void main(){ if (length(vW - hole) < R) discard; float r = length(vUv - 0.5) * 2.0; gl_FragColor = vec4(0.0, 0.0, 0.0, (1.0 - smoothstep(0.35, 1.0, r)) * 0.32); }`;
 const GLOW_FS = `uniform float t; varying vec2 vUv; varying vec2 vW;
 void main(){ float r = length(vUv - 0.5) * 2.0; float a = smoothstep(1.0, 0.7, r) * smoothstep(0.35, 0.7, r) * (0.55 + 0.25 * sin(t * 6.0)); gl_FragColor = vec4(1.0, 0.88, 0.4, a); }`;
 
 function initGL() {
-  const ren = new THREE.WebGLRenderer({ canvas: glc, antialias: true, powerPreference: 'high-performance' });
+  const ren = new THREE.WebGLRenderer({ canvas: glc, antialias: (window.devicePixelRatio || 1) < 1.5, powerPreference: 'high-performance' });
   ren.setClearColor(0x000000, 1); ren.autoClear = true;
   const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(CAM_FOV, STAGE_W / STAGE_H, 1, 1000);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7aa0, 0.72));
   const sun = new THREE.DirectionalLight(0xffffff, 0.62); sun.position.set(-0.45, 1, 0.65); scene.add(sun);
-  LAMBERT.m = new THREE.MeshLambertMaterial({ vertexColors: true });
-  LAMBERT.x = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.32, depthWrite: false });
+  LAMBERT.m = new THREE.MeshBasicMaterial({ vertexColors: true });     // lit on the CPU while merging (see pushMerge)
+  LAMBERT.x = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.32, depthWrite: false });
   BASIC.m = new THREE.MeshBasicMaterial({ vertexColors: true });
   // ground: one big plane per chapter, painted from the chapter's zones into a moving canvas texture
   V3.gcv = document.createElement('canvas'); V3.gcv.width = REG_W; V3.gcv.height = REG_H; V3.gctx = V3.gcv.getContext('2d');
-  V3.tex = new THREE.CanvasTexture(V3.gcv); V3.tex.anisotropy = Math.min(8, ren.capabilities.getMaxAnisotropy());
+  V3.tex = new THREE.CanvasTexture(V3.gcv); V3.tex.minFilter = THREE.LinearFilter; V3.tex.generateMipmaps = false;   // the region is repainted at the current zoom, so mipmaps buy nothing
   V3.gmat = new THREE.ShaderMaterial({ vertexShader: GROUND_VS, fragmentShader: GROUND_FS, uniforms: {
     map: { value: V3.tex }, reg: { value: new THREE.Vector4(0, 0, 1, 1) }, base: { value: new THREE.Color() }, hole: { value: new THREE.Vector2() },
     R: { value: 1 }, rim: { value: new THREE.Color() }, pulse: { value: 0 } } });
@@ -2603,32 +2603,63 @@ function initGL() {
   V3.ghost = new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4, depthTest: false, depthWrite: false }));
   V3.ghost.renderOrder = 20;
   V3.pit = new THREE.Group(); V3.pit.add(V3.wall, V3.floor, V3.ghost); scene.add(V3.pit);
-  // blob shadows + quest-helper glows: one instanced quad each
-  const qg = new THREE.PlaneGeometry(1, 1); qg.rotateX(-Math.PI / 2);
+  // merged batches: solid models, see-through models, emissive parts, blob shadows, quest-helper glows
+  V3.ren = ren; V3.scene = scene; V3.cam = cam;
   const su = { hole: V3.gmat.uniforms.hole, R: V3.gmat.uniforms.R, t: wu.t };
-  V3.shadow = { mesh: null, n: 0, cap: 0, geo: qg, mat: new THREE.ShaderMaterial({ vertexShader: INST_VS, fragmentShader: SHADOW_FS, uniforms: su, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }) };
-  V3.glowM = { mesh: null, n: 0, cap: 0, geo: qg, mat: new THREE.ShaderMaterial({ vertexShader: INST_VS, fragmentShader: GLOW_FS, uniforms: su, transparent: true, depthWrite: false, depthTest: false }) };
-  V3.ren = ren; V3.scene = scene; V3.cam = cam; V3.ok = true;
+  V3.quad = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2).toNonIndexed();
+  V3.mO = mkMerge(LAMBERT.m, ['position', 'color'], 0, true);
+  V3.mX = mkMerge(LAMBERT.x, ['position', 'color'], 5, true);
+  V3.mG = mkMerge(BASIC.m, ['position', 'color']);
+  V3.mS = mkMerge(new THREE.ShaderMaterial({ vertexShader: QUAD_VS, fragmentShader: SHADOW_FS, uniforms: su, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), ['position', 'uv']);
+  V3.mH = mkMerge(new THREE.ShaderMaterial({ vertexShader: QUAD_VS, fragmentShader: GLOW_FS, uniforms: su, transparent: true, depthWrite: false, depthTest: false }), ['position', 'uv'], 10);
+  V3.merge = [V3.mO, V3.mX, V3.mG, V3.mS, V3.mH];
+  V3.ok = true;
 }
-/* ---------- instanced batches (one per model + palette variant) ---------- */
-function batchGrow(b, cap, geo, mat) {
-  const m = new THREE.InstancedMesh(geo, mat, cap); m.frustumCulled = false; m.count = 0;
-  m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  if (b.mesh) { m.instanceMatrix.array.set(b.mesh.instanceMatrix.array.subarray(0, b.cap * 16)); V3.scene.remove(b.mesh); b.mesh.dispose(); }
-  b.mesh = m; b.cap = cap; V3.scene.add(m);
+/* ---------- merged batches: every visible object is baked into one dynamic mesh per material each frame.
+   A software or low-end GPU pays per draw and per instance, so one big draw beats hundreds of instances. ---------- */
+const ASZ = { position: 3, color: 3, uv: 2 };
+const HEMI_S = [0.72, 0.72, 0.72], HEMI_G = [0.72 * 0x8a / 255, 0.72 * 0x7a / 255, 0.72 * 0xa0 / 255], SUN_K = 0.62;
+const SUN = (() => { const l = Math.hypot(-0.45, 1, 0.65); return [-0.45 / l, 1 / l, 0.65 / l]; })();
+function mkMerge(mat, attrs, order, lit) {
+  const M = { mat, attrs, lit, n: 0, cap: 0, a: {}, mesh: new THREE.Mesh(new THREE.BufferGeometry(), mat) };
+  M.mesh.frustumCulled = false; if (order) M.mesh.renderOrder = order; V3.scene.add(M.mesh); mergeGrow(M, 8192);
+  return M;
 }
-function batchFor(md, xr) {
-  const k = xr ? md.key + '|x' : md.key;
-  let b = V3.inst.get(k);
-  if (!b) { b = { md, n: 0, cap: 0, mesh: null, gl: md.glow ? { n: 0, cap: 0, mesh: null } : null }; V3.inst.set(k, b); }
-  return b;
+function mergeGrow(M, need) {
+  let cap = M.cap || 8192; while (cap < need) cap *= 2;
+  const geo = new THREE.BufferGeometry();
+  for (const k of M.attrs) {
+    const arr = new Float32Array(cap * ASZ[k]); if (M.a[k]) arr.set(M.a[k].array.subarray(0, M.n * ASZ[k]));
+    const at = new THREE.BufferAttribute(arr, ASZ[k]); at.setUsage(THREE.DynamicDrawUsage); M.a[k] = at; geo.setAttribute(k, at);
+  }
+  M.mesh.geometry.dispose(); M.mesh.geometry = geo; M.cap = cap;
 }
-const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _qy = new THREE.Quaternion(), _ax = new THREE.Vector3(), _p3 = new THREE.Vector3(), _s3 = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
-function pushInst(b, geo, mat) {
-  if (b.n >= b.cap) batchGrow(b, Math.max(32, b.cap * 2), geo, mat);
-  _m4.toArray(b.mesh.instanceMatrix.array, b.n * 16); b.n++;
+const _n3 = new THREE.Matrix3();
+function pushMerge(M, src) {                         // append src (non-indexed) transformed by _m4
+  const P = src.attributes.position.array, nv = P.length / 3, o = M.n;
+  if (o + nv > M.cap) mergeGrow(M, o + nv);
+  const e = _m4.elements, p = M.a.position.array;
+  for (let i = 0, j = o * 3; i < P.length; i += 3, j += 3) {
+    const x = P[i], y = P[i + 1], z = P[i + 2];
+    p[j] = e[0] * x + e[4] * y + e[8] * z + e[12]; p[j + 1] = e[1] * x + e[5] * y + e[9] * z + e[13]; p[j + 2] = e[2] * x + e[6] * y + e[10] * z + e[14];
+  }
+  if (M.lit) {                                       // light baked per vertex on the CPU: hemisphere sky/ground + one sun
+    const N = src.attributes.normal.array, C = src.attributes.color.array, q = M.a.color.array, m = _n3.getNormalMatrix(_m4).elements;
+    for (let i = 0, j = o * 3; i < N.length; i += 3, j += 3) {
+      const x = N[i], y = N[i + 1], z = N[i + 2], a = m[0] * x + m[3] * y + m[6] * z, b = m[1] * x + m[4] * y + m[7] * z, c = m[2] * x + m[5] * y + m[8] * z;
+      const l = 1 / (Math.sqrt(a * a + b * b + c * c) || 1), up = 0.5 + 0.5 * b * l, sun = Math.max(0, (a * SUN[0] + b * SUN[1] + c * SUN[2]) * l) * SUN_K;
+      q[j] = C[i] * (HEMI_G[0] + (HEMI_S[0] - HEMI_G[0]) * up + sun); q[j + 1] = C[i + 1] * (HEMI_G[1] + (HEMI_S[1] - HEMI_G[1]) * up + sun); q[j + 2] = C[i + 2] * (HEMI_G[2] + (HEMI_S[2] - HEMI_G[2]) * up + sun);
+    }
+  } else if (M.a.color) M.a.color.array.set(src.attributes.color.array, o * 3);
+  if (M.a.uv) M.a.uv.array.set(src.attributes.uv.array, o * 2);
+  M.n += nv;
 }
-function flushInst(b) { if (!b.mesh) return; if (b.mesh.count !== b.n || b.n) { b.mesh.count = b.n; b.mesh.instanceMatrix.needsUpdate = true; } b.n = 0; }
+function flushMerge(M) {
+  for (const k of M.attrs) { const a = M.a[k]; a.updateRange.offset = 0; a.updateRange.count = Math.max(1, M.n) * ASZ[k]; a.needsUpdate = true; }
+  M.mesh.geometry.setDrawRange(0, M.n); M.mesh.visible = M.n > 0; M.n = 0;
+}
+function flushAll() { for (const M of V3.merge) flushMerge(M); }
+const _sph = new THREE.Sphere(), _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _qy = new THREE.Quaternion(), _ax = new THREE.Vector3(), _p3 = new THREE.Vector3(), _s3 = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
 
 /* ---------- model lookup + topple pose (shared by every object, tile and cinematic prop) ---------- */
 function modelOf(o) {
@@ -2650,7 +2681,7 @@ function poseOf(o, md, hx, hz, R) {
   const wt = now - (o.wob || -1e9);
   const wob = (wt < 450 ? (1 - wt / 450) * 0.16 : 0) + (o.wobble || 0) * 0.14;
   if (wob) lean += Math.sin(G.t * 19 + (o.ph || 0)) * wob;
-  if (o.sway && !lean) { lean = Math.sin(G.t * 2 + (o.ph || 0)) * 0.035; ld = 0.6; }
+  if ((o.sway || (o.T && o.T.sway)) && !lean) { lean = Math.sin(G.t * 2 + (o.ph || 0)) * 0.035; ld = 0.6; }
   if (o.T && o.T.mv === 'fly') y += fw * 1.1;
   if (o.coin) yaw = G.t * 3 + (o.ph || 0);
   const f = o.fall;
@@ -2715,7 +2746,7 @@ function buildStatic(C) {
   const parts = [];
   for (const [x, y, w, h] of C.walls3d.rects) { parts.push(['box', w, C.walls3d.h, h, x + w / 2, C.walls3d.h / 2, y + h / 2, '#efe4d2']); parts.push(['box', w + 2, 10, h + 2, x + w / 2, C.walls3d.h, y + h / 2, '#6b4a33']); }
   const [p, c] = MODEL.merge(parts);
-  V3.stat = new THREE.Mesh(MODEL.toGeo(p, c, new THREE.Matrix4()), LAMBERT.m); V3.stat.frustumCulled = false; V3.scene.add(V3.stat);
+  V3.stat = new THREE.Mesh(MODEL.toGeo(p, c, new THREE.Matrix4()), V3.wallM || (V3.wallM = new THREE.MeshLambertMaterial({ vertexColors: true }))); V3.stat.frustumCulled = false; V3.scene.add(V3.stat);
 }
 /* ---------- letter / number / answer tiles: chunky boxes with a canvas-text top ---------- */
 const TILE_TEX = new Map();
@@ -2760,39 +2791,57 @@ function drawWorld3D() {
   if (V3.stat) { V3.stat.visible = true; V3.stat.position.set(-G.cam.x, 0, -G.cam.y); }
   // objects
   LABELS.length = 0;
-  const list = G.cine && G.cine.objs ? G.vis.concat(G.cine.objs) : G.vis, usedTiles = new Set(), sh = V3.shadow, gw = V3.glowM;
+  const list = G.cine && G.cine.objs ? G.vis.concat(G.cine.objs) : G.vis, usedTiles = new Set();
+  V3.frus.setFromProjectionMatrix(_m4.multiplyMatrices(V3.cam.projectionMatrix, V3.cam.matrixWorldInverse));
   for (const o of list) {
     if (o.dead) continue;
-    if (o.fw * z < 1.2 && !o.helper && !o.tile) continue;
+    if (o.fw * z < 2 && !o.helper && !o.tile) continue;
+    if (!o.fall) {                                   // off-screen things cost nothing
+      const h = o.md ? o.md.h * o.fw * (o.sv || 1) : o.fw;
+      _sph.center.set(dx(o.x, G.cam.x), h * 0.5, dy(o.y, G.cam.y)); _sph.radius = 0.75 * Math.max(o.fw, h) + (o.T && o.T.mv === 'fly' ? o.fw * 1.2 : 0);
+      if (!V3.frus.intersectsSphere(_sph)) continue;
+    }
     if (o.path || (o.T && o.T.mv)) { const mx = dx(o.x, o.lx ?? o.x), my = dy(o.y, o.ly ?? o.y); if (mx * mx + my * my > 1e-6 * o.fw * o.fw) o.yaw = Math.atan2(mx, my); o.lx = o.x; o.ly = o.y; }
     if (o.tile) {
       if (!poseOf(o, null, hx, hz, R)) continue;
       const pul = o.on && !o.fall ? 1 + Math.sin(G.t * 6) * 0.08 : 1;
       const m = tileMesh(o); usedTiles.add(o); m.position.copy(_p3); m.quaternion.copy(_q); m.scale.set(_s3.x * pul, _s3.x * pul, _s3.x * pul); m.visible = true;
-      if (o.on && !o.fall) { _m4.compose(_p3.setY(0.5), _qy.identity(), _s3.set(o.fw * 1.9, 1, o.fw * 1.9)); pushInst(gw, gw.geo, gw.mat); }
+      if (o.on && !o.fall) { _m4.compose(_p3.setY(0.5), _qy.identity(), _s3.set(o.fw * 1.9, 1, o.fw * 1.9)); pushMerge(V3.mH, V3.quad); }
       continue;
     }
     const md = modelOf(o); if (!md) continue;
     if (!poseOf(o, md, hx, hz, R)) continue;
     _m4.compose(_p3, _q, _s3);
     const xr = !o.fall && hidesHole(o, md, hx, hz, R);
-    const b = batchFor(md, xr);
-    if (md.geo) pushInst(b, md.geo, xr ? LAMBERT.x : LAMBERT.m);
-    if (b.gl) { if (b.gl.n >= b.gl.cap) batchGrow(b.gl, Math.max(32, b.gl.cap * 2), md.glow, BASIC.m); _m4.toArray(b.gl.mesh.instanceMatrix.array, b.gl.n * 16); b.gl.n++; }
+    if (md.geo) pushMerge(xr ? V3.mX : V3.mO, o.fw * z < LOD_PX && !o.fall ? lodOf(md) : md.geo);
+    if (md.glow) pushMerge(V3.mG, md.glow);
     const fw = o.fw * (o.vs || 1);
-    if (!o.fall && fw * z > 3 && (!o.T || o.T.mv !== 'fly' || true)) {
+    if (!o.fall && fw * z > 3) {
       const sx = md.w * fw * 1.35, sz = md.d * fw * 1.25;
       _qy.setFromAxisAngle(_up, o.coin ? 0 : (o.yaw || 0));
       _m4.compose(_p3.set(_p3.x, 0, _p3.z), _qy, _s3.set(o.coin ? fw * .8 : sx, 1, o.coin ? fw * .8 : sz));
-      pushInst(sh, sh.geo, sh.mat);
+      pushMerge(V3.mS, V3.quad);
     }
-    if (o.helper) { _qy.identity(); _m4.compose(_p3.set(_p3.x, 0.5, _p3.z), _qy, _s3.set(fw * 2.2, 1, fw * 2.2)); pushInst(gw, gw.geo, gw.mat); }
+    if (o.helper) { _qy.identity(); _m4.compose(_p3.set(_p3.x, 0.5, _p3.z), _qy, _s3.set(fw * 2.2, 1, fw * 2.2)); pushMerge(V3.mH, V3.quad); }
     if (o.label && fw * z > 18 && !o.fall) LABELS.push(o);
   }
-  for (const b of V3.inst.values()) { flushInst(b); if (b.gl) flushInst(b.gl); }
-  flushInst(sh); flushInst(gw);
+  flushAll();
   for (const [o, m] of V3.tiles) if (!usedTiles.has(o)) { m.visible = false; if (o.dead || !G.tiles.includes(o)) { V3.scene.remove(m); V3.tiles.delete(o); } }
   V3.ren.render(V3.scene, V3.cam);
+}
+/* far-away / tiny things: a single box in the model's main colour (same footprint and height) */
+const LOD_PX = 16;
+function lodOf(md) {
+  if (md.lod) return md.lod;
+  const c = md.geo.attributes.color.array, P = md.geo.attributes.position.array, sum = [0, 0, 0]; let wt = 0;
+  for (let i = 0; i < c.length; i += 9) {          // area-weighted average colour
+    const ax = P[i + 3] - P[i], ay = P[i + 4] - P[i + 1], az = P[i + 5] - P[i + 2], bx = P[i + 6] - P[i], by = P[i + 7] - P[i + 1], bz = P[i + 8] - P[i + 2];
+    const a = Math.hypot(ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx); wt += a; for (let k = 0; k < 3; k++) sum[k] += c[i + k] * a;
+  }
+  const g = new THREE.BoxGeometry(md.w * 0.9, md.h, md.d * 0.9).translate(0, md.h / 2, 0).toNonIndexed(), n = g.attributes.position.count, col = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) col[i * 3 + k] = sum[k] / (wt || 1);
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return (md.lod = g);
 }
 /* x-ray: anything standing between the camera and the pit is drawn see-through, so the hole is never lost */
 const TAN_TILT = Math.tan(CAM_TILT);
@@ -2836,11 +2885,10 @@ function drawMenu3D() {
     _p3.set(Math.cos(a) * rr2 * 1.5, 0, 70 + Math.sin(a) * rr2 * 0.75);
     _qy.setFromAxisAngle(_up, -a * 2 + o.ph); _ax.set(Math.sin(a), 0, -Math.cos(a)); _q.setFromAxisAngle(_ax, 0.25).multiply(_qy);
     const s = o.fw; _m4.compose(_p3, _q, _s3.set(s, s, s));
-    const b = batchFor(md); if (md.geo) pushInst(b, md.geo, LAMBERT.m);
-    if (b.gl) { if (b.gl.n >= b.gl.cap) batchGrow(b.gl, Math.max(32, b.gl.cap * 2), md.glow, BASIC.m); _m4.toArray(b.gl.mesh.instanceMatrix.array, b.gl.n * 16); b.gl.n++; }
+    if (md.geo) pushMerge(V3.mO, md.geo);
+    if (md.glow) pushMerge(V3.mG, md.glow);
   }
-  for (const b of V3.inst.values()) { flushInst(b); if (b.gl) flushInst(b.gl); }
-  flushInst(V3.shadow); flushInst(V3.glowM);
+  flushAll();
   V3.ren.render(V3.scene, V3.cam);
 }
 function clearGL() { V3.ren.setClearColor(0x000000, 1); V3.ren.clear(); }
@@ -3253,7 +3301,18 @@ function fit() {
   st.style.transform = `translate(${(w - STAGE_W * SC) / 2}px,${(h - STAGE_H * SC) / 2}px) scale(${SC})`;
   K = Math.min(2.5, SC * (window.devicePixelRatio || 1));
   cv.width = Math.round(STAGE_W * K); cv.height = Math.round(STAGE_H * K);
-  if (V3.ok) { V3.ren.setPixelRatio(Math.min(GL_MAX_PR, SC * (window.devicePixelRatio || 1))); V3.ren.setSize(STAGE_W, STAGE_H, false); }
+  V3.prMax = Math.min(GL_MAX_PR, SC * (window.devicePixelRatio || 1)); V3.prK = Math.min(V3.prK || 1, 1);
+  if (V3.ok) glRes();
+}
+function glRes() { V3.ren.setPixelRatio(Math.max(0.3, V3.prMax * V3.prK)); V3.ren.setSize(STAGE_W, STAGE_H, false); }
+/* adaptive resolution: a slow device draws the 3D layer at fewer pixels (down to half) instead of dropping frames */
+function adaptRes(dt) {
+  if (G.mode !== 'play' || G.paused) return;
+  const A = V3.ad || (V3.ad = { ema: 16, t: 0 });
+  A.ema += (dt * 1000 - A.ema) * 0.08; A.t += dt;
+  if (A.t < 0.8) return; A.t = 0;
+  if (A.ema > 22 && V3.prK > 0.5) { V3.prK = Math.max(0.5, V3.prK * 0.85); glRes(); }
+  else if (A.ema < 14 && V3.prK < 1) { V3.prK = Math.min(1, V3.prK * 1.1); glRes(); }
 }
 window.addEventListener('resize', fit);
 function stagePt(e) { const r = $('stage').getBoundingClientRect(); return [(e.clientX - r.left) / SC, (e.clientY - r.top) / SC]; }
@@ -3282,8 +3341,8 @@ document.querySelector('#s-settings [data-back]').onclick = () => UI.main();
 /* loop */
 let last = performance.now();
 function frame(now) {
-  const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  G.now = now; G.t += dt;
+  const raw = (now - last) / 1000, dt = Math.min(0.05, raw); last = now;
+  G.now = now; G.t += dt; adaptRes(Math.min(0.2, raw));
   if (G.mode === 'play' && !G.paused && !G.trans) update(dt);
   render();
   requestAnimationFrame(frame);
@@ -3293,7 +3352,7 @@ requestAnimationFrame(frame);
 
 /* test hook for automated checks (harmless in play) */
 window.HH = { get S() { return S; }, G, CH, UI, prep, loadChapter, startChapter, eat, holeD, need, addXP, bankerTransfer, bankerArrive, buyUpgrade, upCost,
-  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, V3, MODEL, fits, capture, bump, hidesHole };
+  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole };
 </script>
 </body>
 </html>

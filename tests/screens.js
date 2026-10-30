@@ -22,6 +22,15 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html', OUT = proc
       G.cam.x = G.x; G.cam.y = G.y; G.cam.z = 1280 / (HH.holeD() * 13); G.ptr = null; }, [n, l, id, ox, oy]);
     await p.waitForTimeout(1500); await shot(p, `1${n}-chapter${n}`);
   }
+  // v3 scale drama: a tower looming over a small hole, and a mountain filling the screen
+  const near = async (n, l, pick, back, side, name) => {
+    await p.evaluate(([n, l, pick, back, side]) => { const { G } = HH; HH.startChapter(n); G.lvl = l; G.xp = 0; G.ptr = null;
+      const m = new RegExp(pick); let o = G.auth.find(o => m.test(o.label || '') || m.test(o.k));
+      if (!o) { for (let i = 0; i < 3; i++) { G.now += 33; HH.update(1 / 30); } o = G.vis.filter(o => m.test(o.k)).sort((a, b) => Math.hypot(a.x - G.x, a.y - G.y) - Math.hypot(b.x - G.x, b.y - G.y))[0]; }
+      G.x = o.x + o.fw * side; G.y = o.y + o.fw * back; G.cam.x = G.x; G.cam.y = G.y; G.cam.z = 1280 / (HH.holeD() * 13); }, [n, l, pick, back, side]);
+    await p.waitForTimeout(1500); await shot(p, name); };
+  await near(3, 5, '^(tower|skyline)$', 0.1, -0.85, '18-tower-looming');
+  await near(4, 4, 'The Rocky Mountains', 0.56, 0, '19-mountain');
   const ph = await page(844, 390); await shot(ph, '20-phone-main');
   await ph.evaluate(() => HH.startChapter(3)); await ph.waitForTimeout(1200); await shot(ph, '21-phone-game');
   console.log('screens done; console errors:', errs.length, errs.slice(0, 3)); await b.close();
