@@ -173,10 +173,11 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
 const SAVE_KEY = 'hungry-hole-data-v1';      // never rename; fields are additive only
 const STAGE_W = 1280, STAGE_H = 720;
 const EAT_MS = 180;                           // drop-in animation length
-const PTS = [0, 10, 20, 35, 60, 100, 170, 300, 500, 850, 1400]; // points by tier
+const PTS = [0, 5, 8, 12, 16, 22, 30, 40, 52, 66, 82]; // points by tier (x chapter cost scale)
 const MULT = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]; // growth/points ladder (x2.0 only at lvl 10)
 const COMBO_MS = 6000;
 const UP_BASE = 30, UP_GROW = 1.4;            // upgrade cost = base * grow^(n-1) * chapter multiplier
+const RESPAWN_MS = 45000;                     // eaten ordinary things come back after this, out of sight
 const TINY_BONUS = 20, CHECK_BONUS = 100;     // quest coin bonuses (x chapter coin scale)
 
 const UPGRADES = [
@@ -322,7 +323,7 @@ const CH = [null];
 
   CH.push({
     n: 1, name: 'The House', short: 'House', c1: '#4f7fd6', c2: '#2a3f8f', bgc: '#231a33', rim: '#9b6bff',
-    W: 6300, H: 2080, start: [420, 560], cost: 1, need: 22, view: 13,
+    W: 6300, H: 2080, start: [420, 560], cost: 1, need: 22, pv: 1.5, view: 13,
     sizes: [0, 16, 24, 36, 54, 80, 115, 165, 230],
     real: [0, 0.03, 0.05, 0.09, 0.2, 0.45, 0.9, 1.4, 2.1],
     types: {
@@ -408,7 +409,7 @@ const CH = [null];
       'f:add', 'f:mul', 'f:sub', 'f:miss', 'f:mul', 'f:add', 'q:1-10', 'f:miss',
       'l:B', 'l:S', 'f:word', 'q:TOY', 'l:D', 'q:BED',
       'p:lego,soldier,lego,soldier', 'p:sock,shoe,sock,shoe', 'p:lego,lego,soldier,lego,lego,soldier', 'p:toycar,book,toycar,book',
-      'r:4', 's:3000', 'r:7', 's:15000',
+      'r:4', 's:3000', 'r:7', 's:10000',
     ],
     bg(g, V) {
       g.fillStyle = '#2f5d2f'; g.fillRect(6300, 1350, 600, 600);
@@ -459,7 +460,7 @@ const CH = [null];
   }
   CH.push({
     n: 2, name: 'Backyard & the Neighbourhood', short: 'Neighbourhood', c1: '#4caf50', c2: '#1b5e20', bgc: '#3d7a35', rim: '#ffcf4a',
-    W, H, start: [HYX + 130, HYY + 210], cost: 1.3, need: 26, view: 13,
+    W, H, start: [HYX + 130, HYY + 210], cost: 1.3, need: 70, pv: 0.9, view: 13,
     sizes: [0, 16, 26, 40, 62, 95, 145, 220],
     real: [0, 0.15, 0.8, 3, 4.5, 6, 10, 15],
     tagN: { tree: 'tree', house: 'house' },
@@ -515,7 +516,7 @@ const CH = [null];
       'f:add', 'f:sub', 'f:mul', 'f:miss', 'f:add', 'f:mul', 'q:2,4,6,8,10', 'f:miss',
       'l:C', 'l:T', 'f:word', 'q:DOG', 'l:P', 'q:TREE',
       'p:flower,shoe,flower,shoe', 'p:dog,cat,dog,cat', 'p:car,bike,car,bike', 'p:yardtree,pine,yardtree,pine',
-      'r:4', 's:4000', 'r:6', 's:30000',
+      'r:4', 's:4000', 'r:6', 's:20000',
     ],
     doneTxt: 'Your tree, your car and three whole houses. Time to see the city!',
     bg(g, V) {
@@ -642,10 +643,11 @@ const CH = [null];
   const at = (lon, lat) => P(lon, lat);
   CH.push({
     n: 3, name: 'Metro Vancouver', short: 'Vancouver', c1: '#2d9cdb', c2: '#145a86', bgc: '#cfd8b8', rim: '#6ad1ff',
-    W, H, start: at(-123.118, 49.283), cost: 1.8, need: 26, view: 13,
+    W, H, start: at(-123.118, 49.283), cost: 1.8, need: 90, pv: 0.6, view: 13,
     sizes: [0, 1.2, 2.2, 4, 7.5, 13, 30, 70, 160],
     real: [0, 0.7, 1.5, 2, 5, 12, 25, 60, 300],
     tagN: { house: 'house', tree: 'tree' }, regionAt, P, inv,
+    regionPos: rg => { const r = REGIONS.find(r => r[0] === rg); return r && P(r[1], r[2]); },
     types: {
       manhole: ['', 'manhole cover', 1, { draw: 'manhole' }], drain: ['', 'storm drain', 1, { draw: 'drain' }], cup: ['🥤', 'cup', 1], can: ['🥫', 'can', 1],
       leaf: ['🍁', 'maple leaf', 1, { pl: 'maple leaves' }], flower: ['🌸', 'cherry blossom', 1], shell: ['🐚', 'shell', 1], mushroom: ['🍄', 'mushroom', 1], corn: ['🌽', 'corn', 1, { pl: 'corn cobs' }],
@@ -717,7 +719,7 @@ const CH = [null];
       'f:add', 'f:sub', 'f:mul', 'f:miss', 'f:mul', 'f:add', 'f:sub', 'f:miss',
       'q:VANCOUVER', 'l:B', 'l:S', 'f:word', 'q:BUS', 'l:T',
       'p:car,bus,car,bus', 'p:cone,hydrant,cone,hydrant', 'p:person,bike,person,bike', 'p:house,shop,house,shop',
-      'r:4', 's:5000', 'r:7', 's:50000',
+      'r:4', 's:5000', 'r:7', 's:25000',
     ],
     doneTxt: 'Manholes, an airplane and THE White Rock. Metro Vancouver is in your belly!',
     bg(g, V) {
@@ -801,7 +803,7 @@ const CH = [null];
   }
   CH.push({
     n: 4, name: 'The Wilderness', short: 'Wilderness', c1: '#8bc34a', c2: '#33691e', bgc: '#4f8a3c', rim: '#8ef08e',
-    W, H, start: [8800, 4600], cost: 2.4, need: 28, view: 13,
+    W, H, start: [8800, 4600], cost: 2.4, need: 80, view: 13,
     sizes: [0, 16, 26, 42, 66, 100, 150, 230, 350],
     real: [0, 0.1, 0.4, 1.2, 2.5, 10, 15, 25, 250],
     tagN: { tree: 'tree', whale: 'whale' },
@@ -861,7 +863,7 @@ const CH = [null];
       'f:add', 'f:sub', 'f:mul', 'f:miss', 'f:mul', 'f:add', 'f:sub', 'q:5,10,15,20,25',
       'q:GOLD:cove|s|Sunken cove: eat G-O-L-D in order', 'l:F', 'l:C', 'f:word', 'q:FISH', 'l:B',
       'p:palm,pine,palm,pine', 'p:fish,crab,fish,crab', 'p:rabbit,squirrel,rabbit,squirrel', 'p:zebra,lion,zebra,lion',
-      'r:4', 's:5000', 'r:7', 's:60000',
+      'r:4', 's:5000', 'r:7', 's:40000',
     ],
     doneTxt: 'Forty trees, ten whales and a whole dam. The wild is yours!',
     bg(g, V) {
@@ -1060,7 +1062,7 @@ const CH = [null];
   }
   CH.push({
     n: 5, name: 'World Tour', short: 'World', c1: '#ff9800', c2: '#b34700', bgc: '#2a6fb5', rim: '#ffd23f',
-    W, H, wrap: 1, start: P(-123.1, 49.28), cost: 3, need: 30, view: 13, agridSize: 4000,
+    W, H, wrap: 1, start: P(-123.1, 49.28), cost: 3, need: 100, pv: 2, view: 13, agridSize: 4000,
     sizes: [0, 16, 26, 42, 66, 100, 150, 230, 350],
     real: [0, 800, 2000, 5000, 12000, 30000, 80000, 250000, 800000],
     tagN: { wonder: 'World Wonder', landmark: 'landmark', island: 'island', tree: 'tree' },
@@ -1085,7 +1087,9 @@ const CH = [null];
       island: ['🏝️', 'island', 7, { tags: 'island' }], peak: ['🏔️', 'tall mountain', 8],
     }),
     zones, zoneAt,
-    objInit(o) { if (o.zn !== 'ocean') { const [lon, lat] = ll(wrapX(o.x), wrapY(o.y)); o.cc = countryAt(lon, lat); } },
+    objInit(o) { if (o.zn !== 'ocean') { const [lon, lat] = ll(wrapX(o.x), wrapY(o.y)); o.cc = countryAt(lon, lat); } else o.cc = null; },
+    regionAt: (x, y) => { const [lon, lat] = ll(wrapX(x), wrapY(y)); return countryAt(lon, lat); },
+    regionPos: cc => COUNTRIES[cc] && P(COUNTRIES[cc][1][0][0], COUNTRIES[cc][1][0][1]),
     regionName: cc => COUNTRIES[cc] ? COUNTRIES[cc][0].replace(/^the /, 'the ') : cc,
     countries: COUNTRIES, countryAt, landKind, P, ll, CITIES, LM,
     build(add) {
@@ -1118,12 +1122,12 @@ const CH = [null];
     words: ['EARTH', 'MAP', 'NILE', 'ROME', 'PARIS', 'TOKYO', 'CAIRO', 'WORLD', 'LIMA', 'OCEAN'],
     check: ['c:wonder:7|g|Collect the 7 World Wonders', 'k:10', 'b:island|g|Eat a whole island'],
     quests: [
-      'c:car:5', 't:30', 'c:*@FR:5|g', 'c:*@JP:5|g', 'c:*@EG:5|g', 'c:*@BR:5|g', 'c:*@AU:5|g', 'x:6', 'c:crane:3', 'c:ship:3',
-      'a:ship:20', 'c:landmark:3|g', 'b:fuji|g', 'b:eiffel|g', 'b:liberty|g', 'c:castle:2', 'x:10', 't:300',
-      'f:add', 'f:sub', 'f:mul', 'f:miss', 'f:mul', 'f:add', 'f:sub', 'f:miss',
-      'q:PARIS|g', 'q:EARTH', 'l:T', 'l:C', 'f:word', 'q:NILE|g',
-      'p:car,bus,car,bus', 'p:house,tree,house,tree', 'p:ship,sailboat,ship,sailboat', 'p:crane,factory,crane,factory',
-      'r:4', 's:8000', 'r:7', 's:80000',
+      'c:car:5', 't:30', 'f:add', 'c:crane:3', 'x:6', 'b:liberty|g', 'c:ship:3', 'p:car,bus,car,bus', 'c:*@JP:5|g', 'a:ship:20',
+      'f:sub', 'c:landmark:3|g', 'l:T', 'b:fuji|g', 'f:mul', 'c:castle:2', 'c:*@FR:5|g', 'x:10',
+      't:300', 'f:miss', 'p:house,tree,house,tree', 'b:eiffel|g', 'f:mul', 'c:*@EG:5|g', 'f:add', 'q:EARTH',
+      'l:C', 'f:sub', 'c:*@BR:5|g', 'q:PARIS|g', 'f:word', 'q:NILE|g',
+      'p:ship,sailboat,ship,sailboat', 'c:*@AU:5|g', 'p:crane,factory,crane,factory', 'f:miss',
+      'r:4', 's:5000', 'r:7', 's:30000',
     ],
     bg(g, V) {
       const pw = 1 / V.z;
@@ -1185,7 +1189,7 @@ const CH = [null];
   const pl = (n, t, c1, c2, o) => ['', n, t, Object.assign({ draw: 'planet', c1, c2 }, o || {})];
   CH.push({
     n: 6, name: 'Space', short: 'Space', c1: '#3949ab', c2: '#0d1240', bgc: '#03030c', rim: '#a98bff', space: 1,
-    W, H, start: [EARTH[0] + 420, EARTH[1] + 380], cost: 3.6, need: 32, view: 13,
+    W, H, start: [EARTH[0] + 420, EARTH[1] + 380], cost: 3.6, need: 90, pv: 1.2, view: 13,
     sizes: [0, 16, 26, 42, 66, 100, 150, 230, 350, 520],
     real: [0, 3.5e6, 5e6, 7e6, 1e7, 1.4e7, 3e7, 6e7, 1.4e8, 1.4e9],
     tagN: { asteroid: 'asteroid' },
@@ -1230,7 +1234,7 @@ const CH = [null];
       'f:add', 'f:sub', 'f:mul', 'f:miss', 'f:mul', 'f:add', 'f:sub', 'q:10,9,8,7,6,5,4,3,2,1|m|Countdown: eat 10 to 1. Blast off!',
       'q:MOON', 'q:STAR', 'l:S', 'l:M', 'f:word', 'q:SUN',
       'p:rocket,ufo,rocket,ufo', 'p:comet,satellite,comet,satellite', 'p:ice,rock,ice,rock', 'p:alien,astronaut,alien,astronaut',
-      'r:4', 's:10000', 'r:8', 's:100000',
+      'r:4', 's:4000', 'r:8', 's:15000',
     ],
     bg(g, V) {
       const pw = 1 / V.z;
@@ -1265,7 +1269,7 @@ const CH = [null];
   const st = (n, t, c1, o) => ['', n, t, Object.assign({ draw: 'star', c1 }, o || {})];
   CH.push({
     n: 7, name: 'The Humbling', short: 'Humbling', c1: '#8e24aa', c2: '#2a0636', bgc: '#0d0221', rim: '#ff6bd6', space: 1,
-    W, H, start: [W / 2, H / 2], cost: 4.5, need: 34, view: 13,
+    W, H, start: [W / 2, H / 2], cost: 4.5, need: 80, pv: 5, view: 13,
     sizes: [0, 16, 26, 42, 66, 100, 150, 230, 350, 520],
     real: [0, 2e9, 5e9, 1.5e10, 4e10, 1e11, 3e11, 1e12, 4e12, 1.5e13],
     tagN: { giantstar: 'giant star', giantufo: 'giant UFO' },
@@ -1335,7 +1339,7 @@ const CH = [null];
       'f:big', 'f:big', 'f:add', 'f:sub', 'f:mul', 'f:big', 'q:10,20,30,40,50,60,70,80,90,100|m|Count the stars by tens: 10 to 100', 'f:miss',
       'q:STARS', 'q:COMET', 'l:G', 'l:S', 'f:word', 'q:ORBIT',
       'p:star,comet,star,comet', 'p:ufo,alien,ufo,alien', 'p:redstar,yellowstar,redstar,yellowstar', 'p:planet,icemoon,planet,icemoon',
-      'r:4', 's:20000', 'r:8', 's:200000',
+      'r:4', 's:10000', 'r:8', 's:60000',
     ],
     bg(g, V) {
       const pw = 1 / V.z;
@@ -1451,7 +1455,7 @@ const G = {
 /* ---------- chapter preparation (parse the data tables once) ---------- */
 function prep(C) {
   if (C._p) return C; C._p = 1;
-  C.N = C.sizes.length - 1;
+  C.N = C.sizes.length - 1; C.pv = C.pv || C.cost;
   C.T = {};
   for (const [k, v] of Object.entries(C.types)) {
     const [e, n, t, o] = v; C.T[k] = Object.assign({ k, e, n, t, tags: [] }, o || {});
@@ -1460,6 +1464,7 @@ function prep(C) {
   C.T.coin = { k: 'coin', e: '🪙', n: 'coin', t: 1, tags: [], coin: 1 };
   C.Z = {};
   for (const [z, v] of Object.entries(C.zones)) C.Z[z] = { d: v.d, t: [null, ...v.t.map(s => s ? wlist(s) : null)], coin: v.coin ?? 0.25 };
+  C.topT = Math.max(...Object.values(C.Z).map(Z => Z.t.length - 1));
   C.LC = C.sizes.map(s => s * 7);
   C.CK = C.check.map(s => parseQ(s, C));
   C.Q = C.quests.map(s => parseQ(s, C));
@@ -1536,7 +1541,7 @@ const akey = (cx, cy) => cx * 100003 + cy;
 function loadChapter(n) {
   const C = prep(CH[n]); G.C = C; G.st = S.ch[n]; S.last = n;
   const st = G.st;
-  G.auth = []; G.agrid = new Map(); G.cells = new Map(); G.movers = []; G.tiles = []; G.help = []; G.falling = []; G.toasts = []; G.combo = [];
+  G.auth = []; G.agrid = new Map(); G.cells = new Map(); G.movers = []; G.tiles = []; G.help = []; G.falling = []; G.toasts = []; G.combo = []; G.rollAt = 0;
   G.flash = null; G.big = null; G.cine = null; SPR.clear();
   const add = (k, x, y, o) => {
     if (o && o.keep && st.eaten[o.id]) return null;
@@ -1587,13 +1592,13 @@ function genCell(t, cx, cy) {
   const rc = rng();
   if (rc < 0.3) {
     const x = (gx + rng()) * cs, y = (gy + rng()) * cs, z = C.zoneAt(x, y);
-    if (z && C.Z[z] && rc < C.Z[z].coin) out.push(mkObj(C, 'coin', x, y, { t, s: 0.75, val: Math.max(1, Math.round(PTS[t] / 8)) }));
+    if (z && C.Z[z] && rc < C.Z[z].coin) out.push(mkObj(C, 'coin', x, y, { t, s: 0.75, val: Math.max(1, Math.round(PTS[t] * C.cost / 4)) }));
   }
   return out;
 }
 function activeLayers(z) {
   const C = G.C, L = [];
-  for (let t = Math.max(1, G.lvl - 2); t <= C.N; t++) if (C.sizes[t] * z >= 10) L.push(t);
+  for (let t = Math.max(1, Math.min(G.lvl, C.topT) - 2); t <= C.N; t++) if (C.sizes[t] * z >= 10) L.push(t);
   return L;
 }
 /* collect every live object in a world rect (x0..x1, y0..y1 may exceed map when wrapping) */
@@ -1607,6 +1612,7 @@ function gather(x0, y0, x1, y1, z) {
       const a = G.agrid.get(akey(kx, ky)); if (a) for (const o of a) if (!o.dead) out.push(o);
     }
   for (const o of G.movers) if (!o.dead) out.push(o);
+  const rD = holeD() * 4;
   for (const t of activeLayers(z)) {
     const cs = C.LC[t];
     for (let cy = Math.floor(y0 / cs); cy <= Math.floor(y1 / cs); cy++)
@@ -1615,7 +1621,11 @@ function gather(x0, y0, x1, y1, z) {
         if (C.wrap) { const nx = Math.round(C.W / cs), ny = Math.round(C.H / cs); key = t + ',' + (((cx % nx) + nx) % nx) + ',' + (((cy % ny) + ny) % ny); }
         let a = G.cells.get(key);
         if (!a) { a = genCell(t, cx, cy); G.cells.set(key, a); }
-        for (const o of a) if (!o.dead) out.push(o);
+        for (const o of a) {
+          // ordinary things respawn out of sight of the hole, so a chapter never runs empty
+          if (o.dead && G.now - o.dt > (o.coin ? 3 : 1) * RESPAWN_MS && Math.hypot(dx(o.x, G.x), dy(o.y, G.y)) > rD) { o.dead = 0; o.born = G.now; }
+          if (!o.dead) out.push(o);
+        }
       }
   }
   if (G.cells.size > 6000) { let i = 0; for (const k of G.cells.keys()) { if (i++ > 2500) break; G.cells.delete(k); } }
@@ -1625,7 +1635,7 @@ function gather(x0, y0, x1, y1, z) {
 }
 
 /* ---------- hole size / upgrades ---------- */
-const need = L => Math.round((G.C ? G.C.need : 20) * L);
+const need = L => Math.round((G.C ? G.C.need : 20) * L * L);
 const UPL = k => G.st.up[UPGRADES.findIndex(u => u.k === k)];
 function holeD() {
   const C = G.C, L = G.lvl, p = clamp(G.xp / need(L), 0, 1);
@@ -1675,15 +1685,16 @@ function canEat(o) {
 }
 function eat(o) {
   const C = G.C, st = G.st;
-  o.dead = 1;
+  o.dead = 1; o.dt = G.now;
   G.falling.push({ o, t0: G.now, x: o.x, y: o.y, dur: o.slow ? 2600 : EAT_MS });
   if (o.keep) st.eaten[o.id] = 1;
   if (o.tile) { tileEaten(o); return; }
   if (o.coin) { addCoins(o.val); SFX.coin(); addXP(o.t * 0.5); return; }
   SFX.gulp(o.t);
   addXP(o.t);
-  addPoints(Math.round(PTS[o.t] * MULT[UPL('points')]));
-  if (Math.random() < 0.02 * UPL('lucky')) { addCoins(Math.max(1, Math.round(PTS[o.t] / 8))); SFX.coin(); }
+  // things far smaller than the hole are worth less, so late-game sweeping can't flood the wallet
+  addPoints(Math.max(1, Math.round(PTS[o.t] * C.pv * MULT[UPL('points')] * clamp((o.t - Math.min(G.lvl, C.topT) + 3) / 3, 0.15, 1))));
+  if (Math.random() < 0.02 * UPL('lucky')) { addCoins(Math.max(1, Math.round(PTS[o.t] * C.cost / 4))); SFX.coin(); }
   if (o.cc && C.n === 5 && !S.passport[o.cc]) { S.passport[o.cc] = 1; toast('Passport stamp: ' + C.regionName(o.cc) + '!', '#ffd96a'); SFX.ding(); }
   if (S.settings.learn !== 'off' || o.label) {
     const nm = o.label || o.T.n;
@@ -1846,7 +1857,7 @@ function tileEaten(tl) {
   else { const q = C.Q[ow.i]; ow.p++; if (q.k === 'f' || qDone(q, ow.p)) completeTiny(ow); }
 }
 function matches(o, w, rg) {
-  if (rg) { const r = o.cc || (G.C.regionAt && G.C.regionAt(o.x, o.y)); if (r !== rg) return false; }
+  if (rg) { const r = o.cc !== undefined ? o.cc : (G.C.regionAt && G.C.regionAt(o.x, o.y)); if (r !== rg) return false; }
   return w === '*' || o.k === w || o.T.tags.includes(w) || (o.id && o.id === w);
 }
 function questEvent(ev, o, v) {
@@ -1893,7 +1904,7 @@ function completeTiny(a) {
   st.board[a.i] = 1; credit(q);
   addCoins(TINY_BONUS * C.cost, true);
   SFX.ding(); toast('Quest done: ' + q.txt.replace(/^Find the (answer|missing letter)$/, a.d ? a.d.q.replace('?', a.d.a).replace('_', a.d.a) : q.txt), '#8ef08e');
-  setTimeout(() => { if (G.st === st && G.mode === 'play') rollQuests(); }, 700);
+  G.rollAt = G.now + 700;
   persist();
 }
 function checkProgress(j) {
@@ -1960,6 +1971,7 @@ function update(dt) {
   questEvent('tick');
   G.falling = G.falling.filter(f => G.now - f.t0 < f.dur);
   G.toasts = G.toasts.filter(t => G.now - t.t0 < 2600);
+  if (G.rollAt && G.now > G.rollAt) { G.rollAt = 0; rollQuests(); }
   if ((G.relocT += dt) > 3) { G.relocT = 0; relocateTiles(); refreshHelpers(); }
   if ((G.compT += dt) > 0.4) { G.compT = 0; G.compass = compassTargets(); }
   if ((G.saveT += dt) > 2.5) { G.saveT = 0; persist(); }
@@ -1991,7 +2003,14 @@ function compassTargets() {
   });
   if (!best && st.c && C.exitAt) best = C.exitAt();
   if (best) out.push({ o: best, col: '#ffcf4a' });
-  const tl = G.tiles.find(t => t.on && !t.dead && t.owner.ck === undefined);
+  let tl = G.tiles.find(t => t.on && !t.dead && t.owner.ck === undefined);
+  // tiny quests that need a trip: point at the place or the one landmark
+  for (const a of st.act) {
+    if (tl) break;
+    const q = C.Q[a.i];
+    if (q.rg && C.regionPos && C.regionAt(G.x, G.y) !== q.rg) { const p = C.regionPos(q.rg); if (p) tl = { x: p[0], y: p[1] }; }
+    else if (q.k === 'b') tl = nearest(o => matches(o, q.what));
+  }
   if (tl) out.push({ o: tl, col: '#6ad1ff' });
   return out;
 }
@@ -2117,6 +2136,7 @@ function drawWorld() {
   for (const o of list) {
     let s = o.sz * z;
     if (o.helper) { s = Math.max(s, 26); }
+    if (o.born && G.now - o.born < 400) s *= (G.now - o.born) / 400;
     if (s < 2) continue;
     const sx = STAGE_W / 2 + dx(o.x, cx) * z, sy = STAGE_H / 2 + dy(o.y, cy) * z;
     if (sx < -s || sx > STAGE_W + s || sy < -s || sy > STAGE_H + s) continue;
@@ -2339,7 +2359,8 @@ const UI = {
   board(n, back) {
     const C = prep(CH[n]), st = S.ch[n];
     $('board-title').textContent = `QUEST BOARD · ${C.name} · ${st.board.filter(Boolean).length}/40`;
-    $('board-list').innerHTML = C.Q.map((q, i) => `<div class="qitem${st.board[i] ? ' done' : ''}"><span class="tk">${st.board[i] ? svg('check') : ''}</span><span>${i + 1}. ${esc(q.k === 'f' ? (q.op === 'word' ? 'Find the missing letter' : q.op === 'miss' ? 'Find the missing number' : 'Find the answer to a ' + (q.op === 'add' ? 'plus' : q.op === 'sub' ? 'minus' : 'times') + ' question') : q.txt)}</span></div>`).join('');
+    $('board-list').innerHTML = C.Q.map((q, i) => `<div class="qitem${st.board[i] ? ' done' : ''}"><span class="tk">${st.board[i] ? svg('check') : ''}</span><span>${i + 1}. ${esc(q.k === 'f' ? (q.op === 'word' ? 'Find the missing letter' : q.op === 'miss' ? 'Find the missing number' : 'Find the answer to a ' + (q.op === 'add' ? 'plus' : q.op === 'sub' ? 'minus' : 'times') + ' question') : q.txt)}</span></div>`).join('')
+      + (C.countries ? `<div class="qitem" style="grid-column:1/-1;display:block"><b>PASSPORT · ${Object.keys(S.passport).length}/${Object.keys(C.countries).length}</b><br>${Object.keys(C.countries).map(cc => `<span style="margin-right:14px;opacity:${S.passport[cc] ? 1 : .4}">${S.passport[cc] ? '✓ ' : ''}${esc(C.regionName(cc))}</span>`).join('')}</div>` : '');
     $('board-back').onclick = () => back === 'pause' ? (UI.show('game'), UI.pause()) : UI.chapters();
     UI.show('board');
   },
@@ -2597,7 +2618,7 @@ requestAnimationFrame(frame);
 
 /* test hook for automated checks (harmless in play) */
 window.HH = { get S() { return S; }, G, CH, UI, prep, loadChapter, startChapter, eat, holeD, need, addXP, bankerTransfer, bankerArrive, buyUpgrade, upCost,
-  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, setS(d) { S = d; } };
+  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; } };
 </script>
 </body>
 </html>
