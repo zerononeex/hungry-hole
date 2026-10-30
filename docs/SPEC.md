@@ -50,6 +50,7 @@ Quest types the engine must support (data-driven, levels are config, not code):
 - `bigEat` — eat at least 1 of a specific big item
 - `speed` — finish the main goal with at least N seconds left (judged at the win moment)
 - `noBump` — bump into too-big objects no more than N times
+- `sequence` — eat a set of letter/number tiles IN EXACT ORDER (see Sequence Hunts below)
 
 Unlocks: next level unlocks when the previous level's MAIN goal is done. Next world
 unlocks when level 5's main goal of the previous world is done. Side quests are never
@@ -169,6 +170,55 @@ Classic Black (start) · Galaxy Rim (10★) · Rainbow Rim (25★) · Gold Rim (
   DOM churn. 60fps target on a school iPad.
 - Discipline: minimal code (Ponytail), and every build ends with a cleanup pass
   (dead code / duplicates removed, with search evidence) before reporting done.
+
+## Sequence Hunts — the educational bonus levels (added by owner 2026-10-29)
+One bonus "Hunt" level per world, shown as level 6 on the level map. It does NOT gate
+anything; it uses the same stars (so total stars become 60 + 12 = 72).
+A Hunt's main goal is a `sequence` quest: special letter/number tiles are scattered
+across the map and must be eaten **in exact order**.
+- Toy Cleanup Hunt: numbers **1 → 10** in order (owner's pick).
+- City Hunt: **E-A-R-T-H** in order (owner's pick).
+- Space Hunt: **P-L-A-N-E-T** in order.
+- Treasure Hunt: **G-O-L-D** in order.
+Mechanics (kind, no-fail design):
+- The HUD shows the whole sequence as a strip; found items tick off, the NEXT tile is
+  the only active one — it glows, pulses, and is the only tile that can fall in. All
+  other tiles are visible but inactive (they nudge/wobble if touched), so a wrong order
+  is impossible and there is never a punishment or reset.
+- Tiles are always eatable regardless of hole size (tier 0) — learning is never blocked
+  by growth. The rest of the map is a normal level, so they keep growing while hunting.
+- When a tile is eaten, the game SPEAKS it aloud via speech synthesis ("E!", "7!")
+  when available after the first tap (iPad Safari rule), with a happy pop + the letter
+  shown big briefly. Voice can be toggled off in Settings; the pop/ding is the fallback.
+- Each Hunt also carries 2 normal side quests (same types as regular levels).
+
+## Tiny Quests — 40 per world, rolling (added by owner 2026-10-29)
+"40 side quests per stage" (owner) is implemented as a **quest pool**, not 40 on screen:
+- Every world has a pool of **40 Tiny Quests** (data list in the level config).
+- During any level in that world, **up to 3 Tiny Quests are active at a time** under the
+  side-quest chips. The moment one is ticked, the next one rolls in with a little
+  "New quest!" pop — so a run is a constant stream of tiny wins.
+- A **Quest Board** per world (on the level map) shows all 40 with ticks for every one
+  ever completed across all runs — finishing a world's whole board earns a Board Badge
+  shown on the world card. Tiny Quest progress persists in the save.
+- Level side quests (the 2 per level, above) are separate and unchanged; Tiny Quests are
+  bonus-only, never required, never lost — an active one you don't finish just stays
+  unfinished, no ✗.
+Tiny Quest types reuse the quest engine plus three learning types:
+- `findAnswer` — a question tile floats at the top of the HUD ("7 × 5 = ?"); number
+  tiles are scattered on the map among close decoys (28, 34, 36, 40…). Eat the correct
+  answer (35) to tick it. Wrong-answer tiles are inactive like sequence tiles — they
+  shake and speak their number, they cannot be eaten and never punish. Questions are
+  Grade 2–3 level: × tables to 5×5 then 10×10, +/− to 100, "what's missing: 3, 6, __, 12".
+- `firstLetter` — "Eat something that starts with B" — any matching world object counts
+  (Toy: ball/block/book; City: bus/bike/bin; Space: …world lists in config).
+- `pattern` — eat objects in a shown pattern (red, blue, red, blue…) using the world's
+  colour-varied objects; teaches patterns, the seed of coding loops/sequences.
+Pool mix per world (40): ~18 world-flavoured eat/collect/avoid/combo quests,
+~8 findAnswer math, ~6 spelling/letter (firstLetter, vowel hunt A-E-I-O-U order,
+missing-letter word), ~4 pattern/if-then, ~4 reach-size/score stretch quests.
+Difficulty of math/letter quests is a Settings choice: **Grade 2 or Grade 3** (one
+toggle, default Grade 2), because the players are in Grades 2 and 3.
 
 ## ENDGAME — "THE BIG JOURNEY" (design locked 2026-10-29, build phase = AFTER v1)
 A fifth, unlockable mode — separate from the 20 levels. One epic, slow journey from a
