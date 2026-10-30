@@ -178,7 +178,7 @@ const STAGE_W = 1280, STAGE_H = 720;
 const FIT_K = 1.3;                            // fit-width = 1.3 x tier diameter, the same factor as the hole's own size
 const FALL_MS = 340;                          // tip over the rim, sink, spin + shrink; then the eat pipeline runs
 const WOBBLE_MIN = 0.85, WOBBLE_STEP = 0.36;  // owner's wobble rule: from 85% of the needed size, bumps can tip a leaning thing in
-const NEED_K = 0.35, XP_K = 1.5, SPEED = 4.32, START_P = 0.3;   // v3 pace: growth need x0.35, +50% XP per eat, speed +20%, pre-grown start
+const NEED_K = 0.2, XP_K = 1.8, SPEED = 4.32, START_P = 0.3;   // v3 pace: growth need x0.35, +50% XP per eat, speed +20%, pre-grown start
 const PTS = [0, 5, 8, 12, 16, 22, 30, 40, 52, 66, 82]; // points by tier (x chapter cost scale)
 const MULT = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]; // growth/points ladder (x2.0 only at lvl 10)
 const COMBO_MS = 6000;
@@ -899,7 +899,7 @@ const CH = [null];
 
 /* ---------- CHAPTER 5: WORLD TOUR (wrap-around globe; must match the real Earth) ---------- */
 (() => {
-  const D = 240, W = 360 * D, H = 180 * D;                               // 240 units per degree, equirectangular (v3: was 400)
+  const D = 200, W = 360 * D, H = 180 * D;                               // 200 units per degree, equirectangular (v3: was 400)
   const P = (lon, lat) => [(lon + 180) * D, (90 - lat) * D];
   const ll = (x, y) => [x / D - 180, 90 - y / D];
   // simplified real coastlines [lon,lat,...]: name, kind (continent flavour or ice)
@@ -1068,7 +1068,7 @@ const CH = [null];
   }
   CH.push({
     n: 5, name: 'World Tour', short: 'World', c1: '#ff9800', c2: '#b34700', bgc: '#2a6fb5', rim: '#ffd23f',
-    W, H, wrap: 1, start: P(-123.1, 49.28), cost: 3, need: 100, pv: 2, view: 13, agridSize: 4000,
+    W, H, wrap: 1, v2k: 200 / 400, spd: 5.2, start: P(-123.1, 49.28), cost: 3, need: 100, pv: 2, view: 13, agridSize: 4000,
     sizes: [0, 16, 26, 42, 66, 100, 150, 230, 350],
     real: [0, 800, 2000, 5000, 12000, 30000, 80000, 250000, 800000],
     tagN: { wonder: 'World Wonder', landmark: 'landmark', island: 'island', tree: 'tree' },
@@ -1364,7 +1364,7 @@ const CH = [null];
 /* v3 pace: shrink a chapter's map by k (every place keeps its relative position; object sizes are tiers, unchanged) */
 function shrinkMap(C, k) {
   const z = C.zoneAt, bg = C.bg, build = C.build, hint = C.hint, ra = C.regionAt, rp = C.regionPos;
-  C.W = Math.round(C.W * k); C.H = Math.round(C.H * k); C.start = [C.start[0] * k, C.start[1] * k]; C.mapK = k;
+  C.W = Math.round(C.W * k); C.H = Math.round(C.H * k); C.start = [C.start[0] * k, C.start[1] * k]; C.mapK = C.v2k = k;
   C.zoneAt = (x, y) => z(x / k, y / k);
   if (ra) C.regionAt = (x, y) => ra(x / k, y / k);
   if (rp) C.regionPos = r => { const p = rp(r); return p && [p[0] * k, p[1] * k]; };
@@ -1373,7 +1373,7 @@ function shrinkMap(C, k) {
   C.build = (add, rng) => build((t, x, y, o) => add(t, x * k, y * k, o && o.path ? Object.assign({}, o, { path: o.path.map(v => v * k) }) : o), rng);
   C.bg = (g, V) => { g.save(); g.scale(k, k); bg(g, { z: V.z * k, cx: V.cx / k, cy: V.cy / k, x0: V.x0 / k, y0: V.y0 / k, x1: V.x1 / k, y1: V.y1 / k, px: V.px / k }); g.restore(); };
 }
-shrinkMap(CH[3], 0.6); shrinkMap(CH[4], 0.55); shrinkMap(CH[6], 0.5); shrinkMap(CH[7], 0.5);
+shrinkMap(CH[3], 0.6); shrinkMap(CH[4], 0.55); shrinkMap(CH[6], 0.42); shrinkMap(CH[7], 0.42);
 
 /* =====================================================================
    3. ENGINE
@@ -1575,6 +1575,11 @@ function loadChapter(n) {
   };
   C.build(add, mulberry(9000 + n));
   if (st.x == null) restartRun(true);
+  else if (!st.mv) {                                 // a v2 save: its position was on the bigger v2 map
+    const k = C.v2k || 1; st.x *= k; st.y *= k;
+    if (!C.wrap) { st.x = clamp(st.x, 0, C.W); st.y = clamp(st.y, 0, C.H); }
+  }
+  st.mv = 3;
   // v3 trimmed some checklist targets: clamp old progress and finish a chapter whose new targets are already met
   C.CK.forEach((q, j) => { if (st.check[j] > q.n) st.check[j] = q.n; });
   if (!st.c && C.CK.every((q, j) => qDone(q, st.check[j]))) setTimeout(() => { if (G.C === C && !G.st.c) chapterDone(); }, 1500);
@@ -2332,6 +2337,8 @@ const MODEL = (() => {
   };
   /* type -> [recipe, params]. Shared recipes, per-type palettes and proportions. */
   const T = {
+    chest: ['chest', {}], crown: ['crown', {}], croissant: ['croissant', {}], pizza: ['pizza', {}], noodles: ['noodles', {}], sushi: ['sushi', {}],
+    taco: ['taco', {}], hotdog: ['hotdog', {}], pretzel: ['pretzel', {}], doll: ['doll', {}], tuktuk: ['tuktuk', {}],
     // Ch1 the house
     lego: ['brick', { v: [{ a: '#e53935' }, { a: '#1e88e5' }, { a: '#fdd835' }, { a: '#43a047' }] }], marble: ['ball', { v: [{ a: '#4fc3f7' }, { a: '#ef5350' }, { a: '#ab47bc' }] }], die: ['die', {}], crayon: ['stick', { v: [{ a: '#e53935' }, { a: '#1e88e5' }, { a: '#43a047' }] }],
     button: ['disc', { a: '#ef6c00', b: '#ff9800', h: .25 }], paperclip: ['clip', { a: '#b0bec5' }], pin: ['pin', { a: '#e53935' }], key: ['key', { a: '#d4af37' }], cookie: ['disc', { a: '#c48a4a', b: '#a06a2a', h: .25 }],
@@ -3286,7 +3293,7 @@ requestAnimationFrame(frame);
 
 /* test hook for automated checks (harmless in play) */
 window.HH = { get S() { return S; }, G, CH, UI, prep, loadChapter, startChapter, eat, holeD, need, addXP, bankerTransfer, bankerArrive, buyUpgrade, upCost,
-  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, V3, MODEL, fits, capture, bump, hidesHole };
+  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, V3, MODEL, fits, capture, bump, hidesHole };
 </script>
 </body>
 </html>

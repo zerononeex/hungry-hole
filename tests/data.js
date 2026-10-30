@@ -37,10 +37,20 @@ const { chromium } = require('playwright');
       C.CK.forEach(q => chk(q, 'checklist')); C.Q.forEach(q => chk(q, 'quest'));
       for (const Z of Object.values(C.Z)) for (const L of Z.t) if (L) for (const it of (L.items || L)) { const k = Array.isArray(it) ? it[0] : it; if (!C.T[k]) fails.push('zone type missing ' + k); }
       for (const o of auth) if (!o.T) fails.push('authored object without type ' + o.k);
-      out.push({ n, name: C.name, quests: C.Q.length, edu: C.Q.filter(q => q.edu).length, authored: auth.length, types: Object.keys(C.T).length, fails });
+      // v3: every type resolves to a 3D recipe with a footprint (w x d) and a real height
+      let models = 0;
+      for (const k of Object.keys(C.T)) {
+        const m = HH.MODEL.spec(C, k);
+        if (!m) { fails.push('no 3D model for type ' + k); continue; }
+        if (!HH.MODEL.R[m.recipe]) fails.push('type ' + k + ' names a missing recipe ' + m.recipe);
+        if (!(m.w > 0 && m.d > 0 && m.h > 0)) fails.push('type ' + k + ' has a bad footprint/height ' + JSON.stringify(m));
+        else models++;
+      }
+      out.push({ n, name: C.name, models, quests: C.Q.length, edu: C.Q.filter(q => q.edu).length, authored: auth.length, types: Object.keys(C.T).length, fails });
     }
     return out;
   });
-  for (const r of res) console.log(`CH${r.n} ${r.name}: quests=${r.quests} edu=${r.edu} authored=${r.authored} types=${r.types} ${r.fails.length ? 'FAIL\n   ' + r.fails.join('\n   ') : 'PASS'}`);
+  for (const r of res) console.log(`CH${r.n} ${r.name}: quests=${r.quests} edu=${r.edu} authored=${r.authored} types=${r.types} models=${r.models} ${r.fails.length ? 'FAIL\n   ' + r.fails.join('\n   ') : 'PASS'}`);
   console.log('errors:', JSON.stringify(errs)); await b.close();
+  process.exit(res.every(r => !r.fails.length) && !errs.length ? 0 : 1);
 })();
