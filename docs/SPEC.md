@@ -170,6 +170,79 @@ Classic Black (start) · Galaxy Rim (10★) · Rainbow Rim (25★) · Gold Rim (
 - Discipline: minimal code (Ponytail), and every build ends with a cleanup pass
   (dead code / duplicates removed, with search evidence) before reporting done.
 
+## ENDGAME — "THE BIG JOURNEY" (design locked 2026-10-29, build phase = AFTER v1)
+A fifth, unlockable mode — separate from the 20 levels. One epic, slow journey from a
+single Lego brick to becoming a black hole. It reuses the same engine; what changes per
+chapter is the object set, the size scale, and the camera zoom (each chapter transition
+plays a "ZOOMING OUT…" moment and the world visibly rescales).
+
+- **Unlock:** complete all 5 main goals in ANY ONE world (Toy Cleanup is the natural
+  first path — the Journey literally starts in that bedroom).
+- **Structure:** 12 chapters. There is NO fail timer — this mode is a long, savable
+  trek, not a race. Each chapter has a **3-item checklist** (like side quests, but these
+  ARE the chapter goal: specific must-eats, e.g. Ocean = eat 10 whales). Eating anything
+  grows you as usual; finishing all 3 checklist items completes the chapter.
+- **At every chapter end the player chooses:** STOP & SPEND (bank coins, go to the
+  Upgrades shop, journey checkpoint is saved) or KEEP GOING (next chapter, same run,
+  coins keep accumulating — bigger payout if you go further before stopping).
+- **Saving:** the journey autosaves at every chapter boundary (furthest chapter +
+  chapter-start size). Home screen gets a CONTINUE THE JOURNEY button next to a fresh
+  New Journey. A fresh run always starts at zero (Chapter 1, tiniest size) — upgrades
+  are the only thing that carry into a new run, exactly like Slingshot Plane.
+- **Coins:** when a run stops (player choice, at ANY chapter) coins are banked =
+  score ÷ 10, + 250 per chapter completed, + 5,000 for finishing the Journey,
+  × Coin Boost upgrade. Quitting mid-chapter still banks coins for progress made so
+  far ("whatever size you get to, you get coins" — owner's rule).
+- **Water ruling (owner, hedged — Kakashi's clean call, flagged to him):** water itself
+  is NEVER eaten — not the river, not the ocean. The dam counts as an object; boats,
+  whales and islands do the growing in the wet chapters. "Too much" was his instinct
+  and it is right: eating an ocean breaks the size fantasy.
+
+### The 12 chapters (owner's route, in his order)
+1. **Bedroom Floor** — Checklist: eat 25 Lego bricks · eat 10 toy soldiers · eat 3 toy cars.
+   Ladder: brick/marble/die → toy soldier → toy car.
+2. **Big Bedroom** — Eat 2 toy trucks · eat 1 Nerf gun · eat 1 bed (after chair + desk).
+   Ladder: toy truck/Nerf gun/book → chair → desk → bed.
+3. **House & Backyard** — Eat 1 backyard tree · eat 1 family car · eat 5 garden things.
+   Zoom out: shoes/boxes/plants → BBQ/dog house → the tree → the car.
+4. **Our Street** — Eat 5 houses on the street · eat 3 trucks · eat 10 street things.
+   (City ladder, street scale: people/bins/lamps → cars/trucks → houses.)
+5. **Downtown** — Eat 3 small buildings · eat 1 big office building · eat 20 city things.
+6. **Forest Edge** — Eat 40 trees · eat 3 bears · eat 10 forest animals.
+   You leave the city; driving a "haircut line" through the forest is the fun here.
+7. **Mountain & the Dam** — Eat 1 dam · eat 15 boulders · eat 5 mountain animals (goats/bears).
+   River water = scenery, not food. Pine trees + rocks grow you to dam size.
+8. **The Ocean** — Eat 10 whales · eat 3 ships · eat 1 giant squid.
+   Boats/sharks/fish grow you; ocean water = scenery, not food.
+9. **Islands** — Eat 3 islands · eat 1 volcano island · eat 5 palm islands/beach things.
+10. **Planet Snack** — Eat 1 Earth · eat 3 moons (other planets' moons) · eat 10 satellites/asteroids on the way out.
+11. **The Solar System** — Eat 4 small planets · eat 2 giant planets · eat 1 Sun.
+12. **The Milky Way** — Eat 20 asteroids from the belt · eat 5 other stars · eat 1 galactic core.
+    Ending: full-screen swirl cinematic — **"YOU ARE THE BLACK HOLE"** — credits,
+    +5,000 coin payout, Journey marked COMPLETE (can be re-run forever for coins).
+
+### The 10 Upgrades (Epic Mode ONLY — the 20 levels stay pure, no upgrades there)
+Bought with banked coins between runs, from the Journey screen. Permanent once bought.
+Prices rise steeply so the top levels are true endgame.
+1. **Speed** (5 lvls) — move +5% per level. 100 / 250 / 500 / 1,000 / 2,000
+2. **Growth Boost** (5 lvls) — size gained per eat ×1.1 / ×1.2 / ×1.3 / ×1.5 / ×2.0
+   (owner's ladder — ×2.0 exists ONLY at max level). 150 / 400 / 800 / 1,600 / 3,200
+3. **Points Boost** (5 lvls) — points per eat ×1.1 / ×1.2 / ×1.3 / ×1.5 / ×2.0. Same prices as Growth.
+4. **Coin Boost** (5 lvls) — coins banked +10% per level. 100 / 300 / 600 / 1,200 / 2,400
+5. **Magnet Aura** (5 lvls) — small always-on magnet, radius +25% per level. 100 / 250 / 500 / 1,000 / 2,000
+6. **Quest Compass** (3 lvls) — edge arrows point to the nearest checklist item;
+   lvl 2 shows all 3 checklist types, lvl 3 also shows distance. 200 / 600 / 1,500
+7. **Head Start** (2 lvls) — start each chapter 1 size stage bigger per level (max 2).
+   1,000 / 3,000 — deliberately expensive, it skips real growing.
+8. **Rainbow Trail** (cosmetic, 1 lvl) — the hole leaves a fading rainbow swirl trail. 500
+9. **Golden Glow** (cosmetic, 1 lvl) — gold sparkle rim, coins sparkle when banked. 1,500
+10. **Crown Galaxy Rim** (cosmetic, 1 lvl, the flex) — crowned rim with a swirling galaxy
+    inside the hole. Only buyable after finishing the Journey once. 5,000
+
+Save additions for the Endgame (ADDITIVE fields on `hungry-hole-data-v1` when the
+Endgame build lands — never reshape existing fields): coins, upgrade levels owned,
+journey checkpoint (chapter + flag), journey completions count, cosmetics owned.
+
 ## Verification the builder must run before saying done
 - Serve `site/` over http; zero console errors.
 - Data test: all 20 levels load; for every level — collect items spawn ≥2× need,
