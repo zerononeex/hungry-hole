@@ -493,3 +493,93 @@ Kakashi's additional ideas (presented, pending owner's pick — do not build unp
 
 ## App icon (owner pick, 2026-10-29)
 Icon #1 "Galaxy Swirl" (purple/blue galaxy swirl around the black hole), chosen by the owner from 10 generated options. `icon-512.png` + `apple-touch-icon.png` sit at the repo root (full-bleed crops). Kakashi wires the two link tags into `index.html` at merge/publish time. All 10 options are kept in the workspace (`workspace/hungry-hole/icons/`) if the kids outvote it later.
+
+---
+
+# SPEC v3 ADDENDUM — 3D REVAMP + PACE RETUNE (owner playtest, 2026-10-30)
+
+Owner verdict on v2: foundation good, feels boring — stages too big, everything flat.
+This addendum SUPERSEDES v2 where they conflict. Everything not mentioned (chapters,
+checklists except the target trims below, per-chapter state, 40 Tiny Quests per chapter,
+upgrades, the Banker, education layer, settings, save key `hungry-hole-data-v1`) stays
+exactly as built. Existing v2 saves MUST keep working (same key, additive fields only).
+
+## Pace targets (hard)
+- A kid finishes a chapter CHECKLIST in at most ~5 minutes. Proxy gate: the balance bot
+  (near-perfect play) must finish each chapter's checklist in **<= 2.5 sim-minutes**
+  (3.0 acceptable for Ch 5 and Ch 6), and the hand-off must print the per-chapter times.
+- How: growth need roughly x0.35 of v2 (tune until the gate passes), more XP per eat,
+  hole base speed +20%, slightly larger starting size.
+- Checklist target trims: Ch1 Lego 25 -> 12, toy soldiers 10 -> 6 (bed stays the finale);
+  Ch4 trees 40 -> 15, whales 10 -> 6 (dam stays); Ch5 passport stamps 10 -> 6 (the 7
+  Wonders stay 7); Ch6 asteroid-belt items 20 -> 10. All other checklist items unchanged.
+- Smaller worlds: Ch2 houses ~320 -> ~120 (compress the block grid); Ch3 keeps EVERY
+  named place in its real relative position but map distances x0.6; Ch4 zones move
+  closer together; other chapters trim dead travel distance. Density of things to eat
+  near the hole goes UP even as maps shrink.
+
+## 3D renderer (the revamp)
+- True 3D with Three.js, VENDORED in the repo as `three.min.js` (pinned UMD build,
+  global THREE, no CDN — the site must work offline after first load). The game becomes
+  index.html + three.min.js at the repo root (+ existing icons). No other new files
+  except tests/screenshots/docs as before.
+- Camera: fixed-tilt perspective (~55 degrees, Hole.io-style), follows the hole, zoom
+  scales smoothly with hole size. Landscape stage rules from v2 still apply.
+- Ground: real ground plane per chapter, coloured/textured by zone with simple
+  procedural canvas textures (roads, sand, grass, water as scenery — water still never
+  eaten). Where the hole passes, the ground must read as GONE under objects (see physics).
+- The hole in 3D: a shallow dark pit — inner wall shading, a slowly swirling dark disc,
+  a soft rim shadow ring, a subtle pulse when something is swallowed. It must read as a
+  hole in the world, not a flat circle.
+
+## Model library (procedural low-poly, built in code — zero image assets)
+- Every eatable/scenery object type (~300 across chapters) gets a model built from
+  primitives (box, cylinder, cone, sphere, prism) with flat-shaded materials and a
+  simple palette — plain, clean, a little chunky. Aim ~70 shared recipes with variants
+  (car family: sedan / truck / van / sports; tree family; tower family; house family…)
+  rather than 300 one-offs.
+- Every type declares: footprint (w x d), height, palette, recipe. Heights are REAL:
+  sedans < vans < trucks < houses < towers; skyscrapers loom over the camera view;
+  mountains (Grouse, Fuji, the Rockies) are genuinely enormous — they fill the screen
+  and can only be eaten late in their chapter. This scale drama is the point.
+- People/animals: simple capsule-and-sphere figures are fine (emoji are retired from
+  the game world). Letter/number/answer tiles become chunky 3D tiles whose face text
+  is a small canvas texture. Landmark name plates stay (projected labels or billboard
+  sprites with canvas text).
+- Performance: instancing or merged geometry for repeated scenery, visible-object
+  culling by camera chunk as in v2, pixelRatio capped, NO dynamic shadow maps (blob
+  shadows under objects + flat hemisphere/directional lighting). Target: steady 60 fps
+  on a school iPad; the hand-off reports a perf measurement (fps in the busiest chapter
+  scene the bot can find).
+
+## Topple physics (capture is earned, not automatic)
+- Each object tracks support: how much of its footprint still has ground (the hole
+  removes ground). As support drops it LEANS toward the hole centre (tall things lean
+  more dramatically), creaks/wobbles, and may slide toward the rim.
+- Capture rule: an object falls in only if it FITS — its fit-width <= hole diameter.
+  Falling = tip over the rim, sink below the ground plane, spin + shrink into the hole
+  (the v2 eat effects carry over). Greedy shortcutting by tier alone is gone.
+- Too big: it leans to a rest angle against the rim and stays (still counts as not
+  eaten; bump feedback from v2 applies). It can be eaten later once the hole is bigger.
+- WOBBLE RULE (owner's pick, "make it fun for kids"): if the hole is at >= 85% of the
+  size an object needs, each solid bump on a leaning object adds wobble; enough wobble
+  tips it in early. Under 85% it never falls, no matter how much you bump.
+- Movers (people, animals, vehicles that drive) keep their v2 behaviour, plus leaning
+  when their ground goes. Cinematic moments (Moon tip-in, Ch7 finale) reuse the same
+  topple system with scripted parameters.
+- The Sun stays locked until all 8 planets are eaten; stairs/bed gating, door rules,
+  totem poles as scenery, Crystal Moon — all v2 DECISIONS.md rulings carry over.
+
+## Verification (same bar as v2, adapted)
+- Data tests unchanged: 7 chapters, exactly 40 quests each, all referenced types exist.
+  Every type must now also resolve to a model recipe + footprint + height.
+- Behaviour tests adapted to the new physics: fits -> falls in; too big -> leans and
+  rests, not eaten; wobble-in works at >= 85% and never below; Banker 60%; per-chapter
+  resume; export/import byte-equal; other localStorage keys untouched; save survives
+  reload; a v2-shaped save loads fine.
+- Balance bot prints per-chapter checklist completion minutes and must meet the pace
+  gate above.
+- Screenshots: main screen + all 7 chapters + phone sizes, eyeball-checked for height
+  and scale (a tower shot and a mountain shot must show real looming size).
+- Cleanup pass at the end (delete dead 2D rendering code — no dual renderers), and
+  append the v3 section to docs/DECISIONS.md for every judgment call.
