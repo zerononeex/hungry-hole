@@ -33,8 +33,11 @@ one-line change if the owner disagrees.
 
 ## Art
 - **Code-drawn sprites for things with no emoji** (desk, dresser, fridge, BBQ, dog house,
-  manhole, White Rock, dam, planets, stars, ring station, laser moon, pyramids, Great
+  manhole, White Rock, dam, planets, stars, ring station, crystal moon, pyramids, Great
   Wall, landmarks, etc.). They are simple canvas shapes, no external images.
+- **Ch 7 "laser moon" became a "Crystal Moon".** A grey moon with a dish reads as a famous
+  film space station, which the no-franchise-IP rule forbids. It is now a purple moon with
+  cyan crystal spikes. Same tier, same quest.
 - **Emoji are game objects only.** All menus/buttons/HUD use text and inline SVG icons.
 - **Icon links added.** `apple-touch-icon.png` and `icon-512.png` already at the repo root
   are linked from `<head>` (spec said Kakashi would wire them; harmless to do here).

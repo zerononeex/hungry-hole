@@ -252,6 +252,8 @@ function fmtSize(m) {
   if (m < 1) return (m * 100).toFixed(m < 0.1 ? 1 : 0) + ' cm';
   if (m < 1000) return m.toFixed(m < 10 ? 1 : 0) + ' m';
   const km = m / 1000;
+  if (km >= 1e9) return (km / 1e9).toFixed(km < 1e10 ? 1 : 0) + ' billion km';
+  if (km >= 1e6) return (km / 1e6).toFixed(km < 1e7 ? 1 : 0) + ' million km';
   return (km < 10 ? km.toFixed(1) : fmt(km)) + ' km';
 }
 function sizeWord(m) { let w = SIZE_WORDS[0][1]; for (const [v, s] of SIZE_WORDS) if (m >= v) w = s; return w; }
@@ -1276,20 +1278,20 @@ const CH = [null];
       planet: ['🪐', 'ringed planet', 3], icemoon: pl('ice moon', 3, '#d6f5ff', '#5aa9c9'), redplanet: pl('red planet', 3, '#ff8a65', '#9e2a12'),
       giantplanet: pl('giant planet', 4, '#c3a6ff', '#5b3fb0', { band: 'rgba(80,40,140,.4)' }), giantmoon: pl('giant moon', 4, '#f0f0e8', '#7d7d78'),
       yellowstar: st('yellow star', 5, '#ffd23f'), redstar: st('red star', 5, '#ff5e57'), station: ['', 'space station', 5, { draw: 'ringstation' }],
-      bluestar: st('blue star', 6, '#6ad1ff'), lasermoon: ['', 'laser moon', 6, { draw: 'lasermoon' }], ringstation: ['', 'mega space station', 6, { draw: 'ringstation', s: 1.3 }],
+      bluestar: st('blue star', 6, '#6ad1ff'), crystalmoon: ['', 'crystal moon', 6, { draw: 'crystalmoon' }], ringstation: ['', 'mega space station', 6, { draw: 'ringstation', s: 1.3 }],
       giantufo: ['🛸', 'giant UFO', 7, { tags: 'giantufo', s: 1.3, mv: 'w' }], superplanet: pl('super planet', 7, '#7cf7c6', '#1b8a6b', { ring: '#bff', band: 'rgba(0,80,60,.3)' }),
       giantstar: st('giant star', 8, '#ff9f43', { tags: 'giantstar', s: 1.2 }), supergiant: st('supergiant star', 9, '#e8f4ff', { s: 1.3 }),
     },
     zones: {
-      void: { d: .7, t: ['rock:3,ice:2,star:2', 'comet,satellite,ufo', 'planet,icemoon,redplanet', 'giantmoon', 'redstar', 'lasermoon:.4'] },
-      nebula: { d: 1.1, t: ['sparkle:4,star:3', 'comet:2,ufo,alien', 'planet:2,icemoon', 'giantplanet:2,giantmoon', 'yellowstar,station', 'bluestar,ringstation:.5', 'superplanet:.6'] },
+      void: { d: .7, t: ['rock:3,ice:2,star:2', 'comet,satellite,ufo', 'planet,icemoon,redplanet', 'giantmoon', 'redstar', 'bluestar:3,crystalmoon'] },
+      nebula: { d: 1.1, t: ['sparkle:4,star:3', 'comet:2,ufo,alien', 'planet:2,icemoon', 'giantplanet:2,giantmoon', 'yellowstar,station', 'bluestar,ringstation:.5,crystalmoon:.3', 'superplanet:.6'] },
       cluster: { d: 1.2, coin: .4, t: ['star:5,sparkle:2', 'ufo:2,alien', 'redplanet', 'giantplanet', 'yellowstar:2,redstar:2', 'bluestar:2', 'superplanet', 'giantstar:.3'] },
     },
     zoneAt,
     build(add) {
       [[16000, 16000], [48000, 15000], [15000, 49000], [47000, 47000]].forEach(([x, y], i) => add('giantstar', x, y, { keep: 1, id: 'gstar' + i, label: 'Giant star' }));
       [[40000, 28000], [22000, 38000]].forEach(([x, y], i) => add('giantufo', x, y, { keep: 1, id: 'gufo' + i, label: 'Giant UFO' }));
-      add('ringstation', 35000, 33000, { label: 'Mega Ring Station' }); add('lasermoon', 28000, 36000, { label: 'Laser Moon' });
+      add('ringstation', 35000, 33000, { label: 'Mega Ring Station' }); add('crystalmoon', 28000, 36000, { label: 'Crystal Moon' });
       add('supergiant', 8000, 32000, { label: 'Supergiant star' }); add('supergiant', 56000, 32000, { label: 'Supergiant star' });
     },
     finish(first) {
@@ -1332,7 +1334,7 @@ const CH = [null];
     check: ['c:giantstar:2', 'b:giantufo', 'q:GALAXY|s|Spell G-A-L-A-X-Y'],
     quests: [
       'c:star:10', 't:40', 'c:comet:3', 'x:6', 'c:ufo:3', 'a:ufo:20', 'c:planet:3', 'c:giantmoon:2', 'c:sparkle:5', 'c:station:1',
-      'c:lasermoon:1', 'x:10', 'c:redstar:2|c', 'c:bluestar:2|c', 'c:giantplanet:2', 'b:ringstation', 't:200', 't:500',
+      'c:crystalmoon:1', 'x:10', 'c:redstar:2|c', 'c:bluestar:2|c', 'c:giantplanet:2', 'b:ringstation', 't:200', 't:500',
       'f:big', 'f:big', 'f:add', 'f:sub', 'f:mul', 'f:big', 'q:10,20,30,40,50,60,70,80,90,100|m|Count the stars by tens: 10 to 100', 'f:miss',
       'q:STARS', 'q:COMET', 'l:G', 'l:S', 'f:word', 'q:ORBIT',
       'p:star,comet,star,comet', 'p:ufo,alien,ufo,alien', 'p:redstar,yellowstar,redstar,yellowstar', 'p:planet,icemoon,planet,icemoon',
@@ -2057,7 +2059,7 @@ const PAINT = {
   planet(x, b, T) { const r = b * .44; if (T.ring) { x.save(); x.scale(1, .35); x.strokeStyle = T.ring; x.lineWidth = b * .07; x.beginPath(); x.arc(0, 0, r * 1.65, Math.PI, 0); x.stroke(); x.restore(); } ball(x, r * (T.ring ? .7 : 1), T.c1, T.c2); x.shadowColor = 'transparent'; if (T.band) { x.save(); x.beginPath(); x.arc(0, 0, r * (T.ring ? .7 : 1), 0, 7); x.clip(); x.fillStyle = T.band; for (let i = -3; i <= 3; i += 2) x.fillRect(-r, i * r * .2, 2 * r, r * .12); x.restore(); } if (T.ring) { x.save(); x.scale(1, .35); x.strokeStyle = T.ring; x.lineWidth = b * .07; x.beginPath(); x.arc(0, 0, r * 1.65, 0, Math.PI); x.stroke(); x.restore(); } },
   star(x, b, T) { x.shadowColor = T.c1; x.shadowBlur = b * .25; x.shadowOffsetY = 0; ball(x, b * .36, '#fff', T.c1); x.globalAlpha = .35; x.beginPath(); x.arc(0, 0, b * .46, 0, 7); x.fillStyle = T.c1; x.fill(); },
   ringstation(x, b) { x.strokeStyle = '#c8d0e0'; x.lineWidth = b * .09; x.beginPath(); x.arc(0, 0, b * .4, 0, 7); x.stroke(); x.shadowColor = 'transparent'; x.lineWidth = b * .04; for (let i = 0; i < 6; i++) { x.beginPath(); x.moveTo(0, 0); x.lineTo(Math.cos(i) * b * .4, Math.sin(i) * b * .4); x.stroke(); } ball(x, b * .1, '#fff', '#8899bb'); },
-  lasermoon(x, b) { ball(x, b * .44, '#c9ced6', '#5d636e'); x.shadowColor = 'transparent'; x.fillStyle = '#3d424b'; x.beginPath(); x.arc(-b * .14, -b * .14, b * .11, 0, 7); x.fill(); x.fillStyle = '#7dff9b'; x.beginPath(); x.arc(-b * .14, -b * .14, b * .04, 0, 7); x.fill(); x.fillStyle = '#4b505a'; x.fillRect(-b * .44, -b * .015, b * .88, b * .03); },
+  crystalmoon(x, b) { ball(x, b * .4, '#b9a6ff', '#4b2f9e'); x.shadowColor = 'transparent'; for (const [a, l] of [[-2.2, .5], [-1.2, .44], [-.4, .36]]) { x.save(); x.rotate(a + 1.57); x.fillStyle = '#7ff3ff'; x.beginPath(); x.moveTo(-b * .07, -b * .3); x.lineTo(0, -b * l); x.lineTo(b * .07, -b * .3); x.fill(); x.fillStyle = 'rgba(255,255,255,.7)'; x.beginPath(); x.moveTo(-b * .02, -b * .32); x.lineTo(0, -b * (l - .04)); x.lineTo(b * .03, -b * .32); x.fill(); x.restore(); } x.fillStyle = 'rgba(40,20,90,.35)'; x.beginPath(); x.arc(b * .12, b * .1, b * .08, 0, 7); x.arc(-b * .14, b * .16, b * .05, 0, 7); x.fill(); },
   pyramid(x, b) { const f = (dx2, c) => { x.fillStyle = c; x.beginPath(); x.moveTo(dx2 - b * .22, b * .3); x.lineTo(dx2, -b * .1); x.lineTo(dx2 + b * .22, b * .3); x.fill(); }; f(b * .2, '#d9b36c'); f(-b * .18, '#e8c47c'); x.fillStyle = '#f0cd85'; x.beginPath(); x.moveTo(-b * .1, b * .38); x.lineTo(b * .05, -b * .38); x.lineTo(b * .22, b * .38); x.fill(); x.shadowColor = 'transparent'; x.fillStyle = '#c99d55'; x.beginPath(); x.moveTo(b * .05, -b * .38); x.lineTo(b * .22, b * .38); x.lineTo(b * .1, b * .38); x.fill(); },
   steppyr(x, b) { for (let i = 0; i < 5; i++) { x.fillStyle = i % 2 ? '#a9a18c' : '#beb59c'; x.fillRect(-b * (.44 - i * .07), b * (.34 - i * .14), b * (.88 - i * .14), b * .14); } x.shadowColor = 'transparent'; x.fillStyle = '#8c846e'; x.fillRect(-b * .08, -b * .4, b * .16, b * .74); x.fillStyle = '#6e6754'; x.fillRect(-b * .1, -b * .44, b * .2, b * .1); },
   wall(x, b) { x.strokeStyle = '#b39b74'; x.lineWidth = b * .09; x.lineJoin = 'round'; x.beginPath(); x.moveTo(-b * .5, b * .2); x.lineTo(-b * .25, -b * .05); x.lineTo(0, b * .12); x.lineTo(b * .22, -b * .18); x.lineTo(b * .5, -b * .02); x.stroke(); x.shadowColor = 'transparent'; x.fillStyle = '#8f7a56'; for (const [px, py] of [[-b * .5, b * .2], [-b * .25, -b * .05], [0, b * .12], [b * .22, -b * .18], [b * .5, -b * .02]]) x.fillRect(px - b * .05, py - b * .08, b * .1, b * .12); },
