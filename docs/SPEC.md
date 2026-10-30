@@ -228,10 +228,16 @@ plays a "ZOOMING OUT…" moment and the world visibly rescales).
 
 - **Unlock:** complete all 5 main goals in ANY ONE world (Toy Cleanup is the natural
   first path — the Journey literally starts in that bedroom).
-- **Structure:** 12 chapters. There is NO fail timer — this mode is a long, savable
-  trek, not a race. Each chapter has a **3-item checklist** (like side quests, but these
-  ARE the chapter goal: specific must-eats, e.g. Ocean = eat 10 whales). Eating anything
-  grows you as usual; finishing all 3 checklist items completes the chapter.
+- **Structure:** 7 chapters (owner revised 2026-10-29 — NOT 12; fewer, bigger chapters).
+  There is NO fail timer — this mode is a long, savable trek, not a race. Each chapter
+  has a **3-item checklist** (like side quests, but these ARE the chapter goal:
+  specific must-eats). Eating anything grows you as usual; finishing all 3 checklist
+  items completes the chapter. Each chapter also has its own Tiny Quest board
+  (the 40-quest replay system) — the owner's replay point: finish the Bedroom chapter,
+  go back later, and tick off everything you didn't finish the first time.
+  Chapters 2–5 each START SMALL AGAIN relative to their new scale (the zoom-out makes
+  you the little guy in a bigger world) — that reset-and-regrow rhythm is the mode's
+  heartbeat. Chapter transitions play the "ZOOMING OUT…" moment.
 - **At every chapter end the player chooses:** STOP & SPEND (bank coins, go to the
   Upgrades shop, journey checkpoint is saved) or KEEP GOING (next chapter, same run,
   coins keep accumulating — bigger payout if you go further before stopping).
@@ -248,28 +254,54 @@ plays a "ZOOMING OUT…" moment and the world visibly rescales).
   whales and islands do the growing in the wet chapters. "Too much" was his instinct
   and it is right: eating an ocean breaks the size fantasy.
 
-### The 12 chapters (owner's route, in his order)
-1. **Bedroom Floor** — Checklist: eat 25 Lego bricks · eat 10 toy soldiers · eat 3 toy cars.
-   Ladder: brick/marble/die → toy soldier → toy car.
-2. **Big Bedroom** — Eat 2 toy trucks · eat 1 Nerf gun · eat 1 bed (after chair + desk).
-   Ladder: toy truck/Nerf gun/book → chair → desk → bed.
-3. **House & Backyard** — Eat 1 backyard tree · eat 1 family car · eat 5 garden things.
-   Zoom out: shoes/boxes/plants → BBQ/dog house → the tree → the car.
-4. **Our Street** — Eat 5 houses on the street · eat 3 trucks · eat 10 street things.
-   (City ladder, street scale: people/bins/lamps → cars/trucks → houses.)
-5. **Downtown** — Eat 3 small buildings · eat 1 big office building · eat 20 city things.
-6. **Forest Edge** — Eat 40 trees · eat 3 bears · eat 10 forest animals.
-   You leave the city; driving a "haircut line" through the forest is the fun here.
-7. **Mountain & the Dam** — Eat 1 dam · eat 15 boulders · eat 5 mountain animals (goats/bears).
-   River water = scenery, not food. Pine trees + rocks grow you to dam size.
-8. **The Ocean** — Eat 10 whales · eat 3 ships · eat 1 giant squid.
-   Boats/sharks/fish grow you; ocean water = scenery, not food.
-9. **Islands** — Eat 3 islands · eat 1 volcano island · eat 5 palm islands/beach things.
-10. **Planet Snack** — Eat 1 Earth · eat 3 moons (other planets' moons) · eat 10 satellites/asteroids on the way out.
-11. **The Solar System** — Eat 4 small planets · eat 2 giant planets · eat 1 Sun.
-12. **The Milky Way** — Eat 20 asteroids from the belt · eat 5 other stars · eat 1 galactic core.
-    Ending: full-screen swirl cinematic — **"YOU ARE THE BLACK HOLE"** — credits,
-    +5,000 coin payout, Journey marked COMPLETE (can be re-run forever for coins).
+### The 7 chapters (owner's revised route, 2026-10-29, in his order)
+1. **The Bedroom** — Checklist: eat 25 Lego bricks · eat 10 toy soldiers · eat 1 bed.
+   Ladder: Lego brick/marble/die → toy soldiers → toy car → toy truck → Nerf gun →
+   chair → desk → bed. Then ZOOM OUT.
+2. **Backyard & the Neighbourhood** — Checklist: eat 1 backyard tree · eat 1 family
+   car · eat 3 houses on the street. Ladder: garden things/shoes/plants → BBQ/dog
+   house → the backyard tree → the car → bikes/bins/people → trucks → houses.
+   Then ZOOM OUT.
+3. **The City** — Checklist: eat 10 manhole covers · eat 3 buses · eat 1 office building.
+   Ladder: manhole covers/drains/pothole patches (the city's own little holes!),
+   lampposts, cones, hydrants → people/bins → cars/buses/trucks → houses →
+   small buildings → office buildings. Then ZOOM OUT.
+4. **The Wilderness** — you start SMALL AGAIN, out in the wild. One big roaming chapter
+   with zones: forest (trees, deer, bears), beach (crabs, shells, beach umbrellas),
+   savannah (zebras, lions, acacia trees), rivers (fish — the water is scenery),
+   mountains (pines up the edges, boulders, goats, hawks overhead), the shore and
+   shallow ocean (coral reefs, turtles, sharks), and a dam on the river.
+   Checklist: eat 40 trees · eat 10 whales out in the ocean · eat 1 dam.
+5. **World Tour** — now big enough for whole buildings, high-rises and construction
+   sites, and the map is THE GLOBE: a wrap-around world (leaving the top brings you in
+   at the bottom, east wraps to west — a circle, not a flat rectangle; a mini globe
+   tracker shows where you've been). Travel between regions: Europe, Africa, Asia,
+   Japan, Singapore, Indonesia, the Americas and more. **Landmarks are the stars of
+   this chapter** — famous places drawn big and labelled: Eiffel Tower (Paris),
+   Colosseum (Rome), Great Wall (China), Taj Mahal (India), Pyramids of Giza,
+   Statue of Liberty, Big Ben (London), Sydney Opera House, Christ the Redeemer,
+   Chichen Itza (Mexico), Mount Fuji, Marina Bay (Singapore).
+   Checklist (the headline mission): **collect the 7 World Wonders** (Great Wall,
+   Colosseum, Taj Mahal, Chichen Itza, Christ the Redeemer, Petra, Machu Picchu —
+   each ticks off with its name and country spoken/shown) · eat 10 landmarks total ·
+   eat 1 whole island. As the chapter ends you have eaten most of Earth: finish with
+   the last mountains — then **THE MOON**: a special slow animation, the Moon tips,
+   wobbles, and spirals in. Chapter complete.
+6. **Fictional Space** — NOT the plain real solar system: a made-up, packed space
+   playground. Space debris, satellites, asteroids, meteors, ice planets, rock moons,
+   alien saucers, mini stars (eatable early), mystery planets floating in the belt —
+   and the real planets to learn: a sequence quest eats the planets **in order from
+   the Sun** (Mercury → Neptune, spoken aloud). Checklist: planets in order · eat
+   20 asteroids · eat 1 Sun. Eating THE SUN ends the chapter…
+7. **The Humbling (Final)** — …and ZOOM OUT reveals you are still small: bigger
+   planets, giant moons, a giant UFO, a ringed mega space-station and laser-moon
+   (generic sci-fi, no film IP), BIGGER suns and giant stars. Education scales up
+   with you: find-the-answer quests with big numbers (48 × 5), count-the-stars
+   sequences, spell G-A-L-A-X-Y. Checklist: eat 2 giant stars · eat 1 giant UFO ·
+   spell GALAXY. Finale: the two giant stars you've been circling get pulled in
+   together — star + star collide into the hole — full-screen swirl cinematic:
+   **"YOU ARE THE BLACK HOLE"** — everything spirals in, credits, +5,000 coins,
+   Journey marked COMPLETE (re-runnable forever for coins and unfinished boards).
 
 ### The 10 Upgrades (Epic Mode ONLY — the 20 levels stay pure, no upgrades there)
 Bought with banked coins between runs, from the Journey screen. Permanent once bought.
