@@ -490,3 +490,6 @@ Kakashi's additional ideas (presented, pending owner's pick — do not build unp
   40%; save export → import round-trips; save survives reload.
 - Screenshots: main screen, chapters, upgrades (with hold pop-up), one scene per
   chapter — LANDSCAPE iPad size (1180×820) and iPhone landscape (844×390).
+
+## App icon (owner pick, 2026-10-29)
+Icon #1 "Galaxy Swirl" (purple/blue galaxy swirl around the black hole), chosen by the owner from 10 generated options. `icon-512.png` + `apple-touch-icon.png` sit at the repo root (full-bleed crops). Kakashi wires the two link tags into `index.html` at merge/publish time. All 10 options are kept in the workspace (`workspace/hungry-hole/icons/`) if the kids outvote it later.
