@@ -294,38 +294,76 @@ Until he picks, neither section is deleted; the build prompt is NOT re-issued.
    car · eat 3 houses on the street. Ladder: garden things/shoes/plants → BBQ/dog
    house → the backyard tree → the car → bikes/bins/people → trucks → houses.
    Then ZOOM OUT.
-3. **The City** — Checklist: eat 10 manhole covers · eat 3 buses · eat 1 office building.
-   Ladder: manhole covers/drains/pothole patches (the city's own little holes!),
-   lampposts, cones, hydrants → people/bins → cars/buses/trucks → houses →
+3. **The City — really THE REGION** (owner, exaggerated 2026-10-29: "not one city —
+   multiple cities connected by highways"). A Vancouver-inspired region, fictional
+   names, layout invented (exact geography NOT required here — that rule is only
+   for World Tour): **Downtown** (dense buildings, the manhole-cover ladder below) ·
+   a huge **park peninsula** (Stanley Park energy: giant park trees, bikes, a
+   seawall) · a **bridge over the water** to **North City** (nice homes, mid-rise
+   buildings) at the foot of the **mountains** · **Highway 1** — a long, fast road
+   full of cars/trucks/RVs you travel to reach **Cabin Creek** (a little town:
+   cabins, a river, campers) · and past it **Snowpeak Town**, a city in the snow
+   (snow-covered chalets and little snow huts, skiers, snowplows, snowy pines,
+   people camping in the snow). Highways are gameplay: traffic streams along them
+   and eating on a highway is a feast — but the cars move.
+   Checklist: eat 10 manhole covers · eat cars in 3 different cities · eat 1 office
+   building in Downtown AND 1 chalet in Snowpeak Town.
+   Downtown ladder: manhole covers/drains/pothole patches (the city's own little
+   holes!), lampposts, cones, hydrants → people/bins → cars/buses/trucks → houses →
    small buildings → office buildings. Then ZOOM OUT.
 4. **The Wilderness** — you start SMALL AGAIN, out in the wild. One big roaming chapter
-   with zones: forest (trees, deer, bears), beach (crabs, shells, beach umbrellas),
-   savannah (zebras, lions, acacia trees), rivers (fish — the water is scenery),
-   mountains (pines up the edges, boulders, goats, hawks overhead), the shore and
-   shallow ocean (coral reefs, turtles, sharks), and a dam on the river.
+   with zones: forest (trees, deer, bears, CAMPERS with tents and campfires), beach
+   (crabs, shells, beach umbrellas), savannah (zebras, lions, acacia trees), DESERT
+   past the beach (dunes, cacti, camels, an oasis), rivers (fish — the water is
+   scenery), mountains (pines up the edges, boulders, goats, hawks overhead), the
+   shore and shallow ocean (coral reefs, turtles, sharks), and a dam on the river.
+   Exact layout is invented — kids don't need real geography here either.
    Checklist: eat 40 trees · eat 10 whales out in the ocean · eat 1 dam.
 5. **World Tour** — now big enough for whole buildings, high-rises and construction
    sites, and the map is THE GLOBE: a wrap-around world (leaving the top brings you in
    at the bottom, east wraps to west — a circle, not a flat rectangle; a mini globe
-   tracker shows where you've been). Travel between regions: Europe, Africa, Asia,
-   Japan, Singapore, Indonesia, the Americas and more. **Landmarks are the stars of
-   this chapter** — famous places drawn big and labelled: Eiffel Tower (Paris),
-   Colosseum (Rome), Great Wall (China), Taj Mahal (India), Pyramids of Giza,
-   Statue of Liberty, Big Ben (London), Sydney Opera House, Christ the Redeemer,
-   Chichen Itza (Mexico), Mount Fuji, Marina Bay (Singapore).
+   tracker shows where you've been).
+   **ACCURACY RULE (owner, educational, non-negotiable here): this map must match the
+   real Earth.** Continents in their real shapes/positions, every landmark IN its
+   real country, every famous city in its real place. The kids are learning where
+   things ARE: the Pyramids are in Egypt by the Nile, the Mayan pyramids are in
+   Mexico, the Eiffel Tower is in Paris. If a placement is wrong, it's a bug.
+   **Landmarks are the stars** — drawn big and labelled (name + city + country,
+   spoken when eaten): Eiffel Tower (Paris, France), Colosseum (Rome, Italy),
+   Great Wall (China), Taj Mahal (India), Pyramids of Giza + the Nile River
+   (Egypt), Statue of Liberty (New York, USA), Big Ben (London, England),
+   Sydney Opera House (Australia), Christ the Redeemer (Rio, Brazil),
+   Chichen Itza (Mexico), Mount Fuji (Japan), Marina Bay (Singapore), Petra
+   (Jordan), Machu Picchu (Peru), St. Basil's (Moscow, Russia), Table Mountain
+   (Cape Town, South Africa).
+   **CITIES TO VISIT** (each a real-place cluster of buildings + local flavour):
+   Paris, Rome, London, Moscow, Cairo, Lagos (Nigeria), Cape Town, Singapore,
+   Tokyo, Hanoi (Vietnam), Mexico City, Havana (Cuba), Buenos Aires (Argentina),
+   Rio, New York, Sydney — and more if the map wants them.
+   Chapter special: the **PASSPORT board** — visiting (eating anything in) a country
+   stamps it in the chapter's passport page; ~20 countries to collect.
    Checklist (the headline mission): **collect the 7 World Wonders** (Great Wall,
    Colosseum, Taj Mahal, Chichen Itza, Christ the Redeemer, Petra, Machu Picchu —
-   each ticks off with its name and country spoken/shown) · eat 10 landmarks total ·
-   eat 1 whole island. As the chapter ends you have eaten most of Earth: finish with
-   the last mountains — then **THE MOON**: a special slow animation, the Moon tips,
-   wobbles, and spirals in. Chapter complete.
-6. **Fictional Space** — NOT the plain real solar system: a made-up, packed space
-   playground. Space debris, satellites, asteroids, meteors, ice planets, rock moons,
-   alien saucers, mini stars (eatable early), mystery planets floating in the belt —
-   and the real planets to learn: a sequence quest eats the planets **in order from
-   the Sun** (Mercury → Neptune, spoken aloud). Checklist: planets in order · eat
-   20 asteroids · eat 1 Sun. Eating THE SUN ends the chapter…
-7. **The Humbling (Final)** — …and ZOOM OUT reveals you are still small: bigger
+   each ticks off with its name and country spoken/shown) · stamp 10 passport
+   countries · eat 1 whole island. As the chapter ends you have eaten most of
+   Earth: finish with the last mountains — then **THE MOON**: a special slow
+   animation, the Moon tips, wobbles, and spirals in. Chapter complete.
+6. **Space — OUR solar system first, done properly, on a HUGE map** (owner,
+   2026-10-29). The map is enormous and packed — space is easy to repeat, so fill it:
+   satellites and space stations around Earth, debris fields, comets, meteors,
+   wandering UFOs, alien outposts, ice rocks — go everywhere, it's super fun.
+   **ACCURACY RULE (educational, same as World Tour): the solar system itself must
+   be correct** — the Sun, then the **8 planets in their real order** (Mercury,
+   Venus, Earth + its Moon, Mars, Jupiter, Saturn with its rings, Uranus, Neptune),
+   and the **asteroid belt in its real place, between Mars and Jupiter** (labelled).
+   Pluto sits far out as a bonus, labelled "dwarf planet". Sizes/distances are
+   play-scale (real scale is impossible), but ORDER and the belt's location are
+   facts, not decoration. The planets-in-order sequence quest (spoken aloud) is
+   this chapter's headline. Checklist: planets in order · eat 20 asteroids from
+   the belt · eat 1 Sun. Eating THE SUN ends the chapter…
+7. **The Humbling (Final)** — …and ZOOM OUT reveals you are still small. **From here
+   the accuracy rules END: outside our solar system, space is completely fictional**
+   (owner) — invent freely. Bigger
    planets, giant moons, a giant UFO, a ringed mega space-station and laser-moon
    (generic sci-fi, no film IP), BIGGER suns and giant stars. Education scales up
    with you: find-the-answer quests with big numbers (48 × 5), count-the-stars
