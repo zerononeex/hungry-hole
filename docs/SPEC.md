@@ -271,16 +271,16 @@ visibly rescales).
   screen; there is no "run" that can be lost. Coins are earned live (physical coins,
   points ÷ 10, quest bonuses) — no end-of-run banking step.
 
-## Structure Notes — THE ONE OPEN QUESTION
-The original design ALSO had 4 themed worlds × 5 short timed levels + 4 Sequence
-Hunt levels (sections above). The owner's restructure (landscape, chapters with
-per-chapter saves/wallets/upgrades, huge maps) describes the 7 chapters as the game.
-OPEN, asked 2026-10-29, awaiting the owner's pick:
-(A) The game IS the 7 chapters — Toy/Space/Treasure/City level content folds into
-    chapters and Tiny Quest pools (Space = Ch 6–7, Treasure = a sunken-cove zone
-    in Ch 4, Toy = Ch 1, City = Ch 3), one structure, no separate timed levels; OR
-(B) Both structures ship — chapters AND the 20 timed levels + Hunts as a second mode.
-Until he picks, neither section is deleted; the build prompt is NOT re-issued.
+## Structure Notes — SETTLED (2026-10-29)
+(A) WON: the game IS the 7 chapters. Toy/Space/Treasure/City level content folds
+into chapters and Tiny Quest pools (Space = Ch 6–7, Treasure = a sunken-cove zone
+in Ch 4 with the G-O-L-D sequence, Toy = Ch 1, City = Ch 3 Metro Vancouver).
+The 20 timed levels remain in this spec's history sections only — do not build them.
+BUILD = ONE single mega-prompt (owner, 2026-10-29: "I want one prompt… it could
+run for 24 hours, I don't care"). No phase split. The builder works through the
+whole spec in order inside one session/branch, committing in chunks, and the
+internal build order (engine → menus → chapters 1→7 → polish) is sequencing
+inside that one job, not separate prompts.
 - **Water ruling (owner, hedged — Kakashi's clean call, flagged to him):** water itself
   is NEVER eaten — not the river, not the ocean. The dam counts as an object; boats,
   whales and islands do the growing in the wet chapters. "Too much" was his instinct
@@ -294,23 +294,56 @@ Until he picks, neither section is deleted; the build prompt is NOT re-issued.
    car · eat 3 houses on the street. Ladder: garden things/shoes/plants → BBQ/dog
    house → the backyard tree → the car → bikes/bins/people → trucks → houses.
    Then ZOOM OUT.
-3. **The City — really THE REGION** (owner, exaggerated 2026-10-29: "not one city —
-   multiple cities connected by highways"). A Vancouver-inspired region, fictional
-   names, layout invented (exact geography NOT required here — that rule is only
-   for World Tour): **Downtown** (dense buildings, the manhole-cover ladder below) ·
-   a huge **park peninsula** (Stanley Park energy: giant park trees, bikes, a
-   seawall) · a **bridge over the water** to **North City** (nice homes, mid-rise
-   buildings) at the foot of the **mountains** · **Highway 1** — a long, fast road
-   full of cars/trucks/RVs you travel to reach **Cabin Creek** (a little town:
-   cabins, a river, campers) · and past it **Snowpeak Town**, a city in the snow
-   (snow-covered chalets and little snow huts, skiers, snowplows, snowy pines,
-   people camping in the snow). Highways are gameplay: traffic streams along them
-   and eating on a highway is a feast — but the cars move.
-   Checklist: eat 10 manhole covers · eat cars in 3 different cities · eat 1 office
-   building in Downtown AND 1 chalet in Snowpeak Town.
-   Downtown ladder: manhole covers/drains/pothole patches (the city's own little
-   holes!), lampposts, cones, hydrants → people/bins → cars/buses/trucks → houses →
-   small buildings → office buildings. Then ZOOM OUT.
+3. **METRO VANCOUVER** (owner, 2026-10-29: "if you're going to build Vancouver,
+   build it properly — I'll be sharing this with people who live here"). This chapter
+   is the REAL Lower Mainland with real names and ROUGHLY REAL relative positions
+   (locals will play it — Richmond must be south of Vancouver, the North Shore must
+   be across the inlet; perfect cartography not required, wrong-side-of-the-river
+   IS a bug). **The map stops at the border — nothing south of the US border exists
+   in this chapter** (White Rock sits right at the southern edge, with a funny
+   border fence + sign at the map's bottom edge: end of the world, eh).
+   The municipalities, placed properly relative to each other:
+   - **Vancouver** (centre-west): Downtown (manhole-cover ladder below, office
+     towers, SkyTrain trains running on elevated tracks — eatable when huge),
+     Stanley Park on its NW peninsula (giant trees, seawall, bikes, totem poles),
+     beaches on English Bay, neighbourhoods of houses everywhere else.
+   - **Richmond** (south of Vancouver, across the Fraser's north arm, on its own
+     flat island): farmland + suburbs, and on Sea Island **YVR AIRPORT** — luggage
+     carts → food trucks → parked airplanes, a whole airplane is a top-tier eat.
+   - **Burnaby** (east of Vancouver): Metrotown mall (a giant mall building),
+     Deer Lake, SFU up on Burnaby Mountain.
+   - **New Westminster** (SE of Burnaby, on the Fraser): the Quay, old buildings.
+   - **Tri-Cities** (NE): Port Moody (inlet shore), Coquitlam, Port Coquitlam —
+     houses, rivers, mountains at their backs.
+   - **Pitt Meadows** (east, across the Pitt River): farms, barns, the airport's
+     little sibling airfield.
+   - **Surrey** (south of the Fraser, big): endless houses, farms to the east.
+   - **Delta** (SW, between the river and the bay): farms, and **Tsawwassen** with
+     BC Ferries at the terminal — a whole ferry is a top-tier eat.
+   - **White Rock** (far south on the coast, at the border): the long pier, and
+     **THE White Rock itself** — the famous white boulder on the beach, labelled.
+   - **Langley** (east of Surrey): farms + **Fort Langley**, the little historic fort.
+   - **The North Shore** (across Burrard Inlet by the Lions Gate Bridge): West
+     Vancouver (fancy homes on the slope), North Vancouver, **Grouse Mountain**
+     (the Skyride gondola going up and down, the two famous grizzly bears in their
+     habitat, the peak chalet), **Capilano Suspension Bridge** (wobbling over the
+     canyon — crossable!), and **Deep Cove** at the east end of the inlet (kayaks,
+     the little village, Indian Arm reaching north as pure scenery water).
+   Travel = bridges and highways, all crossable and labelled: Lions Gate (to the
+   North Shore), Oak St / Arthur Laing (to Richmond/the airport), Ironworkers
+   Memorial (to the North Shore east side), Port Mann (to Surrey), Pattullo
+   (New West ↔ Surrey), Golden Ears (to Pitt Meadows/Maple Ridge edge), Highway 1
+   running the whole map east–west with streaming traffic, Highway 99 south.
+   Chapter ladder (region-wide): manhole covers/drains (the city's own little
+   holes!), lampposts, cones, hydrants → people/bins/bikes → cars/buses/SkyTrain
+   cars → trucks/houses → small buildings → office buildings, mall, airplanes,
+   ferries → (final, biggest) Grouse Mountain's peak lodge area.
+   Checklist: eat 10 manhole covers (Downtown) · eat 1 airplane at YVR · eat THE
+   White Rock in White Rock. Then ZOOM OUT.
+   (The earlier fictional Downtown → Snowpeak Town route is NOT deleted: Highway 1
+   east out of the map is the road to the Wilderness chapter's mountains/snow —
+   Snowpeak energy lives in Ch 4's mountain zone and Ch 2's highway east exit
+   signposts it.)
 4. **The Wilderness** — you start SMALL AGAIN, out in the wild. One big roaming chapter
    with zones: forest (trees, deer, bears, CAMPERS with tents and campfires), beach
    (crabs, shells, beach umbrellas), savannah (zebras, lions, acacia trees), DESERT
