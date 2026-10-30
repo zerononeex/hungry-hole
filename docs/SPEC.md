@@ -1,18 +1,27 @@
-# HUNGRY HOLE — Locked Spec v1 (2026-10-29)
+# HUNGRY HOLE — Locked Spec v2 (2026-10-29, owner restructure applied)
 
-Family-only, not for sale. Portrait browser game for the kids (ages 8 and 7) on iPad Safari,
-played from a GitHub Pages site added to the Home Screen. Clean-room game inspired by
-hole-eats-and-grows games (Hole.io / All in Hole style) — the idea only, no copied assets,
-names, art, or code.
+Family-only, not for sale. LANDSCAPE browser game for the kids (ages 8 and 7) on iPad
+Safari, and for the owner on his phone — played from a GitHub Pages site added to the
+Home Screen. Clean-room game built from scratch, inspired by hole-eats-and-grows games
+(Hole.io / All in Hole style) — the idea only, no copied assets, names, art, or code.
 
 Working title: **Hungry Hole**
 
-## Repos
-- PRIVATE dev (builders ALWAYS pick this): `zerononeex/hungry-hole` · `main`
-- PUBLIC play mirror (NEVER picked as a build session): `zerononeex/hungry-hole-play`
-  → https://zerononeex.github.io/hungry-hole-play/
-- Builder ships a finished `site/` folder in the dev repo and ends its hand-off with
-  "SITE READY TO MIRROR". Kakashi mirrors `site/` into the play repo and verifies live.
+## Repo — ONE public repo, no mirroring (owner decision 2026-10-29)
+- PUBLIC, build and play in the same place: `zerononeex/hungry-hole` · `main`
+  → live at https://zerononeex.github.io/hungry-hole/
+- The game is a single `index.html` at the REPO ROOT (GitHub Pages serves `main` / root),
+  so merging a verified branch to main IS publishing. Builders work on a branch;
+  Kakashi verifies the branch BEFORE merge (merge = live, instantly).
+- `hungry-hole-play` is RETIRED — do not use it for anything.
+
+## Orientation (owner decision 2026-10-29)
+- LANDSCAPE. Logical stage 1280×720 (16:9), scaled to fit the screen (`contain`),
+  centred, black bars where the device ratio differs (phone landscape gets side bars;
+  the owner explicitly does not care — enjoying the game beats filling the screen).
+  Bars are plain black. This game's letterbox acceptance does NOT change any other
+  game's no-letterbox rule.
+- Test at 1180×820 (iPad landscape) and 844×390 (iPhone landscape).
 
 ## Core loop (locked)
 - Top-down 2D. Drag anywhere — the hole follows the finger with smooth, slightly slidey
@@ -126,22 +135,39 @@ every level must be completable by tier progression (test it in code, don't eyeb
 
 Total stars possible: 60.
 
-## Hole skins (cosmetic reward, locked)
-Chosen on the level-map screen. Unlocked by total stars earned, never reset:
-Classic Black (start) · Galaxy Rim (10★) · Rainbow Rim (25★) · Gold Rim (40★).
+## Skins — REMOVED (owner decision 2026-10-29: "nah, don't do skins")
+No skins, no hole-skin picker, no star-unlocked cosmetics anywhere. The hole looks
+like the hole. (The cosmetic UPGRADES from the earlier Journey draft are also gone —
+all 10 upgrades below are functional.)
 
-## Screens / HUD
-- Home: title, big Play button (goes to world map), Free Play is per-world.
-- World map: 4 world cards with star totals; locked worlds show what's needed.
-- Level map (per world): 5 level buttons with stars + best score, Free Play button,
-  hole-skin picker.
-- In level (portrait HUD): timer bar across the top; main-goal pill with live progress
-  (icon + 2/3); two side-quest chips under it that tick ✓ live or ✗ when lost; score;
-  hole-size meter (current size level + progress to next); pause button.
-  Pause menu: Resume, Restart, Quit to map, Sound on/off. Auto-pause when the app
-  is backgrounded / tab hidden.
-- Win screen: stars earned (animated in), score + best, side-quest results list,
-  Next / Replay / Map. Fail screen: what the main goal still needed, Retry / Map.
+## Screens / HUD (owner layout, 2026-10-29)
+- **Main screen:** the game's hole sits in the middle, slowly swirling (you SEE your
+  hole). On top: one big **START** (resumes where you left off / starts Chapter 1).
+  Below it exactly three buttons: **CHAPTERS**, **UPGRADES**, **SETTINGS**.
+  Settings also gets a small gear in the **bottom-right corner** — the "dashboard"
+  corner (same corner in-game: bottom-right holds pause/settings cluster).
+- **Chapters screen:** 7 chapter cards — name, your real-world size reached, checklist
+  progress, Tiny Quest board count (e.g. 23/40), chapter coin wallet, locked/unlocked.
+  Tapping a card RESUMES that chapter exactly where you left it (see Per-chapter state).
+- **Upgrades screen:** a grid of all 10 upgrades for the SELECTED chapter (chapter tabs
+  across the top). Each card: a clean **vector (SVG) icon**, name, 10 level pips,
+  next-level cost. **TAP** a card to select it: a detail panel shows what it does,
+  current effect, next-level effect, and a BUY button. **PRESS-AND-HOLD** a card:
+  a description pop-up appears while you hold (owner's exact interaction). A
+  **BANKER** button opens coin transfers between chapters (40% fee, see Economy).
+- **Settings (the dashboard):** Sound on/off · Voice (speech) on/off · Learning
+  Full/Sometimes/Off · Grade 2/Grade 3 · **Export Save** (download file + show a save
+  code) · **Import Save** (file or paste code, with confirm) · **Learning Report**
+  (quests completed by subject: math / spelling / science / geography counts) ·
+  Reset Chapter · Reset Everything (two-tap confirms).
+- **In game (landscape HUD):** top-left = chapter checklist pill + active Tiny Quest
+  chips (tick live); top-centre = points; top-right = chapter coins + size meter;
+  left edge = the **"How big am I?" scale readout** (real-world size, e.g. 40 cm →
+  3 m → 1 km — see Education); bottom-right = pause/settings cluster.
+  Pause menu: Resume, Restart Chapter Run (back to chapter-start size/position;
+  coins, upgrades and quest boards are KEPT), Save & Main Menu, Sound toggle.
+  Auto-pause when the tab is hidden. Journey chapters have no timer; see the levels
+  question in Structure Notes for timed play.
 
 ## Art and sound (v1, locked)
 - Objects are large, clear emoji sprites with a soft drop shadow on the map — instantly
@@ -156,18 +182,22 @@ Classic Black (start) · Galaxy Rim (10★) · Rainbow Rim (25★) · Gold Rim (
   emojis are the *game objects only*.
 
 ## Tech rules (locked)
-- `site/` in the dev repo, single self-contained `index.html` (inline CSS+JS, no build
-  step, no external requests). Works offline once loaded.
-- True full-playfield width on iPad portrait — no letterbox pillar bars (learned the
-  hard way on Weird Fishing). Test at 820×1180 (iPad) and 390×844 (iPhone).
+- Single self-contained `index.html` **at the repo root** (inline CSS+JS, no build
+  step, no external requests). Works offline once loaded. Pages serves `main` / root.
+- Landscape stage 1280×720 scaled with `contain`; black bars are expected and fine
+  (owner). Test at 1180×820 (iPad landscape) and 844×390 (iPhone landscape).
 - Save: localStorage key **`hungry-hole-data-v1`** — never rename or change its shape
-  without a migration. This origin (zerononeex.github.io) is shared with other family
-  apps: the game must never clear, enumerate, or touch any other key.
-  Save shape: unlocked worlds/levels, stars + best score per level, total stars,
-  chosen skin, sound setting. Settings has an in-game Reset Progress (two-tap confirm)
-  — that is the ONLY reset path; never advise clearing Safari website data for this app.
-- Performance: object count per map modest (~120 active), canvas rendering, no per-frame
-  DOM churn. 60fps target on a school iPad.
+  without a migration; all future additions are ADDITIVE fields. This origin
+  (zerononeex.github.io) is shared with other family apps: the game must never clear,
+  enumerate, or touch any other key. In-game Export/Import (Settings) is the backup
+  path — never advise clearing Safari website data for this app.
+  Save shape v2: settings (sound, voice, learning mode, grade) · per-chapter state
+  (see Per-chapter state: position, size progress, checklist, tiny-quest board,
+  wallet, upgrade levels, unlocked) · learning report counters · stars/levels data
+  if the levels structure survives (see Structure Notes).
+- Performance: chapters are HUGE (below) — render only the camera's neighbourhood
+  (spatial partitioning / chunked object lists), cap ACTIVE simulated objects,
+  canvas rendering, no per-frame DOM churn. 60fps target on iPad.
 - Discipline: minimal code (Ponytail), and every build ends with a cleanup pass
   (dead code / duplicates removed, with search evidence) before reporting done.
 
@@ -220,35 +250,37 @@ missing-letter word), ~4 pattern/if-then, ~4 reach-size/score stretch quests.
 Difficulty of math/letter quests is a Settings choice: **Grade 2 or Grade 3** (one
 toggle, default Grade 2), because the players are in Grades 2 and 3.
 
-## ENDGAME — "THE BIG JOURNEY" (design locked 2026-10-29, build phase = AFTER v1)
-A fifth, unlockable mode — separate from the 20 levels. One epic, slow journey from a
-single Lego brick to becoming a black hole. It reuses the same engine; what changes per
-chapter is the object set, the size scale, and the camera zoom (each chapter transition
-plays a "ZOOMING OUT…" moment and the world visibly rescales).
+## "THE BIG JOURNEY" — the 7 chapters (design locked 2026-10-29)
+The game's backbone: one epic, slow journey from a single Lego brick to becoming a
+black hole. What changes per chapter is the object set, the size scale, and the
+camera zoom (each chapter transition plays a "ZOOMING OUT…" moment and the world
+visibly rescales).
 
-- **Unlock:** complete all 5 main goals in ANY ONE world (Toy Cleanup is the natural
-  first path — the Journey literally starts in that bedroom).
 - **Structure:** 7 chapters (owner revised 2026-10-29 — NOT 12; fewer, bigger chapters).
-  There is NO fail timer — this mode is a long, savable trek, not a race. Each chapter
-  has a **3-item checklist** (like side quests, but these ARE the chapter goal:
+  There is NO fail timer in chapters — this is a long, savable trek, not a race. Each
+  chapter has a **3-item checklist** (like side quests, but these ARE the chapter goal:
   specific must-eats). Eating anything grows you as usual; finishing all 3 checklist
-  items completes the chapter. Each chapter also has its own Tiny Quest board
-  (the 40-quest replay system) — the owner's replay point: finish the Bedroom chapter,
-  go back later, and tick off everything you didn't finish the first time.
-  Chapters 2–5 each START SMALL AGAIN relative to their new scale (the zoom-out makes
-  you the little guy in a bigger world) — that reset-and-regrow rhythm is the mode's
-  heartbeat. Chapter transitions play the "ZOOMING OUT…" moment.
-- **At every chapter end the player chooses:** STOP & SPEND (bank coins, go to the
-  Upgrades shop, journey checkpoint is saved) or KEEP GOING (next chapter, same run,
-  coins keep accumulating — bigger payout if you go further before stopping).
-- **Saving:** the journey autosaves at every chapter boundary (furthest chapter +
-  chapter-start size). Home screen gets a CONTINUE THE JOURNEY button next to a fresh
-  New Journey. A fresh run always starts at zero (Chapter 1, tiniest size) — upgrades
-  are the only thing that carry into a new run, exactly like Slingshot Plane.
-- **Coins:** when a run stops (player choice, at ANY chapter) coins are banked =
-  score ÷ 10, + 250 per chapter completed, + 5,000 for finishing the Journey,
-  × Coin Boost upgrade. Quitting mid-chapter still banks coins for progress made so
-  far ("whatever size you get to, you get coins" — owner's rule).
+  items completes the chapter and unlocks the next. Each chapter also has its own
+  Tiny Quest board (the 40-quest replay system) — the owner's replay point: finish
+  the Bedroom chapter, go back later, and tick off everything you didn't finish.
+  Chapters 2–5 each START SMALL AGAIN relative to their new scale (the zoom-out
+  makes you the little guy in a bigger world) — that reset-and-regrow rhythm is the
+  mode's heartbeat.
+- **Per-chapter state, wallets, per-chapter upgrades and the 40% Banker** are defined
+  in their own section below — chapters are resumable at any time from the Chapters
+  screen; there is no "run" that can be lost. Coins are earned live (physical coins,
+  points ÷ 10, quest bonuses) — no end-of-run banking step.
+
+## Structure Notes — THE ONE OPEN QUESTION
+The original design ALSO had 4 themed worlds × 5 short timed levels + 4 Sequence
+Hunt levels (sections above). The owner's restructure (landscape, chapters with
+per-chapter saves/wallets/upgrades, huge maps) describes the 7 chapters as the game.
+OPEN, asked 2026-10-29, awaiting the owner's pick:
+(A) The game IS the 7 chapters — Toy/Space/Treasure/City level content folds into
+    chapters and Tiny Quest pools (Space = Ch 6–7, Treasure = a sunken-cove zone
+    in Ch 4, Toy = Ch 1, City = Ch 3), one structure, no separate timed levels; OR
+(B) Both structures ship — chapters AND the 20 timed levels + Hunts as a second mode.
+Until he picks, neither section is deleted; the build prompt is NOT re-issued.
 - **Water ruling (owner, hedged — Kakashi's clean call, flagged to him):** water itself
   is NEVER eaten — not the river, not the ocean. The dam counts as an object; boats,
   whales and islands do the growing in the wet chapters. "Too much" was his instinct
@@ -303,33 +335,87 @@ plays a "ZOOMING OUT…" moment and the world visibly rescales).
    **"YOU ARE THE BLACK HOLE"** — everything spirals in, credits, +5,000 coins,
    Journey marked COMPLETE (re-runnable forever for coins and unfinished boards).
 
-### The 10 Upgrades (Epic Mode ONLY — the 20 levels stay pure, no upgrades there)
-Bought with banked coins between runs, from the Journey screen. Permanent once bought.
-Prices rise steeply so the top levels are true endgame.
-1. **Speed** (5 lvls) — move +5% per level. 100 / 250 / 500 / 1,000 / 2,000
-2. **Growth Boost** (5 lvls) — size gained per eat ×1.1 / ×1.2 / ×1.3 / ×1.5 / ×2.0
-   (owner's ladder — ×2.0 exists ONLY at max level). 150 / 400 / 800 / 1,600 / 3,200
-3. **Points Boost** (5 lvls) — points per eat ×1.1 / ×1.2 / ×1.3 / ×1.5 / ×2.0. Same prices as Growth.
-4. **Coin Boost** (5 lvls) — coins banked +10% per level. 100 / 300 / 600 / 1,200 / 2,400
-5. **Magnet Aura** (5 lvls) — small always-on magnet, radius +25% per level. 100 / 250 / 500 / 1,000 / 2,000
-6. **Quest Compass** (3 lvls) — edge arrows point to the nearest checklist item;
-   lvl 2 shows all 3 checklist types, lvl 3 also shows distance. 200 / 600 / 1,500
-7. **Head Start** (2 lvls) — start each chapter 1 size stage bigger per level (max 2).
-   1,000 / 3,000 — deliberately expensive, it skips real growing.
-8. **Rainbow Trail** (cosmetic, 1 lvl) — the hole leaves a fading rainbow swirl trail. 500
-9. **Golden Glow** (cosmetic, 1 lvl) — gold sparkle rim, coins sparkle when banked. 1,500
-10. **Crown Galaxy Rim** (cosmetic, 1 lvl, the flex) — crowned rim with a swirling galaxy
-    inside the hole. Only buyable after finishing the Journey once. 5,000
+## Per-chapter state, economy, and the Banker (owner, 2026-10-29 — Slingshot rules)
+- **Every chapter is its own little save.** Per chapter the game remembers: hole
+  position, size progress, checklist progress, Tiny Quest board ticks, coin wallet,
+  and upgrade levels. You can leave the Backyard mid-run, go back to the Bedroom and
+  do more side quests, and later RESUME the Backyard exactly where you were
+  (owner's exact scenario). Ordinary eaten objects respawn between visits so a
+  chapter can never be emptied; checklist/quest/landmark items persist until eaten.
+- **Coins come from three places:** (1) physical coins scattered everywhere in every
+  chapter — just eat them; (2) points convert to coins continuously (every 10 points
+  = 1 coin, paid live into the chapter wallet); (3) bonus coins for every checklist
+  item and Tiny Quest completed in that chapter.
+- **Chapter wallets are separate** (like Slingshot Plane worlds). **THE BANKER:**
+  from the Upgrades screen you can transfer coins from one chapter's wallet to
+  another — the Banker takes a **40% fee** (send 100, 60 arrive), shown before you
+  confirm, with the Banker character (top hat, coin bag) doing his little animation.
+- **Upgrades are PER CHAPTER** (the big balance ruling): maxing an upgrade helps only
+  that chapter; a new chapter starts all upgrades at level 0 for that chapter. This
+  is deliberate — every chapter gets its own from-zero climb.
 
-Save additions for the Endgame (ADDITIVE fields on `hungry-hole-data-v1` when the
-Endgame build lands — never reshape existing fields): coins, upgrade levels owned,
-journey checkpoint (chapter + flag), journey completions count, cosmetics owned.
+### The 10 Upgrades (per chapter, EVERY one goes to level 10)
+Each has a vector (SVG) icon, tap-to-select with detail + BUY panel, press-and-hold
+for the description pop-up. Effect steps are smooth across 10 levels; cost of level
+n = base × growth^(n−1) × chapter number multiplier, tuned so a thorough chapter
+playthrough can max roughly 2–3 upgrades. (Builder playtest-tunes exact numbers;
+the CAPS below are locked.)
+1. **Speed** — +3% move speed / lvl (max +30%)
+2. **Growth Boost** — growth multiplier climbing to **×2.0 at lvl 10** (owner's
+   1.1→2.0 ladder stretched over 10 steps; ×2.0 only at the top)
+3. **Points Boost** — points multiplier climbing to **×2.0 at lvl 10**
+4. **Coin Boost** — +6% coins earned / lvl (max +60%)
+5. **Magnet Aura** — always-on pull radius +12% / lvl
+6. **Vacuum Reach** — eat capture radius +3% / lvl (things fall in a touch earlier)
+7. **Lucky Coins** — +2% chance an eaten object also drops a bonus coin / lvl
+8. **Quest Payday** — +10% coins from checklist + Tiny Quest completions / lvl
+9. **Wide Eyes** — camera view +2.5% / lvl (you see more of these huge maps)
+10. **Head Start** — +2% of the first size stage pre-grown per lvl at chapter start
+
+## Huge chapter maps (owner, 2026-10-29 — chapters are PLACES, not arenas)
+- **Ch 1 The Bedroom is really THE HOUSE.** Start in the kids' bedroom. While tiny you
+  slip UNDER the door into the hallway: two more bedrooms, Mom & Dad's office,
+  Mom & Dad's bedroom ("not as exciting" — it's got the big furniture though), then
+  DOWN THE STAIRS to the open-concept living room + kitchen, and finally sneak out
+  the back door — stepping into the backyard is the chapter's end trigger.
+  Interior walls are real: rooms connect only through doors (under-door gap works
+  only while small; once big, you eat the door). Stairs are a one-way slide down.
+- **Ch 2 is a 4 × 4-block neighbourhood.** 16 blocks, each block = **2 rows of
+  10 houses (20 per block, 320 houses)**, every house with a backyard you can get
+  into, streets between all blocks, and a PARK one block away (playground, pond,
+  big trees). Content is placed by seeded generation from layout rules (not random
+  soup, not hand-placing 320 houses): every yard/street/park is full of stuff + coins.
+- **Ch 3 City, Ch 4 Wilderness, Ch 5 World Tour, Ch 6–7 Space** scale the same way:
+  districts / zones / a wrap-around globe / star fields — each chapter map is many
+  screens across, with the Quest Compass (baseline UI: a small edge arrow to the
+  nearest checklist item, always on) making big maps friendly.
+
+## Education layer (owner's direction + Kakashi's ideas, presented 2026-10-29)
+Core rule: education rides INSIDE the eating (Tiny Quests, Hunts, checklists) —
+the game never stops to quiz. Settings: Learning Full/Sometimes/Off + Grade 2/3.
+Already locked above: Sequence Hunts, findAnswer math, firstLetter, pattern quests.
+Kakashi's additional ideas (presented, pending owner's pick — do not build unpicked):
+- **"How big am I?" scale readout** (in HUD above): the hole's real-world size,
+  climbing cm → m → km → island → Moon → Earth sizes. ★ top pick
+- **Name flash on every eat**: the eaten object's name appears briefly (sight words).
+- **Coins with values** (1/5/10/25¢) + "eat exactly 50¢" money quests.
+- **Multiplication you can see**: soldiers in rows — "eat 4 rows of 5".
+- **Estimation quests**: "eat ABOUT 20 things" (17–23 ticks it).
+- **Food-chain sequences** (grass → grasshopper → frog → snake) and **habitat quests**
+  in the Wilderness zones; **moon phases in order** in Ch 7.
+- **Geography**: landmark eats flash country + one-line fact; compass quests
+  ("north of the park"); French word tiles in the Paris zone.
+- **Rhyme / opposite / syllable quests** (el-e-phant = 3 tiles in order).
+- **Learning Report** on the Settings dashboard (counts by subject) — included in
+  the Settings spec above.
 
 ## Verification the builder must run before saying done
-- Serve `site/` over http; zero console errors.
-- Data test: all 20 levels load; for every level — collect items spawn ≥2× need,
-  avoid items present 5–7 when an avoid quest exists, main goal is tier-reachable.
+- Serve the root `index.html` over http; zero console errors.
+- Data test: every chapter/level loads; collect items spawn ≥2× need, avoid items
+  present 5–7 when an avoid quest exists, checklist/main goal is tier-reachable.
 - Play test (automated drag or scripted): eat → grow → size up; collect quest ticks;
-  avoid quest fails on eating one but the level continues; combo quest ticks; timer
-  fail screen appears; win screen stars match quests done; save survives reload.
-- Screenshots: home, world map, one level per world, win screen — portrait iPad size.
+  avoid quest fails on eating one but play continues; combo quest ticks; per-chapter
+  resume restores position/size/wallet/upgrades; Banker transfer moves 60% and keeps
+  40%; save export → import round-trips; save survives reload.
+- Screenshots: main screen, chapters, upgrades (with hold pop-up), one scene per
+  chapter — LANDSCAPE iPad size (1180×820) and iPhone landscape (844×390).
