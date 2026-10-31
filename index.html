@@ -286,7 +286,7 @@ const MT = {
   // Metro Vancouver
   corn: [.4, 2.2], manhole: [.7, .02], drain: [.6, .05], cup: [.09, .12], newspaper: [.5, 1.1], log: [4, .6], cone: [.4, .7], light: [.6, 6], squirrel: [.4, .25], chicken: [.4, .4],
   luggage: [.5, .7], shell: [.08, .03], raccoon: [.8, .4], seal: [1.7, .5], kayak: [4.5, .4], boulder: [3, 2], sheep: [1.3, 1], pig: [1.5, .9], goat: [1.2, .9],
-  cow: [2.4, 1.5], horse: [2.4, 1.7], deer: [1.8, 1.4], bear: [1.8, 1], grizzly: [2.3, 1.3], taxi: [4.8, 1.5], foodtruck: [7, 3], tractor: [4, 2.8], skytrain: [68, 3.5],
+  cow: [2.4, 1.5], horse: [2.4, 1.7], deer: [1.8, 1.4], bear: [1.8, 1], grizzly: [2.3, 1.3], taxi: [4.8, 1.5], foodtruck: [7, 3], tractor: [4, 2.8], skytrain: [68, 3.5], skystation: [46, 9], pillar: [1.6, 7], zipline: [2, 2], snowtube: [1.6, .7], jump: [9, 2.4], rail: [6, 1], snowboarder: [1.7, 1.8],
   sailboat: [10, 13], speedboat: [8, 2], yacht: [25, 8], orca: [8, 2], tug: [20, 8], seaplane: [15, 4], smallplane: [11, 3], airplane: [40, 12], gondola: [6, 5],
   seabus: [34, 8], ferry: [160, 25], cargo: [300, 40], cruise: [300, 60], bigtree: [10, 45], totem: [1, 12],
   townhouse: [30, 10], lowrise: [30, 14], midrise: [35, 30], highrise: [30, 110], office: [40, 120], glass: [35, 150], hotel: [40, 80], shop: [15, 6], supermarket: [70, 9],
@@ -373,17 +373,17 @@ const CH = [null];
    pass its middle (spec v5.5). Walls are absolute; doors stand open; the house is an open-top dollhouse. ---------- */
 (() => {
   const OY = 5.5, TW = 0.12, Q = Math.PI / 2;
-  const W = 10, H = 38.3 + OY;
+  const W = 10.6, H = 38.3 + OY;
   const S = (x0, y0, x1, y1) => [x0, y0 + OY, x1, y1 + OY];
   // id, name, floor (0 lower + yards, 1 main + deck, -1 a stair on both), rect, floor colour, style, category (placement rules)
   const ROOMS = [
-    ['alley', 'The alley', 0, S(0, -5.5, 10, 0), '#8a8a86', 'asphalt', 'alley', 1],
-    ['back', 'Backyard', 0, S(0, 0, 10, 9), '#6aa84f', 'grass', 'yard', 1],
+    ['alley', 'The alley', 0, S(0, -5.5, W, 0), '#8a8a86', 'asphalt', 'alley', 1],
+    ['back', 'Backyard', 0, S(0, 0, W, 9), '#6aa84f', 'grass', 'yard', 1],
     ['sideW', 'Side path', 0, S(0, 9, 1.3, 28.4), '#b9b2a4', 'paving', 'path', 1],
-    ['sideE', 'Side path', 0, S(9.7, 9, 10, 28.4), '#b9b2a4', 'paving', 'path', 1],
-    ['sideE2', 'Side path', 0, S(8.7, 12, 9.7, 28.4), '#b9b2a4', 'paving', 'path', 1],
-    ['front', 'Front yard', 0, S(0, 28.4, 10, 36.5), '#6aa84f', 'grass', 'yard', 1],
-    ['walk', 'Sidewalk', 0, S(0, 36.5, 10, 38.3), '#cfc9bd', 'paving', 'street', 1],
+    ['sideE', 'Side path', 0, S(9.6, 9, W, 28.4), '#b9b2a4', 'paving', 'path', 1],
+    ['sideE2', 'Side path', 0, S(8.7, 12, 9.6, 28.4), '#b9b2a4', 'paving', 'path', 1],
+    ['front', 'Front yard', 0, S(0, 28.4, W, 36.5), '#6aa84f', 'grass', 'yard', 1],
+    ['walk', 'Sidewalk', 0, S(0, 36.5, W, 38.3), '#cfc9bd', 'paving', 'street', 1],
     ['garage', 'Garage', 0, S(1.3, 9, 8.7, 15.8), '#a7a7a3', 'concrete', 'garage'],
     ['hallL', 'Downstairs hall', 0, S(4.3, 15.8, 5.3, 24.8), '#b88a5a', 'wood', 'hall'],
     ['bed4', 'Bedroom 4', 0, S(1.3, 15.8, 4.3, 19.6), '#9fb7e3', 'carpet', 'bed'],
@@ -395,7 +395,7 @@ const CH = [null];
     ['bathB', 'Second downstairs bath', 0, S(7.1, 19.4, 8.7, 21.8), '#cfe8f0', 'tile', 'bath'],
     ['livL', 'Rec room', 0, S(5.3, 21.8, 8.7, 28.4), '#c9a77c', 'carpet', 'living'],
     ['stair', 'Stairs', -1, S(1.3, 23.6, 4.3, 24.8), '#a77a4e', 'stair', 'hall'],
-    ['dstair', 'Deck stairs', -1, S(8.7, 7.4, 9.7, 12), '#a0784e', 'stair', 'deck', 1],
+    ['dstair', 'Deck stairs', -1, S(8.7, 7.4, 9.6, 12), '#a0784e', 'stair', 'deck', 1],
     ['deck', 'Deck', 1, S(1.3, 8.2, 8.7, 12.6), '#b98a5a', 'deck', 'deck', 1],
     ['master', 'Master bedroom', 1, S(1.3, 12.6, 5.6, 16.2), '#b9a3d6', 'carpet', 'bed'],
     ['eat', 'Eating area', 1, S(5.6, 12.6, 8.7, 15.4), '#c49a6c', 'wood', 'kitchen'],
@@ -497,29 +497,29 @@ const CH = [null];
   /* furniture: [type, room, fx, fy, opts]; fx/fy are fractions of the room (kept inside it) */
   const FURN = [
     // main floor
-    ['sofa', 'living', .55, .82, { yaw: 0 }], ['armchair', 'living', .2, .5, { yaw: Q }], ['ctable', 'living', .55, .5, { yaw: Q }], ['tvon', 'living', .55, .08, { yaw: Math.PI }],
-    ['fireplace', 'living', .97, .5, { yaw: -Q, solid: 1 }], ['floorlamp', 'living', .06, .9], ['plant', 'living', .94, .92], ['bookshelf', 'living', .06, .1],
-    ['table', 'dining', .5, .5, { yaw: Q }], ['chair', 'dining', .3, .35], ['chair', 'dining', .7, .35], ['chair', 'dining', .3, .65], ['chair', 'dining', .7, .65], ['dresser', 'dining', .95, .5, { yaw: -Q }],
-    ['fridge', 'kitchen', .88, .05], ['oven', 'kitchen', .92, .4, { yaw: -Q }], ['counter', 'kitchen', .92, .62, { yaw: -Q }], ['counter', 'kitchen', .92, .82, { yaw: -Q }], ['island', 'kitchen', .38, .55, { yaw: 0 }],
+    ['sofa', 'living', .55, .82, { yaw: Q }], ['armchair', 'living', .2, .5, { yaw: Q }], ['ctable', 'living', .55, .5, { yaw: Q }], ['tvon', 'living', .55, .08, { yaw: Q }],
+    ['fireplace', 'living', .97, .5, { yaw: 0, solid: 1 }], ['floorlamp', 'living', .06, .9], ['plant', 'living', .94, .92], ['bookshelf', 'living', .04, .1, { yaw: 0 }],
+    ['table', 'dining', .5, .5, { yaw: 0 }], ['chair', 'dining', .3, .35], ['chair', 'dining', .7, .35], ['chair', 'dining', .3, .65], ['chair', 'dining', .7, .65], ['dresser', 'dining', .95, .5, { yaw: 0 }],
+    ['fridge', 'kitchen', .88, .05], ['oven', 'kitchen', .92, .4, { yaw: 0 }], ['counter', 'kitchen', .92, .62, { yaw: 0 }], ['counter', 'kitchen', .92, .85, { yaw: 0 }], ['island', 'kitchen', .38, .55, { yaw: 0 }],
     ['microwave', 'kitchen', .92, .25], ['toaster', 'kitchen', .92, .72],
     ['table', 'eat', .5, .55, { yaw: Q, s: .7 }], ['chair', 'eat', .3, .55], ['chair', 'eat', .7, .55], ['plant', 'eat', .08, .1],
-    ['kbed', 'master', .45, .35, { yaw: Math.PI }], ['dresser', 'master', .9, .1, { yaw: Math.PI }], ['dresser', 'master', .08, .88], ['armchair', 'master', .88, .8], ['hairdryer', 'master', .9, .35],
-    ['sink', 'ensuite', .5, .15, { yaw: Math.PI }], ['toilet', 'ensuite', .25, .8], ['shower', 'ensuite', .75, .78],
+    ['kbed', 'master', .45, .35, { yaw: Math.PI }], ['dresser', 'master', .9, .1, { yaw: Q }], ['dresser', 'master', .06, .85, { yaw: 0 }], ['armchair', 'master', .88, .8], ['hairdryer', 'master', .9, .35],
+    ['sink', 'ensuite', .5, .15, { yaw: Q }], ['toilet', 'ensuite', .25, .8], ['shower', 'ensuite', .75, .78],
     ['coatrack', 'wic', .3, .2], ['shoerack', 'wic', .5, .85], ['coatrack', 'wic', .75, .2],
     ['tub', 'bath', .5, .15, { yaw: Q }], ['toilet', 'bath', .15, .75, { yaw: Q }], ['sink', 'bath', .8, .8],
-    ['crib', 'nursery', .3, .25, { yaw: Q }], ['mobile', 'nursery', .3, .25], ['changer', 'nursery', .9, .2, { yaw: -Q }], ['toybox', 'nursery', .15, .85],
-    ['bed', 'bed3', .5, .3, { yaw: Math.PI }], ['desk', 'bed3', .15, .85, { yaw: Q }], ['chair', 'bed3', .3, .85], ['dresser', 'bed3', .9, .85, { yaw: -Q }], ['bookshelf', 'bed3', .9, .1],
+    ['crib', 'nursery', .3, .25, { yaw: Q }], ['mobile', 'nursery', .3, .25], ['changer', 'nursery', .9, .2, { yaw: 0 }], ['toybox', 'nursery', .15, .85],
+    ['bed', 'bed3', .5, .3, { yaw: Math.PI }], ['desk', 'bed3', .1, .85, { yaw: 0 }], ['chair', 'bed3', .3, .85], ['dresser', 'bed3', .92, .85, { yaw: 0 }], ['bookshelf', 'bed3', .85, .05, { yaw: Q }],
     ['plant', 'hallU', .5, .05], ['gclock', 'hallU', .5, .5], ['deckchair', 'deck', .2, .4], ['deckchair', 'deck', .35, .4], ['ptable', 'deck', .28, .7], ['bbq', 'deck', .85, .25], ['planter', 'deck', .05, .1], ['planter', 'deck', .6, .1],
     // lower floor
-    ['car', 'garage', .3, .55, { yaw: Math.PI, keep: 1, id: 'car', label: 'the family car' }], ['car2', 'garage', .72, .55, { yaw: Math.PI }], ['toolbench', 'garage', .5, .95], ['shelfunit', 'garage', .04, .5, { yaw: Q }], ['recycle', 'garage', .95, .9],
-    ['bed', 'bed4', .4, .3, { yaw: Math.PI }], ['dresser', 'bed4', .88, .1, { yaw: Math.PI }], ['desk', 'bed4', .15, .88, { yaw: Q }], ['chair', 'bed4', .3, .88],
-    ['wbench', 'gym', .7, .35], ['rack', 'gym', .9, .85], ['yogamat', 'gym', .45, .82, { yaw: Q }], ['ball', 'gym', .78, .65, { s: 2.8 }],
+    ['car', 'garage', .3, .55, { yaw: Math.PI, keep: 1, id: 'car', label: 'the family car' }], ['car2', 'garage', .72, .55, { yaw: Math.PI }], ['toolbench', 'garage', .5, .95, { yaw: Q }], ['shelfunit', 'garage', .04, .5, { yaw: 0 }], ['recycle', 'garage', .95, .9],
+    ['bed', 'bed4', .4, .3, { yaw: Math.PI }], ['dresser', 'bed4', .85, .05, { yaw: Q }], ['desk', 'bed4', .08, .88, { yaw: 0 }], ['chair', 'bed4', .3, .88],
+    ['wbench', 'gym', .7, .35], ['rack', 'gym', .94, .85, { yaw: 0 }], ['yogamat', 'gym', .45, .82, { yaw: Q }], ['ball', 'gym', .78, .65, { s: 2.8 }],
     ['tub', 'bathA', .5, .15, { yaw: Q }], ['toilet', 'bathA', .1, .75, { yaw: Q }], ['sink', 'bathA', .82, .8],
     ['washer', 'util', .2, .2], ['dryer', 'util', .45, .2], ['ibroad', 'util', .75, .7, { yaw: Q }], ['basket', 'util', .15, .8],
-    ['coatrack', 'foyer', .9, .1], ['shoerack', 'foyer', .5, .92, { yaw: 0 }], ['mirror', 'foyer', .05, .55, { yaw: Q }], ['plant', 'foyer', .9, .9],
-    ['counter', 'kitL', .5, .1, { yaw: Math.PI }], ['fridge', 'kitL', .9, .15, { s: .9 }], ['microwave', 'kitL', .3, .1],
+    ['coatrack', 'foyer', .9, .1], ['shoerack', 'foyer', .5, .95, { yaw: Q }], ['mirror', 'foyer', .03, .55, { yaw: 0 }], ['plant', 'foyer', .9, .9],
+    ['counter', 'kitL', .5, .08, { yaw: Q }], ['fridge', 'kitL', .9, .15, { s: .9 }], ['microwave', 'kitL', .3, .1],
     ['toilet', 'bathB', .3, .2], ['sink', 'bathB', .75, .2], ['shower', 'bathB', .5, .8],
-    ['sofa', 'livL', .5, .88], ['tvon', 'livL', .5, .32, { yaw: Math.PI }], ['beanbag', 'livL', .2, .62, { id: 'beanbag' }], ['beanbag', 'livL', .8, .62], ['bookshelf', 'livL', .95, .5, { yaw: -Q }],
+    ['sofa', 'livL', .5, .9, { yaw: Q }], ['tvon', 'livL', .5, .3, { yaw: Q }], ['beanbag', 'livL', .2, .62, { id: 'beanbag' }], ['beanbag', 'livL', .8, .62], ['bookshelf', 'livL', .96, .5, { yaw: 0 }],
     // the lot
     ['bike', 'alley', .12, .6, { yaw: Q, id: 'bike' }], ['bin', 'alley', .5, .2], ['bin', 'alley', .6, .2], ['recycle', 'alley', .7, .2],
     ['gardenbed', 'back', .9, .6, { yaw: 0 }], ['gardenbed', 'back', .9, .85, { yaw: 0 }], ['shrub', 'back', .04, .3], ['shrub', 'back', .04, .7], ['birdbath', 'back', .55, .3, { id: 'birdbath' }],
@@ -615,7 +615,7 @@ const CH = [null];
   const okIn = (k, room) => { const a = ALLOW[k]; return !a || a === '*' || a.split(',').includes(CAT[room]); };
   CH.push({
     n: 1, key: 'home', mus: 'ch1.mp3', name: 'The Home', short: 'Home', c1: '#4f7fd6', c2: '#2a3f8f', bgc: '#6aa84f', rim: '#9b6bff', metric: 1, layered: 1,
-    W, H, start: [6.2, 26.8 + OY], startFl: 1, cost: 1, need: 34, needP: 1.15, pv: 1.5, view: 13, xpk: 1, fill: .5,
+    W, H, start: [5.3, 26.1 + OY], startFl: 1, edge: .15, cost: 1, need: 260, needP: 1.15, pv: 1.5, view: 13, xpk: 2, fill: .2, spd: 1.8,
     walls3d: { floors: [WALLS[0], WALLS[1]], h: 2.4, cut: 1 },
     sizes: [0, 0.045, 0.08, 0.14, 0.24, 0.42, 0.7, 1.15, 1.9, 3, 4.6],
     types: T0,
@@ -632,26 +632,40 @@ const CH = [null];
     /* the arrow to a target on the other floor points at the right stairs instead */
     routeTo(o) {
       const here = roomAt(G.x, G.y), outNow = here && here[7], P = (x, y) => ({ x, y: y + OY });
-      if (G.fl === 1) return o.out ? P(9.2, 11.6) : P(4.0, 24.2);
-      return outNow ? P(9.2, 7) : P(1.9, 25.4);
+      if (G.fl === 1) return o.out ? P(9.15, 11.6) : P(4.0, 24.2);
+      return outNow ? P(9.15, 7) : P(1.9, 25.4);
     },
     /* reachability (tests): can the hole's centre stand here on this floor? */
-    walkable(x, y, fl) { return !!roomAt(x, y, fl); },
+    walkable(x, y, fl) {
+      const r = roomAt(x, y, fl); if (!r) return false;
+      if (r[2] !== -1) return true;                    // on a stair run each floor owns its own half
+      const st = STAIRS.find(s => s.r === r[3]), [x0, y0, x1, y1] = r[3], t = st.ax === 'x' ? (x - x0) / (x1 - x0) : (y - y0) / (y1 - y0);
+      return fl === 0 ? t < 0.55 : t > 0.45;
+    },
     /* the objective ladder (spec v5.0): smallest to largest, each one opening a bigger zone */
     beats: ['racecar', 'kettle', 'roomba', 'rocker', 'trainset', 'treadmill', 'appletree', 'car'],
-    rings: (() => { const a = S(4.3, 15.4, 8.7, 28.4).concat(1), b = S(1.3, 8.2, 8.7, 28.4).concat(1), c = S(1.3, 9, 8.7, 28.4), d = S(0, -5.5, 10, 38.3); return [a, a, b, b, c, c, d, d]; })(),
+    rings: (() => { const a = S(4.3, 15.4, 8.7, 28.4).concat(1), b = S(1.3, 8.2, 8.7, 28.4).concat(1), c = S(1.3, 9, 8.7, 28.4), d = S(0, -5.5, W, 38.3); return [a, a, b, b, c, c, d, d]; })(),
     build(add) {
       const put = (k, room, fx, fy, o) => {
         const r = RM[room], [x0, y0, x1, y1] = r[3], m = (MT[k] || M[k] || [.5])[0] * ((o && o.s) || 1), hw = Math.min(m / 2 + .05, (x1 - x0) / 2 - .01), hh = Math.min(m / 2 + .05, (y1 - y0) / 2 - .01);
         const x = clamp(x0 + fx * (x1 - x0), x0 + hw, x1 - hw), y = clamp(y0 + fy * (y1 - y0), y0 + hh, y1 - hh);
-        return add(k, x, y, Object.assign({ fl: r[2] === -1 ? 0 : r[2], room, out: r[7] ? 1 : 0 }, o || {}));
+        const ob = add(k, x, y, Object.assign({ fl: r[2] === -1 ? 0 : r[2], room, out: r[7] ? 1 : 0 }, o || {}));
+        // snug against walls by the model's real footprint (a long counter along a wall leaves no dead-end gap behind it)
+        const md = ob && ob.fw && modelOf(ob);
+        if (md) {
+          const q = Math.abs(Math.sin(ob.yaw || 0)) > .7, ex = (q ? md.d : md.w) * ob.fw / 2 + .03, ey = (q ? md.w : md.d) * ob.fw / 2 + .03;
+          if (ex < (x1 - x0) / 2) ob.x = clamp(x0 + fx * (x1 - x0), x0 + ex, x1 - ex);
+          if (ey < (y1 - y0) / 2) ob.y = clamp(y0 + fy * (y1 - y0), y0 + ey, y1 - ey);
+        }
+        return ob;
       };
       for (const [k, room, fx, fy, o] of FURN) put(k, room, fx, fy, o);
       // open doors beside their doorways (just objects you can eat when big enough)
-      for (const [x, y, w, o, fl, door] of OPEN) if (door) add(x === 3 && y === 28.4 + OY ? 'frontdoor' : 'door', o === 'h' ? x - w / 2 - .05 : x + .45, o === 'h' ? y + .45 : y - w / 2 - .05, { fl, yaw: o === 'h' ? 0 : Q, door: 1 });
+      // (swung flat against the wall beside the opening, so a doorway is never blocked)
+      for (const [x, y, w, o, fl, door] of OPEN) if (door) add(x === 3 && y === 28.4 + OY ? 'frontdoor' : 'door', o === 'h' ? x + w / 2 + .45 : x + .09, o === 'h' ? y + .09 : y + w / 2 + .45, { fl, yaw: o === 'h' ? Q : 0, door: 1, nosolid: 1 });
       // the ladder's landmarks
-      put('ftoycar', 'living', .5, .35, { keep: 1, id: 'racecar', label: 'the racing toy car', path: circle(6.5, 25.6 + OY, .55), spd: .35, loop: 1, face: 1, fl: 1 });
-      put('kettle', 'kitchen', .9, .4, { keep: 1, id: 'kettle', label: 'the steaming kettle', fl: 1, steam: 1 });
+      put('ftoycar', 'living', .5, .35, { keep: 1, id: 'racecar', label: 'the racing toy car', path: circle(6.5, 25.6 + OY, .55), spd: .12, loop: 1, face: 1, fl: 1 });
+      put('kettle', 'kitchen', .77, .4, { keep: 1, id: 'kettle', label: 'the steaming kettle', fl: 1, steam: 1, lift: .9 });   // on the stove's front burner
       put('roomba', 'hallU', .5, .3, { keep: 1, id: 'roomba', label: 'the robot vacuum', fl: 1, path: loopPath([[4.95, 17], [4.95, 24.4], [6.4, 24.2], [7.9, 23.4], [7.9, 21.8], [6.4, 21.6], [4.95, 21]]), spd: .12, loop: 1, face: 1 });
       put('rocker', 'nursery', .75, .75, { keep: 1, id: 'rocker', label: 'the rocking horse', fl: 1, rock: 1 });
       put('trainset', 'livL', .5, .62, { keep: 1, id: 'trainset', label: 'the toy train set', fl: 0, nosolid: 1 });
@@ -870,9 +884,23 @@ const CH = [null];
   }
   const WET = new Set(['seal', 'kayak', 'duck', 'sailboat', 'speedboat', 'yacht', 'tug', 'orca', 'cargo', 'ferry', 'cruise', 'seabus', 'seaplane']);
   const atX = (k, x, y, rng, out) => at(k, x, y, rng, out);
+  const SNOW = [[-123.205, 49.396, 1500], [-123.083, 49.378, 900], [-122.95, 49.37, 1400], [-122.95, 50.065, 3600], [-122.895, 50.09, 3600]];
+  // it is snowing at Whistler (a flurry over the screen while you're up there)
+  const flakes = Array.from({ length: 140 }, (_, i) => [Math.random(), Math.random(), .5 + Math.random()]);
+  function snowHud() {
+    const [lo, la] = inv(G.x, G.y); if (la < 50.0) return;
+    const w = STAGE_W, h = STAGE_H; g.save(); g.fillStyle = 'rgba(255,255,255,.85)';
+    for (const f of flakes) { const y = ((f[1] + G.t * .06 * f[2]) % 1) * h, x = ((f[0] + Math.sin(G.t * .7 + f[1] * 9) * .01) % 1) * w; g.beginPath(); g.arc(x, y, 1.2 + f[2] * 1.4, 0, 6.29); g.fill(); }
+    g.restore();
+  }
   CH.push({
     n: 2, key: 'van', mus: 'ch3.mp3', name: 'Metro Vancouver', short: 'Vancouver', c1: '#2d9cdb', c2: '#145a86', bgc: '#cfd8b8', rim: '#6ad1ff', metric: 1,
     W, H, start: P(-123.1185, 49.2835), cost: 1.8, need: 280, pv: 0.6, view: 13, agridSize: 900, bld: BLD, tries: t => t >= 5 ? 16 : 4,
+    fill: .3, fillKeep: new Set(['streettree', 'bigtree', ...BLD]),           // v5 density: filler cut 70%, trees and streets of buildings stay
+    // the objective ladder (story): Gastown → Stanley Park → Chinatown → the North Shore → Richmond → the whole region
+    beats: ['steamclock', 'mermaid', 'chinagate', 'harbourctr', 'grouse', 'scienceworld', 'cannery', 'aquarium', 'bcplace', 'canadaplace'],
+    rings: (() => { const r = (a, b, c, d) => [...P(a, b), ...P(c, d)], dt = r(-123.165, 49.318, -123.085, 49.268), ns = r(-123.19, 49.40, -123.0, 49.245), rm = r(-123.275, 49.40, -122.9, 49.10);
+      return [dt, dt, ns, ns, ns, ns, rm, rm, null, null]; })(),
     sizes: [0, 1.5, 2.5, 4.5, 8, 14, 25, 45, 80, 140, 250, 450],
     tagN: { house: 'house', tree: 'tree' }, regionAt, P, inv, inPlay, nearRoad, isWater,
     regionPos: rg => { const r = REGIONS.find(r => r[0] === rg); return r && P(r[1], r[2]); },
@@ -891,7 +919,8 @@ const CH = [null];
       tractor: ['tractor', 1], skytrain: ['SkyTrain', 1], sailboat: ['sailboat', 1, { mv: 'w' }], speedboat: ['speedboat', 1, { mv: 'w' }], yacht: ['motor yacht', 1, { mv: 'w' }],
       orca: ['orca', 1, { mv: 'w' }], tug: ['tugboat', 1, { mv: 'w' }], seaplane: ['float plane', 1], smallplane: ['small plane', 1], airplane: ['airplane', 1], gondola: ['gondola', 1],
       seabus: ['SeaBus', 1, { pl: 'SeaBuses' }], ferry: ['BC Ferry', 1, { pl: 'BC Ferries' }], cargo: ['cargo ship', 1, { mv: 'w' }], cruise: ['cruise ship', 1],
-      streettree: ['street tree', 1, { tags: 'tree', sway: 1 }], bigtree: ['giant cedar', 1, { tags: 'tree' }], totem: ['totem pole', 1],
+      streettree: ['street tree', 1, { tags: 'tree', sway: 1 }], skystation: ['SkyTrain station', 1], pillar: ['guideway pillar', 1],
+      zipline: ['zipline rider', 1], snowtube: ['snow tube', 1], jump: ['terrain park jump', 1], rail: ['terrain park rail', 1], snowboarder: ['snowboarder', 1, { mv: 'w' }], bigtree: ['giant cedar', 1, { tags: 'tree' }], totem: ['totem pole', 1],
       // the generic building library (spec clarification 8)
       house: ['house', 1, { tags: 'house' }], house2: ['house', 1, { tags: 'house' }], townhouse: ['row of townhouses', 1, { pl: 'rows of townhouses' }], lowrise: ['apartment building', 1],
       midrise: ['mid-rise apartments', 1, { pl: 'mid-rise apartments' }], highrise: ['condo tower', 1], office: ['office tower', 1], glass: ['glass tower', 1], hotel: ['hotel', 1],
@@ -908,14 +937,14 @@ const CH = [null];
       bridge: ['bridge', 1], peak: ['mountain', 1], borderpost: ['border crossing', 1], obstower: ['observatory', 1], hospital: ['hospital', 1],
     },
     zones: {
-      core: { d: 1.3, bd: 3.2, at, t: 'manhole:4,drain,cup:2,can,newspaper:2,cone,person:6,bike,bin,lamp,light,car:4,taxi:2,bus:.6,van,shop:3,midrise:3,highrise:4,office:4,glass:3,hotel:1' },
-      com: { d: 1, bd: 3, at, t: 'manhole:3,drain:2,cup:2,can:2,newspaper,cone,person:4,bike,bin,hydrant:.5,lamp,light:.5,car:5,taxi,bus:.4,van,foodtruck:.3,shop:5,lowrise:2,midrise:2,supermarket:.6,gas:.6,hotel:.4,office:.6' },
-      res: { d: .9, bd: 4, at, t: 'manhole:3,drain:2,cup,can,leaf:3,flower:2,squirrel:2,raccoon:.5,person:3,jogger,kid,dog:2,bike,bin:2,hydrant:.5,lamp:.6,streettree:3,car:4,van,house:12,house2:8,townhouse:3,lowrise:2,shop,church:.3' },
-      campus: { d: 1, bd: 3, at, t: 'cup:2,leaf:2,person:5,bike:3,lamp,bin,streettree:3,lowrise:2,midrise:2,campusbld:4' },
-      ind: { d: .8, bd: 3, at, t: 'drain:2,can,cone:3,person,bin,truck:3,van:2,car:2,bigtruck:2,warehouse:5,factory:3,tank:2,containers:2' },
-      park: { d: .9, at, t: 'hat:.05,leaf:4,flower:3,mushroom,squirrel:3,duck,person:2,jogger:2,dog,bike,raccoon,bench:2,bigtree:3,streettree:2' },
+      core: { d: 1.3, bd: 3.2, at, t: 'streettree:5,manhole:4,drain,cup:2,can,newspaper:2,cone,person:6,bike,bin,lamp,light,car:4,taxi:2,bus:.6,van,shop:3,midrise:3,highrise:4,office:4,glass:3,hotel:1' },
+      com: { d: 1, bd: 3, at, t: 'streettree:6,manhole:3,drain:2,cup:2,can:2,newspaper,cone,person:4,bike,bin,hydrant:.5,lamp,light:.5,car:5,taxi,bus:.4,van,foodtruck:.3,shop:5,lowrise:2,midrise:2,supermarket:.6,gas:.6,hotel:.4,office:.6' },
+      res: { d: .9, bd: 4, at, t: 'manhole:3,drain:2,cup,can,leaf:3,flower:2,squirrel:2,raccoon:.5,person:3,jogger,kid,dog:2,bike,bin:2,hydrant:.5,lamp:.6,streettree:14,car:4,van,house:12,house2:8,townhouse:3,lowrise:2,shop,church:.3' },
+      campus: { d: 1, bd: 3, at, t: 'cup:2,leaf:2,person:5,bike:3,lamp,bin,streettree:9,lowrise:2,midrise:2,campusbld:4' },
+      ind: { d: .8, bd: 3, at, t: 'streettree:2,drain:2,can,cone:3,person,bin,truck:3,van:2,car:2,bigtruck:2,warehouse:5,factory:3,tank:2,containers:2' },
+      park: { d: .9, at, t: 'hat:.05,leaf:4,flower:3,mushroom,squirrel:3,duck,person:2,jogger:2,dog,bike,raccoon,bench:2,bigtree:9,streettree:4' },
       farm: { d: .7, bd: 1.5, at, t: 'corn:5,leaf,flower,chicken:3,sheep:2,pig:2,goat,cow:3,horse:2,tractor:2,farmhouse:2,barn:3,greenhouse:2,silo' },
-      forest: { d: .7, at, t: 'mushroom:3,leaf:3,squirrel:2,raccoon,deer:2,bear:.4,bigtree:8,cabin:.3,boulder' },
+      forest: { d: .7, at, t: 'mushroom:3,leaf:3,squirrel:2,raccoon,deer:2,bear:.4,bigtree:20,cabin:.3,boulder' },
       alpine: { d: .6, at, t: 'leaf,squirrel,deer,bear:.3,grizzly:.15,bigtree:4,boulder:3,cabin:.2' },
       beach: { d: .8, at, t: 'shell:4,cup,leaf,log:3,umbrella:3,person:3,jogger,dog,kayak,seal:.5' },
       air: { d: .8, at, t: 'cup,cone:3,luggage:4,person:3,foodtruck:2,bus,van,smallplane:1.5' },
@@ -926,7 +955,7 @@ const CH = [null];
       xfarm: { d: .4, deco: 1, coin: 0, at: atX, t: 'corn:4,cow:2,farmhouse,barn:2,greenhouse' }, xpark: { d: .4, deco: 1, coin: 0, at: atX, t: 'bigtree:3,streettree:2' },
       xind: { d: .4, deco: 1, coin: 0, at: atX, t: 'warehouse:3,factory:2,truck' },
     },
-    zoneAt, outside,
+    zoneAt, outside, hud: snowHud,
     collide() {
       if (inPlay(G.x, G.y)) { G.okX = G.x; G.okY = G.y; return; }
       if (G.okX === undefined) return;
@@ -976,7 +1005,7 @@ const CH = [null];
       for (const [lo, la, h, r, nm] of [[-123.0815, 49.3805, 1231, 2600, 'Grouse Mountain'], [-123.21, 49.405, 1217, 2600, 'Cypress'], [-122.95, 49.37, 1449, 2800, 'Mount Seymour'],
         [-123.14, 49.457, 1646, 2400, 'The Lions'], [-123.137, 49.684, 702, 1500, 'the Stawamus Chief'], [-123.005, 49.85, 2678, 5200, 'Mount Garibaldi'],
         [-122.95, 50.06, 2182, 4200, 'Whistler Mountain'], [-122.89, 50.09, 2440, 4200, 'Blackcomb'], [-122.6, 49.40, 1700, 6000, 'Golden Ears']])
-        A('peak', lo, la, { deco: 1, fwx: r * 2, hm: h, label: nm });
+        A('peak', lo, la, { deco: 1, fwx: r * 2, hm: h, label: nm, backdrop: 1 });
       for (const [lo0, la0, lo1, la1, nm] of [[-123.1385, 49.3045, -123.1395, 49.3215, 'Lions Gate Bridge'], [-123.0262, 49.2935, -123.0255, 49.3005, 'Ironworkers Memorial Bridge'],
         [-122.8125, 49.214, -122.814, 49.2245, 'Port Mann Bridge'], [-122.6655, 49.1935, -122.6665, 49.2075, 'Golden Ears Bridge'], [-122.8935, 49.2035, -122.8885, 49.2105, 'Pattullo Bridge'],
         [-122.9505, 49.1555, -122.9405, 49.1655, 'Alex Fraser Bridge'], [-123.1235, 49.2675, -123.1265, 49.2745, 'Granville Street Bridge']]) {
@@ -986,8 +1015,34 @@ const CH = [null];
       // movers: SkyTrain, highway traffic, SeaBus, ferries, gondolas, float planes
       const sk = D3.paths;
       for (const [key, n, nm] of [['expo', 8, 'SkyTrain (Expo Line)'], ['mill', 6, 'SkyTrain (Millennium Line)'], ['canada', 5, 'SkyTrain (Canada Line)']])
-        if (sk[key]) for (let i = 0; i < n; i++) add('skytrain', 0, 0, { path: sk[key], spd: 18, ph: i / n, face: 1, label: i ? '' : nm, quiet: 1 });
+        if (sk[key]) {
+          // v5: the SkyTrain is built: trains run up on the guideway (drawn in bg), on pillars, with stations along the line
+          for (let i = 0; i < n; i++) add('skytrain', 0, 0, { path: sk[key], spd: 18, ph: i / n, face: 1, label: i ? '' : nm, quiet: 1, lift: 7 });
+          const pa = sk[key]; let next = 80, run = 0, st = 0;          // a pillar every 160 m of line, a station every ~1.4 km
+          for (let i = 2; i < pa.length; i += 2) {
+            const sx = pa[i] - pa[i - 2], sy = pa[i + 1] - pa[i - 1], l = Math.hypot(sx, sy);
+            while (next <= run + l) {
+              const f = (next - run) / l, x = pa[i - 2] + sx * f, y = pa[i - 1] + sy * f; next += 160;
+              add('pillar', x, y, { deco: 1, quiet: 1, nosolid: 1 });
+              if (++st % 9 === 0 && !isWater(x, y)) add('skystation', x, y, { quiet: 1, label: 'SkyTrain station', yaw: Math.atan2(sx, sy), lift: 3, nosolid: 1 });
+            }
+            run += l;
+          }
+        }
       for (const [i, p] of (sk.hwy || []).entries()) for (let j = 0; j < 8; j++) add(['car', 'car', 'truck', 'bus', 'van', 'car', 'bigtruck', 'taxi'][j], 0, 0, { path: p, spd: 22 + rng() * 6, ph: rng(), face: 1, lane: (j % 2 ? 1 : -1) * 5 });
+      // dense forests: Stanley Park, Lynn Valley, and Grouse, where every tree you eat stays eaten (your own trail through the woods)
+      const grove = (lo0, la0, lo1, la1, n, keep, tag) => { for (let i = 0; i < n; i++) { const [x, y] = P(lo0 + rng() * (lo1 - lo0), la0 + rng() * (la1 - la0)); if (isWater(x, y) || nearRoad(x, y, 14, 4)) continue; add('bigtree', x, y, Object.assign({ quiet: 1, yaw: rng() * 6.28, s: .8 + rng() * .5 }, keep ? { keep: 1, id: tag + i } : null)); } };
+      grove(-123.158, 49.293, -123.125, 49.312, 520, 0); grove(-123.04, 49.335, -123.005, 49.37, 420, 0); grove(-123.095, 49.362, -123.07, 49.39, 600, 1, 'gt');
+      // Cypress: snow, a zipline, a tubing run and a terrain park
+      for (let i = 0; i < 3; i++) A('zipline', -123.2065, 49.399, { path: poly([-123.2065, 49.399, -123.2005, 49.3935]), spd: 9, ph: i / 3, face: 1, lift: 14, label: i ? '' : 'Cypress zipline', id: 'zip' + i });
+      for (let i = 0; i < 5; i++) A('snowtube', -123.2025, 49.3975, { path: poly([-123.2025 + i * .0004, 49.3985, -123.2025 + i * .0004, 49.3962]), spd: 4 + i * .4, ph: i / 5, face: 1, label: i ? '' : 'Cypress tubing', id: 'tube' + i });
+      for (let i = 0; i < 6; i++) A(i % 2 ? 'rail' : 'jump', -123.2085 + (i % 3) * .0006, 49.3945 + Math.floor(i / 3) * .0007, { label: i ? '' : 'Cypress terrain park', id: i ? undefined : 'tpark' });
+      for (let i = 0; i < 4; i++) A('snowboarder', -123.208, 49.396, { path: poly([-123.2088, 49.3962, -123.2078, 49.3938]), spd: 5 + i, ph: i / 4, face: 1, label: '' });
+      // Whistler's real layout: the village at the foot of both mountains, the Peak 2 Peak line between them, Creekside to the south
+      A('lodge', -122.9465, 50.1162, { label: 'Blackcomb base', id: 'blackcombbase' }); A('lodge', -122.9766, 50.0819, { label: 'Whistler Creekside' });
+      A('chalet', -122.9497, 50.0635, { label: 'Roundhouse Lodge', sub: 'Whistler Mountain' }); A('chalet', -122.9013, 50.0819, { label: 'Rendezvous Lodge', sub: 'Blackcomb Mountain' });
+      for (let i = 0; i < 4; i++) A('gondola', -122.92, 50.07, { path: poly([-122.9497, 50.0635, -122.9013, 50.0819]), spd: 7, ph: i / 4, lift: 40, label: i ? '' : 'Peak 2 Peak Gondola', id: i ? undefined : 'peak2peak' });
+      for (let i = 0; i < 8; i++) A('snowboarder', -122.95, 50.08, { path: poly([-122.9497 + i * .001, 50.0645, -122.954 + i * .001, 50.108]), spd: 6 + i % 3, ph: i / 8, face: 1, label: '' });
       A('seabus', -123.1, 49.3, { path: poly([-123.0815, 49.3095, -123.111, 49.2865]), spd: 6, ph: 0, face: 1, label: 'SeaBus', id: 'seabus' });
       A('ferry', -123.27, 49.373, { path: poly([-123.272, 49.372, -123.29, 49.36, -123.33, 49.33]), spd: 8, ph: .2, face: 1, label: 'BC Ferries', sub: 'Horseshoe Bay' });
       A('ferry', -123.135, 49.006, { path: poly([-123.135, 49.006, -123.2, 49.0, -123.3, 48.995]), spd: 8, ph: .6, face: 1, label: 'BC Ferries', sub: 'Tsawwassen' });
@@ -1068,6 +1123,11 @@ const CH = [null];
       const rw = (lo0, la0, lo1, la1) => { const [a, b] = P(lo0, la0), [c, d] = P(lo1, la1); g.strokeStyle = '#6b6f75'; g.lineWidth = 60; g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke(); g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.setLineDash([30, 30]); g.stroke(); g.setLineDash([]); };
       rw(-123.205, 49.1995, -123.155, 49.1985); rw(-123.21, 49.188, -123.165, 49.1815); rw(-123.195, 49.205, -123.18, 49.181);
       const by = P(0, 49.0)[1]; g.fillStyle = 'rgba(214,226,160,.85)'; g.fillRect(x0, by - 5, x1 - x0, 10);
+      // snow on the ski hills (Cypress, Grouse, Seymour, Whistler and Blackcomb)
+      for (const [lo, la, r] of SNOW) { const [sx, sy] = P(lo, la); if (sx + r < x0 || sx - r > x1 || sy + r < y0 || sy - r > y1) continue; const gr = g.createRadialGradient(sx, sy, r * .2, sx, sy, r); gr.addColorStop(0, 'rgba(250,252,255,.95)'); gr.addColorStop(.7, 'rgba(240,246,252,.75)'); gr.addColorStop(1, 'rgba(240,246,252,0)'); g.fillStyle = gr; g.fillRect(sx - r, sy - r, r * 2, r * 2); }
+      // the SkyTrain guideway: a concrete beam (with its shadow) over the streets
+      g.lineCap = 'butt'; for (const key of ['expo', 'mill', 'canada']) { const a = D3.paths[key]; if (!a) continue; g.beginPath(); g.moveTo(a[0], a[1]); for (let i = 2; i < a.length; i += 2) g.lineTo(a[i], a[i + 1]);
+        g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = Math.max(10, px * 2.5); g.save(); g.translate(4, 4); g.stroke(); g.restore(); g.strokeStyle = '#e4e1da'; g.lineWidth = Math.max(8, px * 2); g.stroke(); g.strokeStyle = '#b9b5ad'; g.lineWidth = Math.max(1, px * .4); g.stroke(); }
     },
   });
 })();
@@ -2015,7 +2075,7 @@ function genCell(t, cx, cy) {
     const L = Z.t[t]; if (!L) continue;
     const k = wpick(L, r2);
     // streets of buildings are placed along the roads, not loose filler: they keep their own (higher) density
-    if (r1 > Z.d * 0.8 * FILL_K * (C.fill || 1) * (C.bld && C.bld.has(k) ? Z.bd || 1 : 4 / tries)) continue;
+    if (r1 > Z.d * 0.8 * FILL_K * (C.fillKeep && C.fillKeep.has(k) ? 1 : C.fill || 1) * (C.bld && C.bld.has(k) ? Z.bd || 1 : 4 / tries)) continue;
     if (Z.at) { const p = Z.at(k, x, y, rng, out); if (!p) continue; [x, y, yaw] = p; }
     const ob = mkObj(C, k, x, y, { zn: z, deco: Z.deco || undefined, yaw });
     if (C.layered && !Z.deco) { ob.fl = G.fl; ob.out = Z.out; }
@@ -2215,7 +2275,7 @@ function eat(o) {
   if (o.keep && story) st.eaten[o.id] = 1;
   if (o.tile) { tileEaten(o); return; }
   if (o.coin) { addCoins(o.val); SFX.coin(); addXP(o.t * 0.5 * XP_K * (C.xpk || 1)); return; }
-  SFX.gulp(o.t);
+  SFX.gulp(o.t); G.eats = (G.eats || 0) + 1; if (o.t >= G.lvl - 1) G.big = (G.big || 0) + 1;
   addXP(o.t * XP_K * (C.xpk || 1));
   // things far smaller than the hole are worth less, so late-game sweeping can't flood the wallet
   addPoints(Math.max(1, Math.round(PTS[o.t] * C.pv * MULT[UPL('points')] * clamp((o.t - Math.min(G.lvl, C.topT) + 3) / 3, 0.15, 1))));
@@ -2592,10 +2652,10 @@ function update(dt) {
   G.vx += (tvx - G.vx) * k; G.vy += (tvy - G.vy) * k;
   G.x += G.vx * dt; G.y += G.vy * dt;
   if (C.wrap) { G.x = (G.x % C.W + C.W) % C.W; G.y = (G.y % C.H + C.H) % C.H; }
-  else { G.x = clamp(G.x, r * 0.4, C.W - r * 0.4); G.y = clamp(G.y, r * 0.4, C.H - r * 0.4); }
+  else { const em = C.edge != null ? Math.min(r * 0.4, C.edge) : r * 0.4; G.x = clamp(G.x, em, C.W - em); G.y = clamp(G.y, em, C.H - em); }
   const rg = ringNow();
   if (rg) {                                          // the current zone's border (story ladder / I Spy rung)
-    const m = Math.min(r * 0.4, (rg[2] - rg[0]) / 2, (rg[3] - rg[1]) / 2);
+    const m = Math.min(C.edge != null ? Math.min(r * 0.4, C.edge) : r * 0.4, (rg[2] - rg[0]) / 2, (rg[3] - rg[1]) / 2);
     if (C.wrap) { G.x = rg[0] + clamp(wrapD(G.x - rg[0], C.W), m, rg[2] - rg[0] - m); }
     else G.x = clamp(G.x, rg[0] + m, rg[2] - m);
     G.y = clamp(G.y, rg[1] + m, rg[3] - m);
@@ -2658,6 +2718,19 @@ function update(dt) {
 /* v4.2/v5.5 collision: what the hole can't eat yet is solid where its body meets the ground (an oriented box from
    its model, inset a little so the rim can tuck under the edge and tip it). Open-legged things (tables, chairs,
    beds on legs: T.open) and flat things (rugs, blankets) never block; movers bump instead of blocking. */
+/* the boxes solidPush() would push against right now (for the test bots' route planner) */
+function solidBoxes(r) {
+  const D = r * 2, out = [];
+  for (const o of G.vis) {
+    if (o.dead || o.fall || o.path || o.deco || o.exit || o.tile || o.coin || o.helper || o.nosolid || (o.T && (o.T.mv || o.T.open))) continue;
+    if (G.C.layered && !onMyFloor(o)) continue;
+    if (fits(o, D) && !isInactive(o)) continue;
+    const md = o.md || modelOf(o); if (!md) continue;
+    const H = md.h * o.fw * (o.sv || 1); if (H < o.fw * 0.12 && !o.solid) continue;
+    out.push([o.x, o.y, md.w * o.fw * 0.42, md.d * o.fw * 0.42, o.yaw || 0, o.fl]);
+  }
+  return out;
+}
 function solidPush(r) {
   const D = r * 2;
   for (const o of G.vis) {
@@ -3034,6 +3107,8 @@ const MODEL = (() => {
       ...(p.chalet ? [bx(.12, .07, .16, 0, (p.h || .8) + .03, 0, '#8a5a32'), pr(.14, .05, .18, 0, (p.h || .8) + .09, 0, '#4a3a2a', { ry: 1.5708 })] : [])],
     mesa: p => [cy(1, .4, 1, 0, .2, 0, p.a || '#6f7d5a', { top: .75, seg: 10 }), cy(.76, .06, .76, 0, .43, 0, '#fff', { seg: 10 })],
     hill: p => [sp(1, .55, 1, 0, 0, 0, p.a || '#6aa84f', { hemi: 1 }), sp(.3, .3, .3, .2, .25, .1, '#3f8a3a')],
+    snowjump: p => [sp(1, .5, 1, 0, 0, 0, '#f4f8ff', { hemi: 1 }), bx(.9, .04, .2, 0, .02, .45, '#90caf9')],
+    snowtube: p => [to(1, 1, .4, 0, .2, 0, p.a || '#e53935', { tube: .2, rx: 1.5708 }), sp(.42, .42, .42, 0, .55, 0, '#1e88e5')],
     island: p => [cy(1, .25, 1, 0, .12, 0, '#f2dfa0', { seg: 12, top: .85 }), sp(.7, .35, .7, .05, .25, 0, '#5aa64a'), ...R.palm({}).map(q => { const r = q.slice(); r[1] *= .3; r[2] *= .3; r[3] *= .3; r[4] = r[4] * .3 - .15; r[5] = r[5] * .3 + .3; r[6] *= .3; return r; })],
     iceberg: p => [rk(1, .9, 1.2, 0, .45, 0, '#eef7ff'), rk(.6, .8, .6, .15, 1, .1, '#dff0ff')],
     whiterock: p => [rk(1, .75, 1.3, 0, .37, 0, '#f4f2ea'), rk(.5, .4, .5, .3, .2, .5, '#e6e2d6')],
@@ -3220,7 +3295,8 @@ const MODEL = (() => {
     up_vacuum: ['ifunnel', {}], up_lucky: ['iclover', {}], up_payday: ['iclip', {}], up_wide: ['ieye', {}], up_head: ['iflag', {}],
   };
   const PER = { // per-chapter meanings of shared ids
-    'home:bottle': ['bottle', { a: '#e3f2fd', b: '#ffcc80' }], 'home:can': ['can', { a: '#e0e0e0', b: '#c62828', h: 1.4 }], 'van:lodge': ['bld', { a: '#8a5a32', h: .5, d: 1.4, fl: 2, roof: .35, b: '#4a3a2a' }], 'van:bus': ['bus', { a: '#fafafa', b: '#1565c0' }], 'van:newspaper': ['nbox', {}], 'globe:island': ['island', {}], 'globe:car': ['car', { v: [{ a: '#e53935' }, { a: '#1e88e5' }] }],
+    'home:bottle': ['bottle', { a: '#e3f2fd', b: '#ffcc80' }], 'home:can': ['can', { a: '#e0e0e0', b: '#c62828', h: 1.4 }], 'van:lodge': ['bld', { a: '#8a5a32', h: .5, d: 1.4, fl: 2, roof: .35, b: '#4a3a2a' }], 'van:bus': ['bus', { a: '#1e5fb8', b: '#f4f4f4' }], 'van:skystation': ['bld', { a: '#dfe3e6', h: .22, d: 2.6, fl: 1, roof: .15, b: '#2d7dd2' }], 'van:pillar': ['blk', { a: '#cfccc4', h: 4 }],
+    'van:zipline': ['fig', { a: '#ff7043', c: '#263238' }], 'van:snowtube': ['snowtube', { a: '#e53935' }], 'van:jump': ['snowjump', {}], 'van:rail': ['bench', { a: '#90a4ae' }], 'van:snowboarder': ['fig', { a: '#43a047', c: '#1a237e' }], 'van:newspaper': ['nbox', {}], 'globe:island': ['island', {}], 'globe:car': ['car', { v: [{ a: '#e53935' }, { a: '#1e88e5' }] }],
     'globe:house': ['house', { v: [{ a: '#f4e1c1', b: '#c0392b' }, { a: '#e8e0d0', b: '#455a64' }] }], 'globe:tower': ['tower', { hh: 3.6 }], 'globe:hotel': ['hotel', { hh: 4.4 }], 'globe:stadium': ['stadium', {}], 'globe:camel': ['quad', { a: '#d4a35a', hump: 1, neck: .5, d: 2, lh: 1 }],
     'globe:guitar': ['guitar', { a: '#c0603a' }], 'globe:drum': ['drum', { a: '#8d6e63' }], 'globe:leaf': ['leaf', { a: '#d32f2f' }], 'globe:church': ['church', {}], 'globe:cruise': ['ship', { a: '#fafafa', b: '#0d47a1', decks: 3, d: 4.5 }],
     'space:ice': ['rock', { a: '#cfe8ff', h: .7 }],
@@ -3518,6 +3594,7 @@ function poseOf(o, md, hx, hz, R) {
   if (wob) lean += Math.sin(G.t * 19 + (o.ph || 0)) * wob;
   if ((o.sway || (o.T && o.T.sway)) && !lean) { lean = Math.sin(G.t * 2 + (o.ph || 0)) * 0.035; ld = 0.6; }
   if (o.T && o.T.mv === 'fly') y += fw * 1.1;
+  if (o.lift && !o.fall) y += o.lift;                // resting on a counter / stove top
   if (o.coin) yaw = G.t * 3 + (o.ph || 0);
   const f = o.fall;
   if (f) {
@@ -3668,6 +3745,8 @@ function drawWorld3D() {
       if (o.look && !o.fall) { _m4.compose(_p3.setY(0.5), _qy.identity(), _s3.set(o.fw * 1.9, 1, o.fw * 1.9)); pushMerge(V3.mH, V3.quad); }
       continue;
     }
+    // a backdrop mountain you're standing on steps aside: you see its slopes (forest, snow, ski runs) instead of its cone
+    if (o.backdrop && !G.cine && Math.hypot(dx(o.x, G.x), dy(o.y, G.y)) < o.fw * .55) continue;
     const md = modelOf(o); if (!md) continue;
     if (!poseOf(o, md, hx, hz, R)) continue;
     _m4.compose(_p3, _q, _s3);
@@ -4080,6 +4159,12 @@ function drawHUD() {
 /* I Spy target cards (picture + name, tick when eaten) / the Educational step */
 function drawModeHUD() {
   const C = G.C, R = G.run;
+  if (R.kind === 'explore') {      // free roam: just the world's name and a reminder of the size buttons
+    g.fillStyle = 'rgba(16,40,70,.78)'; rr(g, 12, 12, 330, 56, 16); g.fill();
+    txt('EXPLORATION · ' + C.name.toUpperCase(), 26, 32, fitText('EXPLORATION · ' + C.name.toUpperCase(), 300, 16), '#9fdcff', 'left', 900);
+    txt('Use + and − to change size', 26, 54, 13, '#fff', 'left');
+    return;
+  }
   if (R.kind === 'ispy') {
     g.fillStyle = 'rgba(20,14,46,.82)'; rr(g, 12, 12, 300, 34 + R.tg.length * 62, 16); g.fill();
     txt('I SPY…', 26, 30, 17, '#ffd96a', 'left', 900);
@@ -4499,6 +4584,7 @@ requestAnimationFrame(frame);
 
 /* test hook for automated checks (harmless in play) */
 window.HH = { get S() { return S; }, G, CH, UI, prep, loadChapter, startChapter, eat, holeD, need, addXP, bankerTransfer, bankerArrive, buyUpgrade, upCost,
+  setHoleD, ringNow, goals, capD, syncBeat, solidPush, solidBoxes,
   exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole, labelOn, MODES, genCell, tierOf, mkObj, debugAudio, syncMusic };
 </script>
 </body>

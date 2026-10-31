@@ -65,7 +65,7 @@ const { chromium } = require('playwright');
         const sch = auth.filter(o => o.k === 'school').length, hs = auth.filter(o => o.k === 'highschool').length, cc = auth.filter(o => o.k === 'commcentre').length, cas = auth.filter(o => o.k === 'casino').length;
         if (sch < 400 || hs < 80 || cc < 40 || cas < 5) fails.push(`Ch3 POI layer thin: schools ${sch} high ${hs} community ${cc} casinos ${cas}`);
         const q = auth.filter(o => o.quiet && o.label); if (q.length < 500) fails.push('Ch3 quiet POIs ' + q.length);
-        if (q.some(o => HH.labelOn(o))) fails.push('a quiet Ch3 label shows before it is targeted');
+        if (q.some(o => HH.labelOn(o) && !o.tgt)) fails.push('a quiet Ch3 label shows before it is targeted');
         q[0].tgt = 1; if (!HH.labelOn(q[0])) fails.push('a targeted Ch3 POI shows no label'); q[0].tgt = 0;
         if (auth.some(o => /langley/i.test(o.label || '') || /langley/i.test(o.nm || ''))) fails.push('Langley is out of bounds but appears');
       }
