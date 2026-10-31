@@ -791,3 +791,9 @@ The world-redo sequence so far: World 1 The Home (floorplan), Metro Vancouver (s
 **v5.12 addendum (owner — landmark research directive + the roster):**
 (1) The Globe landmark programme is a RESEARCH task, not a list of what the owner happened to name: **the builder looks at ALL countries and finds 2–3 famous things per country; larger countries with more famous stuff get more (4–5, up to ~10 for the biggest)**. An unnamed landmark is not an excluded landmark.
 (2) **THE ROSTER IS FIVE WORLDS** (owner's count, confirmed this pass): The Home · Metro Vancouver · Stanley Park · Space · The Globe. All four modes (Story, I Spy, Educational, Exploration) run on the worlds. The old build's Wilderness and Chaos worlds are NOT in the five — their fate (retired vs later addition) is UNDECIDED, owner's to call; builders do not rebuild them into the five.
+
+**v5.13 rulings (owner — roster FINAL, pre-prompt checkpoint):**
+(1) **CHAOS WORLD: RETIRED.** The owner doesn't like it; it's out, not parked.
+(2) **WILDERNESS WORLD: RETIRED for now** — he did not like the built map (its water/biome mix). It may only ever return if HE supplies a reference for exactly what should be mixed in it; the old design is not to be rebuilt or "improved" unprompted.
+(3) Roster is final at FIVE worlds: The Home · Metro Vancouver · Stanley Park · Space · The Globe.
+(4) **MUSIC v2 IS IN SCOPE for the build** (reaffirmed): the synth soundtrack is out; fully orchestrated songs take its place (same filenames, drop-in; the v2 generation prompts + menu-first taste-test rule stand).
