@@ -9,29 +9,54 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
   const T = async (name, fn) => { try { const r = await p.evaluate(fn); results.push([name, r.ok, r.info]); } catch (e) { results.push([name, false, e.message]); } };
   const STEP = `const step = n => { for (let i = 0; i < n; i++) { HH.G.now += 33; HH.G.t += 1 / 30; HH.update(1 / 30); } };`;
 
-  await T('eat + grow', new Function(STEP + `
+  await T('fits: tips in, falls, then is eaten', new Function(STEP + `
     const { G } = HH; HH.startChapter(1); G.ptr = null; step(2);
-    const o = G.vis.find(o => o.t === 1 && !o.coin && !o.tile && !o.helper); const xp0 = G.xp;
+    const o = G.vis.find(o => o.t === 1 && !o.coin && !o.tile && !o.helper && !o.au); const xp0 = G.xp, L1 = G.lvl;
+    const fits = HH.fits(o, HH.holeD());
     G.x = o.x; G.y = o.y; G.vx = G.vy = 0; step(2);
-    const ate = !!o.dead, xpUp = G.xp > xp0;
+    const falling = !!o.fall && !o.dead; step(20);
+    const ate = !!o.dead, xpUp = G.lvl > L1 || G.xp > xp0;
     const L0 = G.lvl; HH.addXP(HH.need(G.lvl) + 1); const grew = G.lvl === L0 + 1;
-    return { ok: ate && xpUp && grew, info: { ate, xp0, xp1: G.xp, lvlFrom: L0, lvlTo: G.lvl } };`));
+    return { ok: fits && falling && ate && xpUp && grew, info: { fits, falling, ate, xpUp, grew, xp0, xp1: G.xp, lvlFrom: L0, lvlTo: G.lvl } };`));
 
-  await T('too big bumps, not eaten', new Function(STEP + `
+  await T('too big: leans toward the hole, never eaten', new Function(STEP + `
     const { G } = HH; HH.restartRun(true); step(1);
-    const bed = G.auth.find(o => o.k === 'bed' && !o.dead); G.x = bed.x; G.y = bed.y; G.vx = G.vy = 0; step(3);
-    return { ok: !bed.dead && bed.wob > 0 && G.lvl < bed.t, info: { lvl: G.lvl, bedTier: bed.t, wob: !!bed.wob } };`));
+    const bed = G.vis.find(o => !o.dead && !o.coin && !o.tile && !o.helper && !o.au && o.t === G.lvl + 2), D = HH.holeD();
+    G.x = bed.x; G.y = bed.y; G.vx = G.vy = 0; step(1);
+    const R = bed.md ? 0.5 * bed.fw * Math.sqrt(bed.md.w * bed.md.d) : bed.fw / 2;
+    G.x = bed.x + R; G.vx = G.vy = 0; step(6); const lean = bed.lean || 0;
+    for (let i = 0; i < 60; i++) { G.x = bed.x + R * (i % 2 ? 0.9 : 1.1); G.vx = (i % 2 ? -1 : 1) * 400; step(1); }
+    return { ok: !HH.fits(bed, D) && !bed.dead && !bed.fall && lean > 0.01 && bed.wob > 0, info: { lvl: G.lvl, type: bed.k, tier: bed.t, ratio: +(D / bed.fw).toFixed(2), lean: +lean.toFixed(3), wobbled: bed.wob > 0 } };`));
+
+  await T('wobble rule: >=85% bumps tip it in, <85% never', new Function(STEP + `
+    const { G } = HH; HH.restartRun(true); step(1);
+    const mk = () => G.vis.find(o => !o.dead && !o.coin && !o.tile && !o.helper && !o.fall && o.t === G.lvl + 1);
+    const a = mk(), D = HH.holeD();
+    const run = (o, D) => { for (let i = 0; i < 12; i++) { G.now += 400; HH.bump(o, 0.5, D, D); } step(20); return !!o.dead; };
+    const nearD = a.fw * 0.9, farD = a.fw * 0.8;
+    const b2 = G.vis.find(o => o !== a && o.k === a.k && !o.dead) || mk();
+    const fell = run(a, nearD);
+    const stood = !run(b2 === a ? mk() : b2, farD);
+    return { ok: fell && stood && !HH.fits(a, nearD), info: { type: a.k, fellAt90: fell, stoodAt80: stood } };`));
+
+  await T('tiles are kind: inactive tiles never fall', new Function(STEP + `
+    const { G } = HH; HH.startChapter(1); const st = G.st, C = G.C;
+    const qi = C.Q.findIndex(q => q.raw === 'q:1-10'); st.act = []; st.board[qi] = 0; st.qi = qi; HH.rollQuests(true); step(1);
+    const a = st.act.find(a => a.i === qi), wrong = G.tiles.filter(t => t.owner === a && !t.on)[0];
+    const L0 = G.lvl; G.lvl = G.C.N; for (let i = 0; i < 12; i++) { G.now += 400; HH.bump(wrong, 0.3, 1e6, 1e6); }
+    G.x = wrong.x; G.y = wrong.y; G.vx = G.vy = 0; step(10); const res = !wrong.dead && !wrong.fall && !HH.canEat(wrong);
+    G.lvl = L0; return { ok: res, info: { txt: wrong.txt, dead: !!wrong.dead } };`));
 
   await T('checklist ticks + unlocks next chapter', new Function(STEP + `
-    const { G, S } = HH; HH.startChapter(1); S.ch[2].u = 0;
+    const { G, S } = HH; HH.startChapter(1); G.lvl = 1; S.ch[2].u = 0;
     const all = HH.gather(0, 0, G.C.W, G.C.H, 1);
-    const legos = all.filter(o => o.k === 'lego' && !o.dead).slice(0, 25), sold = all.filter(o => o.k === 'soldier' && !o.dead).slice(0, 10);
+    const legos = all.filter(o => o.k === 'lego' && !o.dead).slice(0, 12), sold = all.filter(o => o.k === 'soldier' && !o.dead).slice(0, 6);
     legos.forEach(HH.eat); sold.forEach(HH.eat); const mid = G.st.check.join('/'), unl0 = S.ch[2].u;
     HH.eat(G.auth.find(o => o.k === 'bed' && !o.dead));
-    return { ok: mid === '25/10/0' && !unl0 && G.st.check.join('/') === '25/10/1' && G.st.c === 1 && S.ch[2].u === 1, info: { legos: legos.length, soldiers: sold.length, mid, after: G.st.check.join('/'), unlocked2: S.ch[2].u } };`));
+    return { ok: mid === '12/6/0' && !unl0 && G.st.check.join('/') === '12/6/1' && G.st.c === 1 && S.ch[2].u === 1, info: { legos: legos.length, soldiers: sold.length, mid, after: G.st.check.join('/'), unlocked2: S.ch[2].u } };`));
 
   await T('tiny quest completes, new one rolls in', new Function(STEP + `
-    const { G } = HH; HH.startChapter(1); const st = G.st; st.board = st.board.map(() => 0); st.act = []; st.qi = 0; HH.rollQuests(true);
+    const { G } = HH; HH.startChapter(1); G.lvl = 1; const st = G.st; st.board = st.board.map(() => 0); st.act = []; st.qi = 0; HH.rollQuests(true);
     const a = st.act.find(a => G.C.Q[a.i].raw === 'c:lego:5'); const before = st.act.map(a => a.i).join(',');
     const legos = HH.gather(0, 0, G.C.W, G.C.H, 1).filter(o => o.k === 'lego' && !o.dead).slice(0, 5); legos.forEach(HH.eat);
     const boardTicked = st.board[a.i] === 1, dropped = st.act.length === 2;
@@ -39,7 +64,7 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     return { ok: !!a && boardTicked && dropped && st.act.length === 3 && !st.act.some(x => x.i === a.i), info: { before, after, board: st.board.filter(Boolean).length } };`));
 
   await T('avoid quest resets, never fails', new Function(STEP + `
-    const { G } = HH; HH.startChapter(1); const st = G.st, C = G.C;
+    const { G } = HH; HH.startChapter(1); G.lvl = 1; const st = G.st, C = G.C;
     const qi = C.Q.findIndex(q => q.raw === 'a:soldier:10'); st.act = []; st.board[qi] = 0; st.qi = qi; HH.rollQuests(true);
     const a = st.act.find(a => a.i === qi); const all = HH.gather(0, 0, C.W, C.H, 1);
     all.filter(o => o.k === 'lego' && !o.dead).slice(0, 4).forEach(HH.eat); const p1 = a.p;
@@ -86,6 +111,22 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
   const after = await p.evaluate(() => { HH.persist(); return [localStorage.getItem('hungry-hole-data-v1'), localStorage.getItem('family-other-app'), JSON.stringify(HH.S).length]; });
   results.push(['save survives reload', after[0] === before, { bytes: before.length }]);
   results.push(['other localStorage keys untouched', after[1] === 'keep-me', { otherKey: after[1] }]);
+
+  // a hand-written v2-shaped save (no v3 fields, old checklist counts, a position on the old bigger map) loads and plays
+  await p.goto(URL.replace(/index\.html.*$/, 'README.md'));   // same origin, but without the game's save-on-unload
+  const v2 = await p.evaluate(() => {
+    const ch = {}; for (let n = 1; n <= 7; n++) ch[n] = { u: n <= 4 ? 1 : 0, c: n === 1 ? 1 : 0, x: null, y: null, lvl: 1, xp: 0, pts: 0, pc: 0, w: 0, cf: 0, check: [0, 0, 0], board: Array(40).fill(0), act: [], qi: 0, up: Array(10).fill(0), eaten: {}, bm: 0, exitOk: 0 };
+    ch[1] = Object.assign(ch[1], { x: 900, y: 700, lvl: 3, xp: 5, pts: 1234, w: 321, check: [25, 10, 1] });
+    ch[3] = Object.assign(ch[3], { x: 9000, y: 6000, lvl: 4, xp: 2, w: 50, check: [3, 0, 0], board: Array(40).fill(0).map((_, i) => i < 5 ? 1 : 0) });
+    ch[4] = Object.assign(ch[4], { x: 2000, y: 2000, lvl: 2, check: [40, 3, 0] });
+    const save = { v: 1, settings: { sound: 0, voice: 1, learn: 'full', grade: 3 }, last: 3, journey: 0, ch, passport: {}, learn: {} };
+    localStorage.setItem('hungry-hole-data-v1', JSON.stringify(save)); return true; });
+  await p.goto(URL); await p.waitForTimeout(400);
+  const v2r = await p.evaluate(() => { const { G, S } = HH; const out = { w1: S.ch[1].w, pts1: S.ch[1].pts, sound: S.settings.sound };
+    HH.startChapter(3); for (let i = 0; i < 30; i++) { G.now += 33; G.t += 1 / 30; HH.update(1 / 30); }
+    out.ch3 = [Math.round(G.x), Math.round(G.y), G.lvl, G.C.W, G.C.H]; out.inMap = G.x >= 0 && G.x <= G.C.W && G.y >= 0 && G.y <= G.C.H; out.vis = G.vis.length;
+    HH.startChapter(4); out.ch4check = G.st.check.join('/'); HH.startChapter(1); out.ch1check = G.st.check.join('/'); out.ch1done = S.ch[1].c; return out; });
+  results.push(['v2 save loads and plays', v2r.w1 === 321 && v2r.pts1 === 1234 && v2r.sound === 0 && v2r.inMap && v2r.vis > 20 && v2r.ch4check === '15/3/0' && v2r.ch1check === '12/6/1' && v2r.ch1done === 1, v2r]);
 
   // Reset Everything (two-tap) keeps other keys
   await p.evaluate(() => HH.UI.settings('main')); await p.waitForTimeout(200);

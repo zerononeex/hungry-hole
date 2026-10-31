@@ -66,3 +66,214 @@ one-line change if the owner disagrees.
 ## Things not done
 - No skins, shop items, lives, ads, accounts, or multiplayer (spec).
 - GitHub Pages, merging, and other repos were not touched (spec).
+
+---
+
+# v3: 3D revamp + pace retune (builder decisions, 2026-10-30)
+
+Authority: SPEC v3 addendum > v2 rulings above > existing code. Every v2 ruling above still
+holds (totem poles are scenery, Crystal Moon, stairs gated on a bed, the Sun locked until
+all 8 planets, avoid quests reset and never fail, respawn rules), except the two "Art"
+bullets about code-drawn sprites and emoji, which the 3D model library replaces.
+
+## Renderer
+- **Three.js r147 UMD build**, vendored as `three.min.js` at the repo root (from the npm
+  package `three@0.147.0`, `build/three.min.js`, global `THREE`, no CDN). r147 is one of
+  the last releases that still ships the classic UMD file. It is loaded by a plain
+  `<script>` tag before the game script, so the site works offline after the first load.
+- **Exactly one renderer.** The world is WebGL (`<canvas id="gl">`). The HUD, name plates,
+  compass arrow, chapter transitions and cinematic captions are drawn on the existing 2D
+  canvas (`#cv`) layered above it, and all DOM menus are unchanged. Nothing draws the
+  world in 2D any more (see Cleanup).
+- **Camera.** Perspective, fov 38°, fixed 55° tilt, always looking at the camera point
+  that v2 already eased toward the hole. Its distance is derived from v2's zoom so the
+  same world width fills the 1280×720 stage, which keeps zoom-with-size, Wide Eyes and the
+  stage contain-fit exactly as in v2.
+- **Camera-relative world.** Every frame places objects relative to the camera, which
+  keeps float precision on the huge maps and makes the Ch 5 wrap-around globe seamless.
+- **Ground.** One plane. Its texture is a 2048×1536 canvas region that follows the camera
+  and is painted by each chapter's own v2 zone painter (`bg`), so roads, sand, grass and
+  water look the way they did and water is still never eaten. It is repainted when the
+  view leaves the region or the zoom changes by more than 28%. Space chapters hash their
+  stars in world coordinates so they do not swim.
+- **The hole.** The ground shader cuts the hole out and adds a soft shadow ring and a rim
+  band that flashes on each swallow. Under it sits a shallow pit: a dark inner wall shader
+  plus a slowly swirling floor disc. A faint ghost of the rim is drawn on top of
+  everything, so the hole is never lost behind tall things.
+- **X-ray.** Anything standing between the camera and the pit is drawn see-through
+  (32%). My call: with real heights, a backpack or a tower would otherwise hide the hole
+  completely.
+- **Lighting.** A hemisphere sky/ground light plus one sun, computed per face on the CPU
+  while the frame is built (identical maths to Lambert). There are no shadow maps; every
+  object gets a soft blob shadow quad that is also cut out by the hole.
+- **Landmark name plates are projected labels.** Each label is projected from the top of
+  its object onto the HUD canvas, so the text stays crisp and readable at every zoom and
+  never turns edge-on. Billboard sprites were the other option; projected labels need no
+  per-label textures.
+- **Ch 1 walls** are real 3D boxes (140 units high, with a dark cap) built once per
+  chapter from the v2 wall rectangles. Doors face their gaps.
+
+## Model library
+- 203 procedural recipes built from box, cylinder, cone, sphere, prism, torus and
+  rock primitives, flat shaded with vertex colours. Every type in all 7 chapters (410
+  type entries) maps to a recipe and parameters, with per-chapter overrides where one name
+  means different things (for example the Ch 4 island and the Ch 5 island). Families share
+  recipes with palette variants (cars, trucks, buses; houses; towers; trees; quadrupeds;
+  boats; planets; stars).
+- **Footprint and height.** Each model is normalised so that its longest footprint side is
+  1, which equals the object's **fit-width** (`1.3 × the tier's v2 size`). Heights are real
+  ratios: a tower is 3.6 fit-widths tall, a sedan about 0.4, a mountain 0.7 to 0.85. A v2
+  size factor `s > 1` now only makes a thing taller, so tiers and fits stay honest.
+- The data test checks that every type resolves to a recipe, a footprint (w×d) and a
+  height. It caught 11 types with recipes but no mapping (treasure chest, crown and nine
+  World Tour foods, the doll and the tuk-tuk), which are now mapped.
+- Natural things (trees, rocks, animals) get a random yaw. Authored furniture keeps the
+  orientation it was placed with. Generated buildings snap to quarter turns.
+- Letter, number and answer tiles are chunky 3D tiles whose top face is a small canvas
+  texture. Coins are spinning 3D coins at 0.6 of their tier's fit-width.
+- Rocky Mountains got a slate-blue palette so they read against the grey mountain zone.
+
+## Topple physics
+- **Fits** when `fit-width <= hole diameter`. Because the hole's diameter at size L runs
+  from `1.3 × size(L)` up to the next size, this is exactly "tier <= size", so v2's
+  progression is unchanged. A fitting object near the hole is captured: it tips over the
+  rim toward the centre, sinks below the ground, spins and shrinks (340 ms), then the v2
+  eat pipeline runs (XP, coins, quests, name flash, speech).
+- **Support** is the share of the object's footprint circle that still has ground (circle
+  overlap with the hole). Lean grows with missing support. A fitting thing leans harder as
+  it goes. A too-big thing leans only up to a rest angle and stays put, with the v2 bump
+  thud and wobble.
+- **Wobble rule.** From 85% of the needed size, each solid bump (hole moving faster than a
+  quarter of its own width per second, at most one bump every 300 ms) adds 0.36 wobble,
+  so three solid bumps tip it in. Below 85% bumps only wobble it. Inactive things (wrong
+  tiles, the Sun before the planets, gated items) never fall at any size.
+- Movers (people, animals, cars) lean the same way. The Ch 5 Moon and the Ch 7 finale are
+  rebuilt on the same capture and fall system, with scripted parameters (a slow 2.6 s fall
+  for the Moon; the two giant stars spiral in, then everything in view, then the pit opens
+  until the swirl fills the screen).
+- Doors (anchored while size <= 2), the stairs and bed gate, the Sun lock and the totem
+  poles behave as in v2.
+
+## Spawning
+- v2 chunk semantics are unchanged (authored grid plus generated tier layers, respawn
+  rules). Two additions: the gather rectangle is padded by each layer's half fit-width, and
+  authored cells by the widest authored footprint. Otherwise a mountain whose centre is just
+  off screen would vanish while its slopes should still be visible.
+- Off-screen things are culled per object, and things smaller than 16 px on screen are
+  drawn as a single box in the model's main colour.
+
+## Pace retune
+- **Growth need is ×0.20 of v2, not ×0.35.** At ×0.35 with +50% XP the bot's checklist
+  times were 2.3 to 5.0 minutes (Ch 2, 4, 5, 6 and 7 failed the gate). The addendum says
+  to tune until the gate passes. The final values are need ×0.20 and XP per eat ×1.8
+  (coins per eat scale the same way).
+- Hole speed is +20% (3.6 to 4.32 hole-widths per second). Ch 5 travels at 5.2 because a
+  globe has the most dead travel. Every run starts 30% of the way into size 1 (plus the
+  Head Start upgrade).
+- **Checklist trims** are as specified: Ch 1 Lego 12 and soldiers 6; Ch 4 trees 15 and
+  whales 6; Ch 5 stamps 6 (Wonders stay 7); Ch 6 belt items 10.
+- **Smaller worlds.**
+  - Ch 2 is now 3×2 blocks of 20 houses (120 houses), with the park still one block away.
+  - Ch 3 is ×0.6, Ch 4 ×0.55, and Ch 6 and Ch 7 ×0.42. A `shrinkMap` wrapper scales the
+    map size, start, zones, regions, hints, areas, paths and painters together, so every
+    named place keeps its real relative position.
+  - Ch 5 is 200 map units per degree (was 400).
+  - More eating near the hole comes from the shrink, because the same zone densities now
+    sit in a smaller area.
+- **v2 saves.** These are additive only, on the same key `hungry-hole-data-v1`:
+  - A new per-chapter flag `mv: 3` marks a position as being on a v3 map. A v2 save
+    without it has its position rescaled once onto the smaller map, and clamped inside it.
+  - Checklist counts above a trimmed target are clamped to the new target. If the new
+    targets are already met, the chapter completes on load.
+  - The behaviour test loads a hand-written v2 save to cover this.
+
+### Balance table (seeded bot, `node tests/balance-bot.js`, checklist sim-minutes)
+| Chapter | seed 0 | seeds 0 to 4 | gate |
+|---|---|---|---|
+| Ch 1 The House | 0.85 | 0.55 to 2.33 | <= 2.5 |
+| Ch 2 Neighbourhood | 1.80 | 1.39 to 1.82 | <= 2.5 |
+| Ch 3 Metro Vancouver | 0.93 | 0.93 to 2.15 | <= 2.5 |
+| Ch 4 Wilderness | 2.02 | 1.87 to 2.05 | <= 2.5 |
+| Ch 5 World Tour | 2.38 | 2.28 to 2.83 | <= 3.0 |
+| Ch 6 Space | 2.30 | 2.30 to 2.77 | <= 3.0 |
+| Ch 7 The Humbling | 2.29 | 2.29 to 2.40 | <= 2.5 |
+
+The bot now starts each chapter from a fresh state, makes seeded choices
+(`BOT_SEED=n`), steers at the game's own speed, stops when the checklist is done and exits
+non-zero if any chapter misses the gate. Ch 1 has the widest spread across seeds (how fast the bot
+reaches its last checklist items varies most there).
+
+## Performance
+- Every visible object is baked into one dynamic mesh per material each frame:
+  - solid, see-through, glowing parts, blob shadows and helper glows;
+  - so there are about 7 draw calls in total, with no instancing.
+- Lighting is baked per face during that pass, so the GPU runs the cheapest material.
+- More savings:
+  - Off-screen culling per object.
+  - Tiny things are drawn as single boxes.
+  - The ground texture has no mipmaps (it is repainted at the current zoom anyway).
+  - Antialiasing is on only when `devicePixelRatio < 1.5`.
+  - The 3D pixel ratio is capped at 1.6.
+- **Adaptive resolution.** When frames average over 22 ms, the 3D layer's pixel ratio
+  steps down, to half at most, and steps back up when frames are under 14 ms. The HUD
+  stays sharp.
+- **Probe result (`node tests/perf.js`)**:
+  - Setup: Ch 3 downtown at size 4/8 (mid), 1180×820, steering in a loop for 10 s.
+  - Result: **about 10 to 11 fps on average in headless Chromium in this build container.
+    This is below the ≥50 target.**
+  - Why: the container has no GPU, so Chromium draws WebGL with SwiftShader, a CPU
+    software rasteriser. Measured there:
+    - The full downtown scene takes about 160 ms of software-GPU time per frame at full
+      resolution.
+    - The ground quad alone takes about 15 ms.
+    - The fps scales with vertex count, not with pixels or materials.
+    - With the merged meshes hidden, the same page runs at 50 fps; with them it is about 13.
+  - Tried and kept: CPU lighting, culling, box LOD, adaptive resolution and texture
+    filtering.
+  - Tried and reverted: per-chunk static meshes. They drew more vertices and were slower
+    under SwiftShader.
+  - The CPU side of a frame (game logic plus building the frame) is small next to that.
+    Real hardware (an iPad GPU) runs vertex work orders of magnitude faster.
+  - The 50 fps figure should be confirmed on a real iPad (Kakashi). If it falls short
+    there, the next levers are `LOD_PX` (box LOD threshold), the region size `REG_W/REG_H`
+    and the gather margins.
+
+## Cleanup (exactly one renderer)
+Deleted v2 2D world-rendering code. `grep` on the final `index.html` finds 0 hits for each
+of these names:
+- `drawWorld` (the 2D world pass), `drawTile`, `drawHole`, `drawMenuBack`, `drawStars`
+  and `STARS`;
+- `SPR` (the sprite cache), `PAINT` (the 2D painters for code-drawn things), `ball` and
+  `EMOJI_FONT`;
+- the 2D eat queue `G.falling`, and the 2D `ptrWorld` (replaced by a ground raycast).
+
+The type tables are now `[name, tier, opts]`:
+- The emoji slot was removed from all 410 type entries.
+- All 2D-only `draw:` keys, the Ch 1 `box()` sprite helper and the planet and star colour
+  options are gone.
+- The Space helper filter uses a `planet` flag instead of `draw: 'planet'`.
+- A page-level check confirmed that every chapter's parsed type data (name, tier, tags,
+  size, plural, movement, sway) is byte-identical before and after.
+
+`render()` now has one world path (`drawWorld3D`) and one menu path (`drawMenu3D`, the same
+pit on a starry floor with props from every chapter circling in).
+
+## Tests
+- `tests/data.js`: as v2, plus every type resolves to a recipe, footprint and height. It
+  exits non-zero on failure.
+- `tests/behaviour.js` (16 checks), adapted to the physics:
+  - fits, falls in, then is eaten;
+  - too big leans toward the hole and is never eaten;
+  - wobble at 90% tips in, wobble at 80% never does;
+  - wrong tiles never fall, even at max size;
+  - checklist and unlock, tiny quests, avoid quests, sequences;
+  - Banker 60% and overdraft refused; upgrade spends only that wallet;
+  - per-chapter resume; export to import byte-equal; save survives reload;
+  - other keys untouched; a hand-written v2 save loads and plays;
+  - two-tap reset keeps other keys.
+- `tests/ui-flow.js`: unchanged flows, still clean.
+- `tests/balance-bot.js`: pace-gate table (above).
+- `tests/screens.js`: refreshed `docs/screenshots`, including `18-tower-looming` and
+  `19-mountain`.
+- `tests/perf.js`: the fps probe (above). It prints CPU and fps numbers and exits non-zero
+  while it is below 50 fps.
