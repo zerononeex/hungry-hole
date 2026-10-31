@@ -32,10 +32,27 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
   const menu = await waitTrack('menu.mp3');
   results.push(['back on the menu: menu.mp3 plays', menu.track === 'menu.mp3' && menu.playing && menu.level > 0, menu]);
 
-  // v5.14 music per world: roster order ch1-ch5 (Home, Vancouver, Stanley Park, Space, Globe); ch6/ch7 retired
-  const MUS = { 1: 'ch1.mp3', 2: 'ch2.mp3', 3: 'ch3.mp3', 4: 'ch4.mp3', 5: 'ch5.mp3' }, chs = {};
+  // v5.14 music per world: each world keeps its own track: Home ch1, Vancouver ch2, Stanley Park ch3, Globe ch5, Space ch4 (v5.1 world order); ch6/ch7 retired
+  const MUS = { 1: 'ch1.mp3', 2: 'ch2.mp3', 3: 'ch3.mp3', 4: 'ch5.mp3', 5: 'ch4.mp3' }, chs = {};
   for (let n = 1; n <= 5; n++) { await p.evaluate(n => { HH.S.ch[n].u = 1; HH.startChapter(n); }, n); const d = await waitTrack(MUS[n]); chs[n] = d.track === MUS[n] && d.playing && d.level > 0; }
   results.push(['world changes: each of the five worlds plays its own track', Object.values(chs).every(Boolean), chs]);
+
+  // v5.1 Part 2: a pause overlay never changes the music: the world's track keeps playing from the same position
+  // through the Upgrades overlay (and the Quest Board under the pause menu), and is not restarted when they close
+  await p.evaluate(() => HH.startChapter(1)); const u0 = await waitTrack('ch1.mp3'); await p.waitForTimeout(300);
+  const a0 = await dbg();
+  await p.click('#b-up-hud'); await p.waitForTimeout(1200);
+  const a1 = await dbg(), onUp = await p.evaluate(() => HH.G.screen);
+  await p.click('#s-upgrades [data-back]'); await p.waitForTimeout(800);
+  const a2 = await dbg();
+  await p.click('#b-pause'); await p.waitForTimeout(200); await p.click('#p-board'); await p.waitForTimeout(900);
+  const a3 = await dbg(), onBoard = await p.evaluate(() => HH.G.screen);
+  await p.click('#board-back'); await p.waitForTimeout(200); await p.click('#p-res'); await p.waitForTimeout(500);
+  const a4 = await dbg();
+  const same = d => d.track === 'ch1.mp3' && d.playing && d.starts === a0.starts;
+  results.push(['Upgrades overlay (and the Quest Board) never change or restart the world track; its position keeps advancing',
+    u0.track === 'ch1.mp3' && onUp === 'upgrades' && onBoard === 'board' && [a1, a2, a3, a4].every(same) && a1.pos > a0.pos + 0.8 && a2.pos > a1.pos && a3.pos > a2.pos && a4.pos > a3.pos,
+    { onUp, onBoard, track: [a0, a1, a2, a3, a4].map(d => d.track), pos: [a0, a1, a2, a3, a4].map(d => d.pos), starts: [a0, a1, a2, a3, a4].map(d => d.starts) }]);
 
   await p.evaluate(() => { HH.S.settings.music = 0; HH.syncMusic && HH.syncMusic(); }); await p.waitForTimeout(400);
   const off = await dbg();

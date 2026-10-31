@@ -19,14 +19,27 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     const L0 = G.lvl; HH.addXP(HH.need(G.lvl) + 1); const grew = G.lvl === L0 + 1;
     return { ok: fits && falling && ate && xpUp && grew, info: { fits, falling, ate, xpUp, grew, xp0, xp1: G.xp, lvlFrom: L0, lvlTo: G.lvl } };`));
 
-  await T('too big: leans toward the hole, never eaten', new Function(STEP + `
+  await T('too big: sits still against the hole (no teeter), never eaten', new Function(STEP + `
     const { G } = HH; HH.restartRun(true); step(1);
     const D = HH.holeD(), bk = Object.keys(G.C.T).find(k => G.C.T[k].t === G.lvl + 2 && k !== 'coin' && !G.C.T[k].mv && !G.C.T[k].nosolid), bed = G.add(bk, G.x + 1.5, G.y);
     G.x = bed.x; G.y = bed.y; G.vx = G.vy = 0; step(1);
     const R = bed.md ? 0.5 * bed.fw * Math.sqrt(bed.md.w * bed.md.d) : bed.fw / 2;
     G.x = bed.x + R; G.vx = G.vy = 0; step(6); const lean = bed.lean || 0;
     for (let i = 0; i < 60; i++) { G.x = bed.x + R * (i % 2 ? 0.9 : 1.1); G.vx = (i % 2 ? -1 : 1) * 400; step(1); }
-    return { ok: !HH.fits(bed, D) && !bed.dead && !bed.fall && lean > 0.01 && bed.wob > 0, info: { lvl: G.lvl, type: bed.k, tier: bed.t, ratio: +(D / bed.fw).toFixed(2), lean: +lean.toFixed(3), wobbled: bed.wob > 0 } };`));
+    // v5.1 Part 11: overlapped and bumped, a thing that does not qualify sits still: no lean, and its pose never changes frame to frame
+    const md = HH.G.vis.includes(bed) && bed.md, poses = [];
+    for (let i = 0; i < 20; i++) { G.x = bed.x + R * 0.8; G.vx = G.vy = 0; step(1); HH.poseOf(bed, bed.md, 0, 0, D / 2); poses.push(HH.V3 && [bed.lean || 0, +(bed.yaw || 0).toFixed(6)].join()); }
+    const still = poses.every(p => p === poses[0]) && (bed.lean || 0) === 0;
+    return { ok: !HH.fits(bed, D) && !bed.dead && !bed.fall && lean === 0 && still && bed.wob > 0, info: { lvl: G.lvl, type: bed.k, tier: bed.t, ratio: +(D / bed.fw).toFixed(2), lean: +lean.toFixed(3), bumped: bed.wob > 0, still } };`));
+
+  await T('no perpetual teeter (v5.1 Part 11): the Stanley Park picnic blanket lies flat and still under the starting hole', new Function(STEP + `
+    const { G, S } = HH; S.ch[3].u = 1; HH.startChapter(3, 'explore'); step(3);
+    const bl = G.vis.find(o => o.k === 'blanket'); if (!bl) return { ok: false, info: 'no blanket' };
+    const q = [], Q = HH.V3 && null;
+    for (let i = 0; i < 60; i++) { G.vx = (i % 2 ? -1 : 1) * 0.3; step(1); HH.poseOf(bl, HH.G.vis.includes(bl) && bl.md, 0, 0, HH.holeD() / 2); q.push((bl.lean || 0) + ',' + (bl.wobble || 0).toFixed(3)); }
+    const under = Math.hypot(bl.x - G.x, bl.y - G.y) < bl.fw / 2;
+    HH.startChapter(1); step(1);
+    return { ok: under && q.every(v => v === '0,0.000'), info: { under, sample: q.slice(0, 3), distinct: [...new Set(q)].length } };`));
 
   await T('wobble rule: >=85% bumps tip it in, <85% never', new Function(STEP + `
     const { G } = HH; HH.restartRun(true); step(1);
@@ -140,6 +153,26 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     const wrongBlocked = wrong.every(t => !HH.canEat(t)); HH.eat(right); step(1);
     return { ok: mine.length >= 2 && wrongBlocked && a.p === 1 && right.txt === '1', info: { tiles: mine.length, first: right && right.txt, wrongBlocked, p: a.p } };`));
 
+  await T('Exploration upgrade sandbox (v5.1 Part 10): free 0-10 steppers apply live, the save stays byte-identical, Story sees the real levels', new Function(STEP + `
+    const { G, S } = HH; S.ch[2].u = 1; S.ch[2].w = 777; S.ch[2].up = [2, 1, 0, 3, 0, 0, 0, 0, 1, 0]; HH.persist();
+    const save0 = JSON.stringify(S.ch[2]), ls0 = JSON.parse(localStorage.getItem('hungry-hole-data-v1')).ch[2];
+    HH.startChapter(2, 'explore'); step(2);
+    const run = d => { G.x = G.C.start[0]; G.y = G.C.start[1]; G.vx = G.vy = 0; const x0 = G.x; G.joy = { x0: 0, y0: 0, x: 70, y: 0 }; step(30); G.joy = null; const v = G.x - x0; return v; };
+    const v0 = run();
+    document.getElementById('b-up-hud').click(); const sandUI = document.getElementById('s-upgrades').classList.contains('sand') && document.querySelectorAll('#up-grid [data-sd]').length === 20;
+    for (let i = 0; i < 12; i++) document.querySelector('[data-sd="0:1"]').click();        // Speed up past the top: stops at 10
+    const top = G.st.up[0];
+    for (let i = 0; i < 6; i++) document.querySelector('[data-sd="0:-1"]').click();        // and back down to 4 (the owner's "park it at 4")
+    const parked = G.st.up[0]; document.querySelector('[data-sd="8:-1"]').click(); const wide = G.st.up[8];
+    document.querySelector('#s-upgrades [data-back]').click(); step(2);
+    const v1 = run();
+    const liveOk = top === 10 && parked === 4 && wide === 0 && HH.UPL('speed') === 4 && v1 > v0 * 1.05;
+    HH.UI.main();
+    const same = JSON.stringify(S.ch[2]) === save0, ls1 = JSON.parse(localStorage.getItem('hungry-hole-data-v1')).ch[2], lsSame = JSON.stringify(ls1.up) === JSON.stringify(ls0.up) && ls1.w === ls0.w;
+    HH.startChapter(2, 'story'); step(1); const storyUp = G.st.up.join(''), storyW = G.st.w;
+    HH.startChapter(1); step(1);
+    return { ok: sandUI && liveOk && same && lsSame && storyUp === '2103000010' && storyW === 777, info: { sandUI, top, parked, wide, v0: +v0.toFixed(2), v1: +v1.toFixed(2), same, lsSame, storyUp, storyW } };`));
+
   await T('banker: exactly 60% arrives', new Function(`
     const { S } = HH; S.ch[2].u = 1; S.ch[1].w = 1000; S.ch[2].w = 50;
     const ok1 = HH.bankerTransfer(1, 2, 100); const a = [S.ch[1].w, S.ch[2].w];
@@ -222,11 +255,70 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
   const play = await p.evaluate(() => { const { G, S } = HH, out = {}; for (const n of [1, 2, 3, 4, 5]) { S.ch[n].u = 1; HH.startChapter(n); for (let i = 0; i < 10; i++) { G.now += 33; G.t += 1 / 30; HH.update(1 / 30); } out[n] = G.C.n === n && G.vis.length > 0; } HH.G.mode = 'menu'; HH.persist(); return out; });
   await p.reload(); await p.waitForTimeout(400);
   const m2 = await chk();
-  const keep = m1.worlds === '1,2,3,4,5' && m1.w.join() === '111,333,0,666,555' && m1.up.join() === '1100000001,3100000000,6100000000,5100000002' && m1.board.join() === [1, 3, 6, 5].map(n => Array(40).fill(0).filter((_, i) => !((i + n) % 4)).length).join()
+  const keep = m1.worlds === '1,2,3,4,5' && m1.w.join() === '111,333,0,555,666' && m1.up.join() === '1100000001,3100000000,5100000002,6100000000' && m1.board.join() === [1, 3, 5, 6].map(n => Array(40).fill(0).filter((_, i) => !((i + n) % 4)).length).join()
     && m1.done.join() === '1,1,1,1' && m1.u3 === 1 && m1.eaten2 === 'canadaplace,scienceworld' && m1.ispy2 && m1.ispy2.wins === 6 && m1.ispy2.pos === 2 && m1.edu2 && m1.edu2.set === 2 && !m1.wins4
     && m1.retired === '2,4,7' && m1.r4 === JSON.stringify(v4save.ch[4]) && m1.r7 === JSON.stringify(v4save.ch[7]) && m1.passport === 'FR,JP' && m1.learn.math === 7 && m1.music === 0 && m1.last === 1 && m1.other === 'keep-me';
   const stable = JSON.stringify(Object.assign({}, m1, { u3: 0, last: 0 })) === JSON.stringify(Object.assign({}, m2, { u3: 0, last: 0 }))   // (playing moved 'last world played');
   results.push(['v4 save with RETIRED-world data (Wilderness, Chaos) migrates: retired data set aside verbatim, kept worlds intact, survives reload', keep && stable && Object.values(play).every(Boolean), { m1: keep ? 'ok' : m1, play, stableAfterReload: stable, changed: Object.keys(m1).filter(k => JSON.stringify(m1[k]) !== JSON.stringify(m2[k])).map(k => [k, m1[k], m2[k]]) }]);
+
+  // v5.1 owner request: the worlds go up in size (4 = the Globe, 5 = Space). A v5 save moves its Space (old 4) and Globe
+  // (old 5) progress across once, with wallets, upgrades, boards, eaten landmarks, I Spy decks and lessons; then it is stable.
+  await p.goto(URL.replace(/index\.html.*$/, 'README.md'));
+  await p.evaluate(() => {
+    const ch = {}; for (let n = 1; n <= 5; n++) ch[n] = { u: n <= 4 ? 1 : 0, c: n <= 3 ? 1 : 0, x: 10 * n, y: 10 * n, lvl: n, xp: 0, pts: 100 * n, pc: 0, w: 1000 + n, cf: 0, check: [n, 0, 0],
+      board: Array(40).fill(0).map((_, i) => i < n ? 1 : 0), act: [], qi: 0, up: [n, 0, 0, 0, 0, 0, 0, 0, 0, 0], eaten: { ['e' + n]: 1 }, bm: 0, exitOk: 0, beat: n, mv: 5 };
+    ch[5].seen = 'globe-trail';
+    localStorage.setItem('hungry-hole-data-v1', JSON.stringify({ v: 1, w5: 1, settings: { sound: 1, music: 1, learn: 'full', grade: 2 }, last: 4, journey: 0, ch, passport: { FR: 1 }, learn: {},
+      ispy: { 4: { deck: [1, 2, 3], pos: 1, wins: 4 }, 5: { deck: [7], pos: 0, wins: 5 } }, edu: { 4: { set: 1, done: 2 }, 5: { set: 3, done: 4 } }, retired: {} }));
+  });
+  await p.goto(URL); await p.waitForTimeout(400);
+  const sw = () => p.evaluate(() => { const { S } = HH, c = S.ch; return { w: [4, 5].map(n => c[n].w), up: [4, 5].map(n => c[n].up[0]), eaten: [4, 5].map(n => Object.keys(c[n].eaten).join()), beat: [4, 5].map(n => c[n].beat),
+    u: [4, 5].map(n => c[n].u), seen4: c[4].seen, wins: [4, 5].map(n => S.ispy[n] && S.ispy[n].wins), edu: [4, 5].map(n => S.edu[n] && S.edu[n].set), last: S.last, w51: S.w51, names: [4, 5].map(n => HH.CH[n].key), passport: S.passport.FR }; });
+  const s1 = await sw();
+  await p.evaluate(() => HH.persist()); await p.reload(); await p.waitForTimeout(400);
+  const s2 = await sw();
+  const swapOk = s1.names.join() === 'globe,space' && s1.w.join() === '1005,1004' && s1.up.join() === '5,4' && s1.eaten.join() === 'e5,e4' && s1.beat.join() === '5,4' && s1.seen4 === 'globe-trail'
+    && s1.wins.join() === '5,4' && s1.edu.join() === '3,1' && s1.last === 5 && s1.u.join() === '1,1' && s1.w51 === 1 && s1.passport === 1 && JSON.stringify(s1) === JSON.stringify(s2);
+  results.push(['v5 save -> v5.1 world order (4 = Globe, 5 = Space): each world keeps its own progress, moved once, stable after reload', swapOk, swapOk ? s1 : { s1, s2 }]);
+
+  // v5.1 Part 13: the Globe has no top or bottom edge. Hold the stick straight up from northern Canada: the hole goes
+  // over the North Pole and comes down the far side at Russian longitudes, with no jump on the sphere or on screen.
+  for (const [pole, lon0, lat0] of [['N', -100, 80], ['S', 30, -80]]) {
+    const r = await p.evaluate(new Function('a', 'const [pole, lon0, lat0] = a; ' + STEP + `
+      const { G, S } = HH; S.ch[4].u = 1; HH.startChapter(4, 'explore'); const C = G.C; G.paused = true;
+      HH.setHoleD(C.sizes[6]); const D = HH.holeD(); [G.x, G.y] = C.P(lon0, lat0); G.cam.x = G.x; G.cam.y = G.y; step(5);
+      const up = pole === 'N' ? -120 : 120; G.joy = { x0: 600, y0: 500, x: 600, y: 500 + up };
+      const sph = (x, y) => { const [lo, la] = C.ll(((x % C.W) + C.W) % C.W, y); const f = la * Math.PI / 180, l = lo * Math.PI / 180; return [Math.cos(f) * Math.cos(l), Math.cos(f) * Math.sin(l), Math.sin(f)]; };
+      // fixed points on the sphere near the pole, on both sides; each is drawn where it really is, or (just past the pole) turned round the hole's meridian
+      const s0 = pole === 'N' ? 1 : -1, ey = v => pole === 'N' ? v : C.H - v;
+      const probes = [[G.x + D, ey(2 * D)], [G.x - 2 * D, ey(4 * D)], [G.x + C.W / 2 + D, ey(3 * D)], [G.x + C.W / 2 - D, ey(1.5 * D)]];
+      const scr = (px, py) => { HH.camPlace(G.cam.z); const b = pole === 'N' ? 0 : 2 * C.H, m = 2 * G.x + C.W / 2;
+        const ra = [HH.dx(px, G.cam.x), py - G.cam.y], im = [HH.dx(m - px, G.cam.x), b - py - G.cam.y];
+        const q = Math.hypot(...ra) < Math.hypot(...im) ? ra : im, o = [0, 0]; HH.toScreen(q[0], q[1], 0, o); return o; };
+      const on = s => s[0] > 0 && s[0] < 1280 && s[1] > 0 && s[1] < 720;
+      let prev = null, foldAt = -1; const steps = [], tr = probes.map(() => []), hole = [], lats = [];
+      for (let i = 0; i < 6000; i++) {
+        step(1); if (G.poleN && foldAt < 0) foldAt = i;
+        const v = sph(G.x, G.y); if (prev) steps.push(Math.acos(Math.min(1, v[0] * prev[0] + v[1] * prev[1] + v[2] * prev[2])) * 6371); prev = v;
+        probes.forEach((q, k) => tr[k].push(scr(q[0], q[1])));
+        const h = [0, 0]; HH.camPlace(G.cam.z); HH.toScreen(HH.dx(G.x, G.cam.x), G.y - G.cam.y, 0, h); hole.push(h);
+        lats.push(C.ll(G.x, G.y)[1]);
+        if (foldAt >= 0 && Math.abs(lats[lats.length - 1]) < Math.abs(lat0)) break;
+      }
+      const end = C.ll(G.x, G.y), around = a => a.slice(Math.max(0, foldAt - 4), foldAt + 4);
+      // on the sphere: the step over the pole is no longer than the steps either side of it
+      const sF = around(steps), stepOk = Math.max(...sF) <= Math.max(sF[0], sF[sF.length - 1]) * 1.05 + 1e-9;
+      // on screen: no kink. Each tracked point's frame-to-frame change of velocity at the fold is small next to its speed
+      let kink = 0, seen = 0; const check = t => { for (let i = Math.max(1, foldAt - 3); i <= foldAt + 3 && i + 1 < t.length; i++) { const [a, b, c] = [t[i - 1], t[i], t[i + 1]];
+        if (![a, b, c].every(on)) continue; seen++; const sp = Math.hypot(c[0] - b[0], c[1] - b[1]), acc = Math.hypot(c[0] - 2 * b[0] + a[0], c[1] - 2 * b[1] + a[1]); kink = Math.max(kink, acc - 0.25 * sp); } };
+      tr.forEach(check); const pSeen = seen; check(hole);
+      const peak = pole === 'N' ? Math.max(...lats) : Math.min(...lats);
+      const yawHeld = G.camYaw; G.joy = null; G.vx = G.vy = 0; step(150); const yawAfter = G.camYaw;
+      const lonOk = Math.abs(((end[0] - (lon0 + 180)) % 360 + 540) % 360 - 180) < 0.2;
+      const ok = G.poleN === 1 && stepOk && Math.abs(peak) > 89.9 && lonOk && Math.abs(end[1] - lat0) < 0.5 && pSeen > 0 && kink < 3 && Math.abs(Math.abs(yawHeld) - Math.PI) < 1e-6 && yawAfter === 0;
+      return { ok, info: { pole, from: [lon0, lat0], end: end.map(v => +v.toFixed(3)), peakLat: +peak.toFixed(4), stepsKmAtFold: sF.map(v => +v.toFixed(3)), screenKinkPx: +kink.toFixed(2), probeFramesOnScreen: pSeen, yawHeld: +yawHeld.toFixed(3), yawAfterLift: yawAfter } };`), [pole, lon0, lat0]).catch(e => ({ ok: false, info: e.message }));
+    results.push([`the Globe over the ${pole === 'N' ? 'North' : 'South'} Pole (v5.1 Part 13): a straight drive comes down the far side (longitude +180), no jump on the sphere or on screen`, r.ok, r.info]);
+  }
 
   // Reset Everything (two-tap) keeps other keys
   await p.evaluate(() => HH.UI.settings('main')); await p.waitForTimeout(200);

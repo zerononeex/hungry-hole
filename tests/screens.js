@@ -1,4 +1,4 @@
-// Screenshots for review (v5): menus, scenes in each of the five worlds, the big map, the finale, and each mode. node tests/screens.js <outdir>
+// Screenshots for review (v5, v5.1): menus, scenes in each of the five worlds, the big map, the finale, and each mode. node tests/screens.js <outdir>
 const { chromium } = require('playwright');
 const URL = process.env.HH_URL || 'http://localhost:8765/index.html', OUT = process.argv[2] || 'docs/screenshots';
 (async () => {
@@ -20,8 +20,8 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html', OUT = proc
     ['13-w2-vancouver-story-start', 2, 'story', null, null, 0, 0], ['14-w2-downtown', 2, 'explore', 30, 'canadaplace', 0, 1.5], ['15-w2-street-corner-lamps', 2, 'explore', 3, [-123.1207, 49.2827, 100, -50], 0, 0],
     ['16-w2-whistler-snow', 2, 'explore', 300, 'whistler', 0, 1],
     ['17-w3-stanley-story-start', 3, 'story', null, null, 0, 0], ['18-w3-aquarium', 3, 'explore', 8, 'aquarium', 0, 1.5], ['19-w3-lighthouse', 3, 'explore', 6, 'brocktonlh', 1, 1], ['20-w3-park-overview', 3, 'explore', 160, 'mid', 0, 0],
-    ['21-w4-space-story-start', 4, 'story', null, null, 0, 0], ['22-w4-saturn', 4, 'explore', 'x1.4', 'saturn', 1.2, 0.4],
-    ['23-w5-globe-story-start', 5, 'story', null, null, 0, 0], ['24-w5-golden-gate', 5, 'explore', 'x1.5', 'goldengate', 1, 1], ['25-w5-europe', 5, 'explore', 220, 'eiffel', 0, 0], ['26-w5-the-world', 5, 'explore', 1300, 'everest', 0, 0],
+    ['21-w4-globe-story-start', 4, 'story', null, null, 0, 0], ['22-w4-golden-gate', 4, 'explore', 'x1.5', 'goldengate', 1, 1], ['23-w4-europe', 4, 'explore', 220, 'eiffel', 0, 0], ['24-w4-the-world', 4, 'explore', 1300, 'everest', 0, 0],
+    ['25-w5-space-story-start', 5, 'story', null, null, 0, 0], ['26-w5-saturn', 5, 'explore', 'x1.4', 'saturn', 1.2, 0.4],
   ];
   for (const [file, n, mode, d, id, ox, oy] of scenes) {
     await p.evaluate(([n, mode, d, id, ox, oy]) => { const { G } = HH; HH.UI.closeModal && HH.UI.closeModal(); HH.startChapter(n, mode);
@@ -34,9 +34,9 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html', OUT = proc
     await p.waitForTimeout(1800); await shot(p, file);
   }
   // the big map (tap the minimap), the Globe's to-scale world at 100%
-  await p.evaluate(() => { HH.G.bigmap = { zi: 0 }; }); await p.waitForTimeout(500); await shot(p, '27-w5-big-map');
+  await p.evaluate(() => { HH.startChapter(4, 'explore'); HH.G.bigmap = { zi: 0 }; }); await p.waitForTimeout(900); await shot(p, '27-w4-big-map');
   await p.evaluate(() => { HH.startChapter(3, 'story'); HH.G.bigmap = { zi: 0 }; }); await p.waitForTimeout(900); await shot(p, '28-w3-big-map');
-  // the finale: the Globe's last objective rolls the credits
+  // the finale: Space (World 5, the last world since v5.1) rolls the credits after its last objective, the Sun
   await p.evaluate(() => { HH.G.bigmap = null; HH.startChapter(5); HH.G.C.finish(false); }); await p.waitForTimeout(4500); await shot(p, '29-finale-credits');
   // modes
   await p.evaluate(() => { HH.G.cine = null; HH.UI.main(); }); await p.waitForTimeout(200); await shot(p, '30-menu-four-modes');
@@ -45,8 +45,8 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html', OUT = proc
   await p.waitForTimeout(1500); await shot(p, '32-ispy-run-w2');
   await p.evaluate(() => { const { G } = HH; G.run.tg.forEach(t => t.o && HH.eat(t.o)); }); await p.waitForTimeout(1300); await shot(p, '33-ispy-win');
   await p.evaluate(() => { HH.UI.closeModal(); HH.UI.chapters('edu'); }); await p.waitForTimeout(300); await shot(p, '34-edu-picker');
-  await p.evaluate(() => { const { G, S } = HH; S.edu[5] = { set: 0, done: 0 }; HH.startChapter(5, 'edu'); G.helpOn = HH.MODES.edu.target(); });
-  await p.waitForTimeout(1500); await shot(p, '35-edu-w5-help-arrow');
+  await p.evaluate(() => { const { G, S } = HH; S.edu[4] = { set: 0, done: 0 }; HH.startChapter(4, 'edu'); G.helpOn = HH.MODES.edu.target(); });
+  await p.waitForTimeout(1500); await shot(p, '35-edu-w4-help-arrow');
   await p.evaluate(() => { const { G, S } = HH; const mi = HH.CH[1].edu.findIndex(E => E.s.some(x => x[0] === 'm')); S.edu[1] = { set: mi, done: 0 }; HH.startChapter(1, 'edu'); G.lvl = 4; });
   await p.waitForTimeout(3600); await shot(p, '36-edu-w1-local-sums');
   await p.evaluate(() => { const { G, S } = HH; S.edu[3] = { set: 0, done: 0 }; HH.startChapter(3, 'edu'); G.helpOn = HH.MODES.edu.target(); });
@@ -54,6 +54,22 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html', OUT = proc
   await p.evaluate(() => { HH.UI.closeModal(); HH.UI.chapters('explore'); }); await p.waitForTimeout(300); await shot(p, '38-exploration-picker');
   await p.evaluate(() => { HH.UI.closeModal(); const { G } = HH; HH.startChapter(2); G.lvl = 3; G.cam.x = G.x; G.cam.y = G.y; });
   await p.waitForTimeout(1500); await shot(p, '42-hud-upgrades-button');
+  // v5.1 Part 12: never the void. Each world at its MAX size, at a corner of its map (the Globe and Space have none: they
+  // wrap / are open space), plus the v5.1 additions: stair signs, the carport, YVR, Science World, Whistler, co-op picker
+  for (const [file, n, at] of [['50-w1-max-size-corner', 1, 'ne'], ['51-w2-max-size-corner', 2, 'nw'], ['52-w2-max-size-corner-se', 2, 'se'], ['53-w3-max-size-corner', 3, 'se'],
+    ['54-w3-max-size-corner-nw', 3, 'nw'], ['55-w4-max-size', 4, 'ne'], ['56-w5-max-size', 5, 'ne']]) {
+    await p.evaluate(([n, at]) => { const { G } = HH, C = HH.CH[n]; HH.UI.closeModal && HH.UI.closeModal(); HH.startChapter(n, 'explore'); HH.setHoleD(C.sizes[C.N] * 1.45);
+      G.x = at.includes('e') ? C.W : 0; G.y = at.includes('s') ? C.H : 0; G.cam.x = G.x; G.cam.y = G.y; }, [n, at]);
+    await p.waitForTimeout(2200); await shot(p, file);
+  }
+  for (const [file, n, js] of [['57-w1-stairs-go-upstairs', 1, 'HH.setHoleD(.3); G.fl = 0; G.x = 2.8; G.y = 29.7'], ['58-w1-deck-stairs-go-downstairs', 1, 'HH.setHoleD(.4); G.fl = 1; G.x = 9.15; G.y = 16'],
+    ['59-w1-cars-under-the-porch', 1, 'HH.setHoleD(1.2); G.fl = 0; G.x = 5; G.y = 18.5'], ['60-w2-yvr', 2, 'HH.setHoleD(120); [G.x, G.y] = G.C.P(-123.185, 49.1935)'],
+    ['61-w2-science-world', 2, "HH.setHoleD(30); const o = G.auth.find(o => o.id === 'scienceworld'); G.x = o.x; G.y = o.y + 70"], ['62-w2-north-mountain-forest', 2, 'HH.setHoleD(250); [G.x, G.y] = G.C.P(-122.62, 49.6)'],
+    ['64-w4-globe-at-the-north-pole', 4, 'HH.setHoleD(G.C.sizes[11]); [G.x, G.y] = G.C.P(-40, 89.4)'], ['65-w4-globe-at-the-south-pole', 4, 'HH.setHoleD(G.C.sizes[10]); [G.x, G.y] = G.C.P(60, -89.7)']]) {
+    await p.evaluate(([n, js]) => { const { G } = HH; HH.UI.closeModal && HH.UI.closeModal(); HH.startChapter(n, 'explore'); new Function('G', js)(G); G.cam.x = G.x; G.cam.y = G.y; }, [n, js]);
+    await p.waitForTimeout(2200); await shot(p, file);
+  }
+  await p.evaluate(() => { HH.UI.closeModal(); HH.UI.chapters('story'); }); await p.waitForTimeout(300); await shot(p, '63-play-together-picker');
   const ph = await page(844, 390); await shot(ph, '40-phone-main');
   await ph.evaluate(() => HH.startChapter(3)); await ph.waitForTimeout(1200); await shot(ph, '41-phone-game');
   console.log('screens done; console errors:', errs.length, errs.slice(0, 3)); await b.close();

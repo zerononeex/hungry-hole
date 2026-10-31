@@ -17,6 +17,7 @@ const { chromium } = require('playwright');
       const C = G.C, clamp = (v, a, b) => Math.max(a, Math.min(b, v)), FL = C.layered ? [0, 1] : [0];
       const ringOff = HH.ringOff; HH.setRingOff && HH.setRingOff(1);
       // one move with the engine's own limits (same order as update(): border clamp, then the world's collide)
+      let solidOn = false;                               // furniture too big to eat blocks like a wall (used by the smallest-size check)
       const move = (x0, y0, fl, x1, y1) => {
         const D = HH.holeD(), r = D / 2, step = Math.max(Math.min(r, C.layered ? .12 : r) * .5, 1e-3);
         G.x = x0; G.y = y0; G.fl = fl; G.okX = x0; G.okY = y0; G.vx = G.vy = 0;
@@ -25,6 +26,7 @@ const { chromium } = require('playwright');
           G.x += (x1 - x0) / k; G.y += (y1 - y0) / k;
           if (!C.wrap) { const em = C.edge != null ? Math.min(r * 0.4, C.edge) : r * 0.4; G.x = clamp(G.x, em, C.W - em); G.y = clamp(G.y, em, C.H - em); }
           if (C.collide) C.collide(r * 0.45);
+          if (solidOn) HH.solidPush(r);
           G.vx = G.vy = 0;
         }
         return [G.x, G.y, G.fl || 0];
@@ -69,6 +71,9 @@ const { chromium } = require('playwright');
           playable++; if (F.seen[F.id(i, j, f)] || covered(x, y, f)) reached++; else if (miss.length < 6) miss.push([+x.toFixed(1), +y.toFixed(1), f, C.zoneAt(x, y)]);
         }
       }
+      // v5.1 Part 6: a flat world whose boundary is its map rectangle has no dead ground inside it: every cell is a zone
+      if (C.rectPlay) { let dead = 0; const ex = []; for (let j = 0; j < F.ny; j++) for (let i = 0; i < F.nx; i++) { const x = Math.min((i + .5) * cs, C.W), y = Math.min((j + .5) * cs, C.H); if (!C.zoneAt(x, y)) { dead++; if (ex.length < 4) ex.push([Math.round(x), Math.round(y)]); } }
+        out.rect = { cells: F.nx * F.ny, dead }; if (dead) out.fails.push(`${dead} cells inside the map rectangle are not playable, e.g. ${JSON.stringify(ex)}`); }
       out.max = { holeD: +Dmax.toFixed(3), cell: +cs.toFixed(2), playable, reached, pct: +(100 * reached / Math.max(1, playable)).toFixed(2), miss };
       if (reached < playable) out.fails.push(`only ${out.max.pct}% of the map reachable at max size; e.g. ${JSON.stringify(miss)}`);
       if (C.rooms) for (const rm of C.rooms) {           // every named room / yard, on its own floor
@@ -76,11 +81,34 @@ const { chromium } = require('playwright');
         let hit = false; for (let u = -2; u <= 2 && !hit; u++) for (let v = -2; v <= 2 && !hit; v++) if (F.seen[F.id(i + u, j + v, fl)]) hit = true;
         if (!hit) out.fails.push('room unreachable at max size: ' + rm[1] + ' (floor ' + fl + ')');
       }
+      // v5.1 Part 9: at the SMALLEST size the hole gets from the deck down the deck stairs into the backyard (the garden beds
+      // moved north, clear of the stairs' foot), and every corner of the backyard is reachable from the deck
+      if (C.key === 'home' && C.rooms) {
+        HH.setHoleD(C.sizes[1]); const vis0 = G.vis; G.vis = G.auth.filter(o => !o.dead && !o.path); solidOn = true;
+        const rm = id => C.rooms.find(r => r[0] === id)[3], dk = rm('deck'), bk = rm('back');
+        const S = flood(0.2, (dk[0] + dk[2]) / 2, (dk[1] + dk[3]) / 2, 1);
+        let tot = 0, hit = 0; const miss2 = [];
+        G.fl = 0; const bxs = HH.solidBoxes(HH.holeD() / 2).filter(b => (b[5] || 0) === 0), rr = HH.holeD() / 2 + .2;   // spots under furniture are not ground
+        const under = (x, y) => bxs.some(([bx, by, hw, hd, yaw]) => { const c = Math.cos(yaw), sn = Math.sin(yaw), ox = x - bx, oy = y - by, lx = ox * c - oy * sn, lz = ox * sn + oy * c; return Math.abs(lx) < hw + rr && Math.abs(lz) < hd + rr; });
+        for (let y = bk[1] + .3; y < bk[3] - .3; y += .4) for (let x = bk[0] + .3; x < bk[2] - .3; x += .4) {
+          if (!C.walkable(x, y, 0) || under(x, y)) continue; tot++;
+          const i = Math.floor(x / .2), j = Math.floor(y / .2); let ok = false; for (let u = -1; u <= 1 && !ok; u++) for (let v = -1; v <= 1 && !ok; v++) if (S.seen[S.id(i + u, j + v, 0)]) ok = true;
+          if (ok) hit++; else if (miss2.length < 5) miss2.push([+x.toFixed(1), +y.toFixed(1)]);
+        }
+        solidOn = false; G.vis = vis0;
+        // and the foot of the deck stairs is clear: no furniture on the run or within 1 m of its bottom end
+        const ds = rm('dstair'), foot = [ds[0] - .3, ds[1] - 1, ds[2] + .3, ds[3]];
+        const blockers = bxs.filter(([bx, by, hw, hd, yaw]) => { const ex = Math.abs(hw * Math.cos(yaw)) + Math.abs(hd * Math.sin(yaw)), ey = Math.abs(hw * Math.sin(yaw)) + Math.abs(hd * Math.cos(yaw));
+          return bx + ex > foot[0] && bx - ex < foot[2] && by + ey > foot[1] && by - ey < foot[3]; }).map(b => (G.auth.find(o => o.x === b[0] && o.y === b[1]) || { k: '?' }).k);
+        if (blockers.length) out.fails.push('deck stairs foot blocked by: ' + blockers.join(','));
+        out.deck = { holeD: +HH.holeD().toFixed(3), backyard: hit + '/' + tot + (blockers.length ? '' : ', stair foot clear') };
+        if (!tot || hit < tot) out.fails.push(`deck -> backyard at the smallest size: ${hit}/${tot} backyard spots reached, e.g. ${JSON.stringify(miss2)}`);
+      }
       HH.setRingOff && HH.setRingOff(0);
       return out;
     }, n);
     ok = ok && !r.fails.length;
-    console.log(`W${r.n} ${r.name}: max hole ${r.max.holeD} cell ${r.max.cell} reachable ${r.max.reached}/${r.max.playable} (${r.max.pct}%) ${r.fails.length ? 'FAIL\n   ' + r.fails.join('\n   ') : 'PASS'}`);
+    console.log(`W${r.n} ${r.name}: max hole ${r.max.holeD} cell ${r.max.cell} reachable ${r.max.reached}/${r.max.playable} (${r.max.pct}%)${r.rect ? ` rectangle ${r.rect.cells - r.rect.dead}/${r.rect.cells} playable` : ''}${r.deck ? ` deck->backyard at ${r.deck.holeD} m: ${r.deck.backyard}` : ''} ${r.fails.length ? 'FAIL\n   ' + r.fails.join('\n   ') : 'PASS'}`);
   }
   console.log('errors:', JSON.stringify(errs.slice(0, 5))); await b.close();
   process.exit(ok && !errs.length ? 0 : 1);

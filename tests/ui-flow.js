@@ -27,6 +27,23 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     await click('[data-play="' + (kind === 'ispy' ? 1 : 5) + '"]', 700); modes[kind] = [open, await p.evaluate(() => HH.G.run.kind + '@' + HH.G.C.n)];
     await click('#b-pause'); await click('#p-menu', 400);
   }
+  // v5.1 Part 3: the minimap is TOP-left in every world and mode; a tap on it opens the big map and never steers; bottom-left is free
+  const mini = {};
+  for (const [n, kind] of [[1, 'story'], [2, 'explore'], [3, 'ispy'], [4, 'edu'], [5, 'story']]) {
+    await p.evaluate(([n, kind]) => { HH.S.ch[n].u = 1; HH.startChapter(n, kind); HH.G.bigmap = null; }, [n, kind]); await p.waitForTimeout(400);
+    const r = await p.evaluate(() => { const st = document.getElementById('stage').getBoundingClientRect(), k = st.width / 1280; return { k, x: st.left, y: st.top }; });
+    const mr = await p.evaluate(() => HH.miniRect());
+    await p.mouse.click(r.x + (mr[0] + mr[2] / 2) * r.k, r.y + (mr[1] + mr[3] / 2) * r.k); await p.waitForTimeout(150);
+    const opened = await p.evaluate(() => !!HH.G.bigmap && !HH.G.joy); await p.evaluate(() => { HH.G.bigmap = null; });
+    const blButtons = await p.evaluate(() => [...document.querySelectorAll('#stage button')].filter(b => { const q = b.getBoundingClientRect(), st = document.getElementById('stage').getBoundingClientRect(), k = st.width / 1280;
+      const x = (q.left - st.left) / k, y = (q.top - st.top) / k; return q.width > 0 && getComputedStyle(b).visibility !== 'hidden' && b.offsetParent && x < 420 && y + q.height / k > 460; }).map(b => b.id || b.textContent));
+    await p.mouse.move(r.x + 160 * r.k, r.y + 640 * r.k); await p.mouse.down(); await p.mouse.move(r.x + 230 * r.k, r.y + 600 * r.k, { steps: 5 });
+    const steers = await p.evaluate(() => !!HH.G.joy && !HH.G.bigmap); await p.mouse.up();
+    mini[n + kind] = { top: mr[1] <= 20 && mr[0] <= 20, opened, bottomLeftFree: !blButtons.length, steers };
+  }
+  const miniOk = Object.values(mini).every(v => v.top && v.opened && v.bottomLeftFree && v.steers);
+  if (!miniOk) steps.push('MISSING minimap-top-left ' + JSON.stringify(mini));
+  await p.evaluate(() => HH.UI.main());
   // upgrades live on the in-game HUD now (no menu button)
   await click('#b-start', 300); await click('[data-play="1"]', 600); await p.evaluate(() => { HH.S.ch[1].w = 500; HH.S.ch[2].u = 1; }); await click('#b-up-hud', 300);
   await click('[data-up="2"]'); await click('#b-buy'); const bought = await p.evaluate(() => HH.S.ch[1].up[2]);
@@ -43,7 +60,7 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
   await p.evaluate(() => { HH.S.ch[5].u = 1; HH.startChapter(5); const C = HH.G.C; C.finish(true); HH.G.now = performance.now(); });
   await p.waitForTimeout(3000); const credits = await screen(); await p.evaluate(() => document.getElementById('cr-done').click()); await p.waitForTimeout(300);
   const journey = await p.evaluate(() => HH.S.journey);
-  console.log(JSON.stringify({ title, pickTitle, modes, startMode: s1, moved, atMain, autoPaused, bought, walletsAfterBanker: wallets, exportCodeLen: code.length, segButtons: nSeg, learnReport, credits, afterCredits: await screen(), journey }));
+  console.log(JSON.stringify({ miniOk, title, pickTitle, modes, startMode: s1, moved, atMain, autoPaused, bought, walletsAfterBanker: wallets, exportCodeLen: code.length, segButtons: nSeg, learnReport, credits, afterCredits: await screen(), journey }));
   console.log('problems:', steps.filter(s => /^(MISSING|BLOCKED)/.test(s)));
   console.log('console errors:', errs.length, errs.slice(0, 5)); await b.close(); process.exit(errs.length ? 1 : 0);
 })();
