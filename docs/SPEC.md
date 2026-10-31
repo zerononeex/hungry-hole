@@ -583,3 +583,12 @@ exactly as built. Existing v2 saves MUST keep working (same key, additive fields
   and scale (a tower shot and a mountain shot must show real looming size).
 - Cleanup pass at the end (delete dead 2D rendering code — no dual renderers), and
   append the v3 section to docs/DECISIONS.md for every judgment call.
+
+## v3.1 controls note (owner playtest, 2026-10-30 — supersedes the v2/v3 touch scheme)
+The move-toward-your-finger control is REPLACED by a floating joystick: touch anywhere
+on the play area and a joystick base appears under your finger; drag to steer (direction
++ amount = direction + speed of the hole); release and it disappears and the hole glides
+to a stop. Where you touched must not matter — only the drag vector does. Touches that
+start on DOM buttons/menus never spawn it. Screen-up must move the hole straight up the
+screen at the same visual speed as sideways (tilt-compensated). One control scheme only:
+the old move-to-point behaviour is deleted, not kept as an option.
