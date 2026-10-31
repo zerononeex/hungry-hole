@@ -414,7 +414,7 @@ function wpick(list, r) { let tot = 0; for (const e of list) tot += e[1]; let v 
 const CH = [null];
 
 /* ---------- WORLD 1: THE HOME — a real two-storey family house, transcribed from the owner's floorplan (layout only),
-   true scale: 1 unit = 1 metre. North is up: the alley and the open garage are at the top, the front yard and the
+   true scale: 1 unit = 1 metre. North is up: the alley and the open carport under the porch are at the top, the front yard and the
    sidewalk at the bottom. Two floors share one map: the lower floor (at ground level, with every yard) is floor 0,
    the main floor and its deck are floor 1. Stairs are paths: you roll up or down the run and the floor changes as you
    pass its middle (spec v5.5). Walls are absolute; doors stand open; the house is an open-top dollhouse. ---------- */
@@ -431,7 +431,9 @@ const CH = [null];
     ['sideE2', 'Side path', 0, S(8.7, 12, 9.6, 28.4), '#b9b2a4', 'paving', 'path', 1],
     ['front', 'Front yard', 0, S(0, 28.4, W, 36.5), '#6aa84f', 'grass', 'yard', 1],
     ['walk', 'Sidewalk', 0, S(0, 36.5, W, 38.3), '#cfc9bd', 'paving', 'street', 1],
-    ['garage', 'Garage', 0, S(1.3, 9, 8.7, 15.8), '#a7a7a3', 'concrete', 'garage'],
+    // v5.1 Part 9: no garage. The two cars park in the open carport under the porch (the deck); the back of the old garage is a storage room
+    ['carport', 'Under the porch', 0, S(1.3, 9, 8.7, 14.2), '#a7a7a3', 'concrete', 'carport'],
+    ['storage', 'Storage room', 0, S(1.3, 14.2, 8.7, 15.8), '#b4b0a8', 'concrete', 'storage'],
     ['hallL', 'Downstairs hall', 0, S(4.3, 15.8, 5.3, 24.8), '#b88a5a', 'wood', 'hall'],
     ['bed4', 'Bedroom 4', 0, S(1.3, 15.8, 4.3, 19.6), '#9fb7e3', 'carpet', 'bed'],
     ['gym', 'Gym', 0, S(5.3, 15.8, 8.7, 19.4), '#5d6470', 'rubber', 'gym'],
@@ -462,7 +464,7 @@ const CH = [null];
   // doorways: x, y (centre, unshifted), width, 'h' (gap in an east-west wall) or 'v', floor(s), door: an open door stands beside it
   const OPEN = [
     // lower floor
-    [5, 9, 6, 'h', 0], [4.8, 15.8, .9, 'h', 0, 1], [4.3, 17.1, .9, 'v', 0, 1], [5.3, 17.1, .9, 'v', 0, 1], [4.3, 20.7, .8, 'v', 0, 1],
+    [5, 9, 7.4, 'h', 0], [5, 14.2, 1.4, 'h', 0], [4.8, 15.8, .9, 'h', 0, 1], [4.3, 17.1, .9, 'v', 0, 1], [5.3, 17.1, .9, 'v', 0, 1], [4.3, 20.7, .8, 'v', 0, 1],
     [4.3, 22.7, .8, 'v', 0, 1], [1.9, 24.8, 1.1, 'h', 0], [4.8, 24.8, .9, 'h', 0], [5.3, 20.6, 1.6, 'v', 0], [6.2, 21.8, 1.6, 'h', 0],
     [7.1, 20.6, .8, 'v', 0, 1], [5.3, 26.6, 1.4, 'v', 0], [3, 28.4, .95, 'h', 0, 1], [9.2, 7.4, 1, 'h', 0],
     // main floor
@@ -558,7 +560,7 @@ const CH = [null];
     ['bed', 'bed3', .5, .3, { yaw: Math.PI }], ['desk', 'bed3', .1, .85, { yaw: 0 }], ['chair', 'bed3', .3, .85], ['dresser', 'bed3', .92, .85, { yaw: 0 }], ['bookshelf', 'bed3', .85, .05, { yaw: Q }],
     ['plant', 'hallU', .5, .05], ['gclock', 'hallU', .5, .5], ['deckchair', 'deck', .2, .4], ['deckchair', 'deck', .35, .4], ['ptable', 'deck', .28, .7], ['bbq', 'deck', .85, .25], ['planter', 'deck', .05, .1], ['planter', 'deck', .6, .1],
     // lower floor
-    ['car', 'garage', .3, .55, { yaw: Math.PI, keep: 1, id: 'car', label: 'the family car' }], ['car2', 'garage', .72, .55, { yaw: Math.PI }], ['toolbench', 'garage', .5, .95, { yaw: Q }], ['shelfunit', 'garage', .04, .5, { yaw: 0 }], ['recycle', 'garage', .95, .9],
+    ['car', 'carport', .27, .52, { yaw: Math.PI, keep: 1, id: 'car', label: 'the family car' }], ['car2', 'carport', .73, .52, { yaw: Math.PI }], ['toolbench', 'storage', .2, .5, { yaw: 0 }], ['shelfunit', 'storage', .78, .5, { yaw: Q }], ['recycle', 'storage', .97, .5],
     ['bed', 'bed4', .4, .3, { yaw: Math.PI }], ['dresser', 'bed4', .85, .05, { yaw: Q }], ['desk', 'bed4', .08, .88, { yaw: 0 }], ['chair', 'bed4', .3, .88],
     ['wbench', 'gym', .7, .35], ['rack', 'gym', .94, .85, { yaw: 0 }], ['yogamat', 'gym', .45, .82, { yaw: Q }], ['ball', 'gym', .78, .65, { s: 2.8 }],
     ['tub', 'bathA', .5, .15, { yaw: Q }], ['toilet', 'bathA', .1, .75, { yaw: Q }], ['sink', 'bathA', .82, .8],
@@ -569,7 +571,7 @@ const CH = [null];
     ['sofa', 'livL', .5, .9, { yaw: Q }], ['tvon', 'livL', .5, .3, { yaw: Q }], ['beanbag', 'livL', .2, .62, { id: 'beanbag' }], ['beanbag', 'livL', .8, .62], ['bookshelf', 'livL', .96, .5, { yaw: 0 }],
     // the lot
     ['bike', 'alley', .12, .6, { yaw: Q, id: 'bike' }], ['bin', 'alley', .5, .2], ['bin', 'alley', .6, .2], ['recycle', 'alley', .7, .2],
-    ['gardenbed', 'back', .9, .6, { yaw: 0 }], ['gardenbed', 'back', .9, .85, { yaw: 0 }], ['shrub', 'back', .04, .3], ['shrub', 'back', .04, .7], ['birdbath', 'back', .55, .3, { id: 'birdbath' }],
+    ['gardenbed', 'back', .9, .2, { yaw: 0 }], ['gardenbed', 'back', .9, .46, { yaw: 0 }],   // v5.1: moved north, clear of the deck stairs' foot ['shrub', 'back', .04, .3], ['shrub', 'back', .04, .7], ['birdbath', 'back', .55, .3, { id: 'birdbath' }],
     ['planter', 'front', .2, .3], ['shrub', 'front', .05, .2], ['shrub', 'front', .95, .2], ['shrub', 'front', .95, .6], ['gnome', 'front', .7, .4, { id: 'gnome' }], ['mailbox', 'front', .9, .92, { id: 'mailbox' }],
     ['bin', 'sideW', .5, .4],
   ];
@@ -577,19 +579,19 @@ const CH = [null];
   const circle = (cx, cy, r, n = 12) => { const p = []; for (let i = 0; i <= n; i++) { const a = i / n * Math.PI * 2; p.push(cx + Math.cos(a) * r, cy + Math.sin(a) * r); } return p; };
   const loopPath = pts => { const p = []; for (const [x, y] of pts) p.push(x, y + OY); p.push(pts[0][0], pts[0][1] + OY); return p; };
   // placement constitution: room categories where each type may live (enforced by the data tests)
-  const ANY_IN = 'bed,nursery,hall,living,kitchen,bath,util,gym,closet,garage';
+  const ANY_IN = 'bed,nursery,hall,living,kitchen,bath,util,gym,closet,storage';
   const ALLOW = {
     crumb: ANY_IN + ',deck', button: ANY_IN, lego: 'bed,nursery,living,hall', marble: 'bed,living,hall', sock: 'bed,nursery,closet,util,hall,bath', die: 'bed,living',
-    coin: '*', paperclip: 'bed,living,util', key: 'hall,living,kitchen,garage', cap: 'kitchen,living,garage,util', cookie: 'kitchen,living,nursery,deck', sweet: 'living,bed,kitchen',
+    coin: '*', paperclip: 'bed,living,util', key: 'hall,living,kitchen,storage,carport', cap: 'kitchen,living,storage,carport,util', cookie: 'kitchen,living,nursery,deck', sweet: 'living,bed,kitchen',
     cereal: 'kitchen', spoon: 'kitchen,living', mug: 'kitchen,living,bed', plates: 'kitchen', egg: 'kitchen', apple: 'kitchen,yard', banana: 'kitchen', bread: 'kitchen', toaster: 'kitchen',
-    teapot: 'kitchen', jar: 'kitchen', can: 'kitchen,garage', grape: 'kitchen', bottle: 'kitchen,garage,bath', cupcake: 'kitchen,living',
+    teapot: 'kitchen', jar: 'kitchen', can: 'kitchen,storage,carport', grape: 'kitchen', bottle: 'kitchen,storage,bath', cupcake: 'kitchen,living',
     toothbrush: 'bath', toothpaste: 'bath', soap: 'bath,util', shampoo: 'bath', rduck: 'bath,nursery', sponge: 'bath,kitchen,util', towel: 'bath,util,gym', lipstick: 'bath,bed,closet',
     soldier: 'bed,living', toycar: 'bed,nursery,living', teddy: 'bed,nursery', dino: 'bed,living,nursery', robot: 'bed,living', yoyo: 'bed,living', book: 'bed,living,nursery,hall',
     pencil: 'bed,living', eraser: 'bed', crayon: 'bed,nursery,living', shoe: 'hall,closet,bed', hat: 'closet,hall,bed', backpack: 'bed,hall', glasses: 'bed,living', phone: 'bed,living,kitchen',
     rattle: 'nursery', remote: 'living', pacifier: 'nursery', block: 'nursery,living', bottleb: 'nursery,kitchen', diaper: 'nursery',
-    dumbbell: 'gym', bandw: 'gym', ball: 'gym,yard', bottlew: 'gym', battery: 'garage,util,living', screw: 'garage', toolbox: 'garage', bucket: 'garage,yard,util',
-    basket: 'util,bed', leaf: 'yard,deck,alley,path,street', flower: 'yard', butterfly: 'yard,deck,path', ant: 'yard,path,deck,street,alley', pebble: 'yard,path,alley,street',
-    fapple: 'yard', snail: 'yard,path', worm: 'yard', ladybug: 'yard,deck', sprout: 'yard', bin: 'alley,path,garage,street', recycle: 'alley,garage', bike: 'alley,garage',
+    dumbbell: 'gym', bandw: 'gym', ball: 'gym,yard', bottlew: 'gym', battery: 'storage,util,living', screw: 'storage', toolbox: 'storage', bucket: 'storage,carport,yard,util',
+    basket: 'util,bed', leaf: 'yard,deck,alley,path,street,carport', flower: 'yard', butterfly: 'yard,deck,path', ant: 'yard,path,deck,street,alley,carport', pebble: 'yard,path,alley,street,carport',
+    fapple: 'yard', snail: 'yard,path', worm: 'yard', ladybug: 'yard,deck', sprout: 'yard', bin: 'alley,path,storage,carport,street', recycle: 'alley,storage,carport', bike: 'alley,carport',
     gnome: 'yard', mailbox: 'yard', planter: 'deck,yard', shrub: 'yard', birdbath: 'yard', gardenbed: 'yard', newspaper: 'street,yard', cone: 'alley', cup: 'street,alley',
   };
   const CAT = Object.fromEntries(ROOMS.map(r => [r[0], r[6]]));
@@ -600,7 +602,7 @@ const CH = [null];
     eat: 'crumb:3,cookie,spoon,mug,apple,banana', master: 'button:2,sock:2,book,glasses,phone,lipstick,shoe,hat', ensuite: 'toothbrush:2,toothpaste,soap,shampoo,towel,rduck',
     wic: 'sock:3,shoe:3,hat:2,button', hallU: 'crumb:2,button,lego,shoe,book', bath: 'toothbrush:2,toothpaste,soap,shampoo:2,rduck:2,sponge,towel',
     nursery: 'rattle:3,pacifier:3,block:4,sock:2,rduck,teddy,crayon,bottleb,diaper:2,book', bed3: 'lego:3,crayon:2,sock,soldier:2,dino,robot,yoyo,book,pencil,eraser,teddy,backpack',
-    deck: 'crumb,leaf:3,butterfly,ant:3,cookie,ladybug', garage: 'button,screw:4,battery,can,cap,key,bucket,toolbox,bottle', hallL: 'crumb:2,button,shoe,sock',
+    deck: 'crumb,leaf:3,butterfly,ant:3,cookie,ladybug', storage: 'button,screw:4,battery,can,cap,bucket,toolbox,bottle', carport: 'ant:2,leaf:2,pebble:2,key,can,cap,bucket', hallL: 'crumb:2,button,shoe,sock',
     bed4: 'sock:2,lego:2,book,soldier,glasses,phone,backpack,pencil', gym: 'bottlew:2,towel,dumbbell:3,bandw:2,ball', bathA: 'toothbrush,toothpaste,soap,shampoo,rduck,towel,sponge',
     util: 'sock:4,button:2,soap,towel:2,sponge,basket', foyer: 'key:2,shoe:3,hat,backpack,button', kitL: 'crumb:3,cookie,cereal,spoon,mug,cap,can', bathB: 'toothbrush,soap,towel,shampoo',
     livL: 'crumb:3,lego:2,toycar,book,sweet,mug,die,soldier,yoyo,cupcake',
@@ -637,7 +639,7 @@ const CH = [null];
     kbed: ['big bed', 1, { open: 1 }], bed: ['bed', 1, { open: 1 }], hairdryer: ['hair dryer', 1], sink: ['sink', 1], toilet: ['toilet', 1], shower: ['shower', 1], tub: ['bathtub', 1],
     coatrack: ['coat rack', 1], shoerack: ['shoe rack', 1], crib: ['crib', 1, { open: 1 }], mobile: ['nursery mobile', 1], changer: ['changing table', 1], rocker: ['rocking horse', 1],
     toybox: ['toy box', 1, { pl: 'toy boxes' }], desk: ['desk', 1, { open: 1 }], gclock: ['grandfather clock', 1], deckchair: ['deck chair', 1, { open: 1 }], ptable: ['patio table', 1, { open: 1 }],
-    bbq: ['BBQ', 1], planter: ['planter', 1, { sway: 1 }], car: ['family car', 1], car2: ['family van', 1], toolbench: ['workbench', 1, { open: 1 }], shelfunit: ['garage shelf', 1, { pl: 'garage shelves' }],
+    bbq: ['BBQ', 1], planter: ['planter', 1, { sway: 1 }], car: ['family car', 1], car2: ['family van', 1], toolbench: ['workbench', 1, { open: 1 }], shelfunit: ['storage shelf', 1, { pl: 'storage shelves' }],
     recycle: ['recycling bin', 1], treadmill: ['treadmill', 1], wbench: ['weight bench', 1, { open: 1 }], rack: ['dumbbell rack', 1], yogamat: ['yoga mat', 1], washer: ['washing machine', 1],
     dryer: ['dryer', 1], ibroad: ['ironing board', 1, { open: 1 }], mirror: ['mirror', 1], beanbag: ['beanbag chair', 1], bike: ['bicycle', 1], bin: ['garbage bin', 1],
     gardenbed: ['vegetable garden', 1], shrub: ['bush', 1, { pl: 'bushes', sway: 1 }], birdbath: ['birdbath', 1, { pl: 'birdbaths' }], gnome: ['garden gnome', 1], mailbox: ['mailbox', 1, { pl: 'mailboxes' }],
@@ -798,9 +800,24 @@ const CH = [null];
         }
         g.restore();
       }
-      // driveway strips to the garage, the front path, the garden beds
+      // driveway strips to the carport under the porch, the front path, the garden beds
       if (fl === 0) { g.fillStyle = '#b9b2a4'; for (const x of [2.2, 3.6, 5.8, 7.2]) g.fillRect(x, OY, .6, 9); g.fillRect(2.6, 28.4 + OY, .8, 8.1); }
       g.fillStyle = '#4b2e1d'; for (const w of WALLS[fl]) if (vis([w[0], w[1], w[0] + w[2], w[1] + w[3]])) g.fillRect(w[0], w[1], w[2], w[3]);
+      // v5.1 Part 9: stair signs painted on the treads: "GO UPSTAIRS" at the bottom (seen from the lower floor), "GO DOWNSTAIRS"
+      // at the top (seen from the main floor and the deck), each with an arrow pointing the way along the run
+      if (!V.mini) for (const st of STAIRS) {
+        const [x0, y0, x1, y1] = st.r; if (!vis(st.r)) continue;
+        const up = fl === 0, alongX = st.ax === 'x', L = alongX ? x1 - x0 : y1 - y0, Wd = alongX ? y1 - y0 : x1 - x0;
+        const c = up ? .27 : .73, cx = alongX ? x0 + L * c : (x0 + x1) / 2, cy = alongX ? (y0 + y1) / 2 : y0 + L * c;
+        g.save(); g.translate(cx, cy); g.rotate((alongX ? 0 : Math.PI / 2) + (up ? 0 : Math.PI));   // +x along the run points the way to go
+        const a = Math.min(Wd * .36, .34), sz = Math.min(Wd * .26, .2);
+        g.fillStyle = 'rgba(255,248,225,.92)'; g.strokeStyle = 'rgba(60,35,15,.75)'; g.lineWidth = .025;
+        g.beginPath(); g.moveTo(L * .2 + a, 0); g.lineTo(L * .2, -a); g.lineTo(L * .2, -a * .45); g.lineTo(L * .2 - a * 1.4, -a * .45); g.lineTo(L * .2 - a * 1.4, a * .45); g.lineTo(L * .2, a * .45); g.lineTo(L * .2, a); g.closePath(); g.fill(); g.stroke();
+        g.font = `900 ${sz}px ${UI_FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = sz * .22; g.strokeStyle = 'rgba(60,35,15,.8)';
+        const t = up ? 'GO UPSTAIRS' : 'GO DOWNSTAIRS', tx = -L * .12;
+        if (alongX && !up || !alongX && !up) { g.rotate(Math.PI); g.strokeText(t, -tx, 0); g.fillText(t, -tx, 0); } else { g.strokeText(t, tx, 0); g.fillText(t, tx, 0); }
+        g.restore();
+      }
       if (V.z < 60 && !V.mini) { g.textAlign = 'center'; g.font = `bold ${clamp(14 / V.z, .12, .45)}px ${UI_FONT}`; g.fillStyle = 'rgba(0,0,0,.22)';
         for (const r of ROOMS) if ((r[2] === fl || (fl === 0 && r[7])) && vis(r[3]) && r[0] !== 'stair') g.fillText(r[1], (r[3][0] + r[3][2]) / 2, r[3][1] + .5); }
     },
@@ -1027,7 +1044,10 @@ const CH = [null];
     build(add, rng) {
       const A = (k, lon, lat, o) => add(k, ...P(lon, lat), Object.assign({ quiet: 1 }, o && o.id ? { keep: 1 } : null, o));   // named places stay eaten
       // every school, high school, community centre and casino at its real location (names show only while targeted)
-      for (const [k, x, y, nm] of D3.poi) if (inPlay(x, y)) add(k, x, y, { label: nm, quiet: 1, nm, yaw: rng() * 6.28 });
+      // (v5.1: the whole rectangle is ground you can roll over, but the owner's named-place rules stand: nothing named south of
+      // the border, and Langley stays out, so its POIs are not placed; it is unnamed farmland and forest)
+      const named = (x, y, nm) => { const [lon, lat] = inv(x, y); return lat > 49.0005 && !(lon > -122.684 && lat < 49.2) && !/langley/i.test(nm || ''); };
+      for (const [k, x, y, nm] of D3.poi) if (inPlay(x, y) && named(x, y, nm)) add(k, x, y, { label: nm, quiet: 1, nm, yaw: rng() * 6.28 });
       // the famous places, with their own shapes
       // v5.1 Part 8: Science World stands on land at the east end of False Creek: the coarse water mask covers its real spot,
       // so it takes the nearest spot whose whole footprint is dry (searched outward from the real coordinates)
