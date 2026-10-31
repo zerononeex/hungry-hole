@@ -1262,7 +1262,7 @@ const CH = [null];
 
 /* ---------- CHAPTER 5: WORLD TOUR (wrap-around globe; must match the real Earth) ---------- */
 (() => {
-  const D = 200, W = 360 * D, H = 180 * D;                               // 200 units per degree, equirectangular (v3: was 400)
+  const D = 400, W = 360 * D, H = 180 * D;                               // 400 units per degree, equirectangular (v4: 4x the v3 globe's area)
   const P = (lon, lat) => [(lon + 180) * D, (90 - lat) * D];
   const ll = (x, y) => [x / D - 180, 90 - y / D];
   // simplified real coastlines [lon,lat,...]: name, kind (continent flavour or ice)
@@ -1339,6 +1339,9 @@ const CH = [null];
   const LANDP = LAND.map(([k, a]) => { const p = toXY(a); return { k, p, b: bbox(p) }; });
   const SEAP = SEAS.map(a => { const p = toXY(a); return { p, b: bbox(p) }; });
   const NILEP = toXY(NILE);
+  const FLAGC = { CA: '#e53935', US: '#1e3a8a', MX: '#2e7d32', CU: '#1565c0', BR: '#43a047', AR: '#81d4fa', CL: '#d32f2f', PE: '#c62828', EC: '#fdd835', GB: '#283593', FR: '#1e88e5',
+    IT: '#388e3c', ES: '#ffca28', DE: '#212121', RU: '#f5f5f5', EG: '#c62828', NG: '#2e7d32', ZA: '#00796b', TZ: '#1b5e20', IN: '#ff9800', NP: '#b71c1c', CN: '#e53935', JP: '#fafafa',
+    VN: '#d32f2f', SG: '#e53935', AU: '#0d47a1', NZ: '#1a237e', JO: '#212121', ID: '#e53935', FJ: '#4fc3f7', MV: '#2e7d32' };
   const COUNTRIES = {
     CA: ['Canada', [[-110, 58, 8], [-80, 52, 5], [-123.5, 50.5, 1.8], [-95, 63, 8], [-72, 48, 3.5]]], US: ['USA', [[-98, 39, 7], [-117, 37, 4], [-84, 34, 5], [-81.5, 28.5, 2.5], [-75, 41.5, 3], [-150, 64, 6], [-121, 45, 3], [-155.5, 19.6, 1.5]]],
     MX: ['Mexico', [[-102, 23, 5], [-89, 19.5, 2.5]]], CU: ['Cuba', [[-81.5, 22.5, 2], [-77, 21, 2.5]]], BR: ['Brazil', [[-50, -10, 12], [-45, -21, 5]]], AR: ['Argentina', [[-64, -34, 6], [-67, -45, 3.5]]],
@@ -1362,7 +1365,7 @@ const CH = [null];
     ['Havana', 'CU', -82.38, 23.12, 'oldcar'], ['Buenos Aires', 'AR', -58.45, -34.6, 'dancer'], ['Rio de Janeiro', 'BR', -43.2, -22.9, 'parrot'], ['New York', 'US', -74.0, 40.71, 'hotdog'],
     ['Sydney', 'AU', 151.15, -33.87, 'kangaroo'], ['Beijing', 'CN', 116.4, 39.9, 'panda'], ['Delhi', 'IN', 77.2, 28.6, 'tuktuk'], ['Lima', 'PE', -77.04, -12.05, 'llama'],
     ['Los Angeles', 'US', -118.24, 34.05, 'palm'], ['Madrid', 'ES', -3.7, 40.42, 'guitar'], ['Berlin', 'DE', 13.4, 52.52, 'pretzel']];
-  const CITYP = CITIES.map(c => [...P(c[2], c[3]), 260, c]);
+  const CITYP = CITIES.map(c => [...P(c[2], c[3]), 520, c]);
   const LM = [ // id, type, lon, lat, name, place, cc, fact, wonder
     ['eiffel', 'eiffel', 2.2945, 48.8584, 'Eiffel Tower', 'Paris, France', 'FR', 'It is made of iron and is 330 metres tall.'],
     ['colosseum', 'colosseum', 12.4922, 41.8902, 'Colosseum', 'Rome, Italy', 'IT', 'Gladiators fought here almost 2,000 years ago.', 1],
@@ -1413,21 +1416,40 @@ const CH = [null];
     ocean: { d: .35, coin: .08, t: ['sailboat', 'ship:2', 'cruise', 'whale'] },
   };
   for (const c of CITIES) zones['c_' + c[0]] = { d: 1.5, coin: .35, t: [`car:3,taxi:2,bus:2,house:2,tree,${c[4]}:5`, 'building:2,crane:2,church,factory', 'tower:3,hotel:2,stadium', 'skyline:2'] };
-  let thumb = null;
+  /* the mini-globe tracker: an orthographic globe that turns under you (you are always the dot in the middle);
+     places you have visited glow gold. Re-rendered only when you move half a degree, so it costs nothing. */
+  let thumb = null, tpx = null, globe = null, gkey = '';
   function miniMap() {
+    const GR = 58, GS = GR * 2;
     if (!thumb) {
       thumb = document.createElement('canvas'); thumb.width = 360; thumb.height = 180; const x = thumb.getContext('2d');
       x.fillStyle = '#2a6fb5'; x.fillRect(0, 0, 360, 180);
       for (const L of LANDP) { x.fillStyle = L.k === 'ice' ? '#eef3f6' : '#7cb862'; x.beginPath(); for (let i = 0; i < L.p.length; i += 2) x.lineTo(L.p[i] / D, L.p[i + 1] / D); x.fill(); }
+      tpx = x.getImageData(0, 0, 360, 180).data;
+      globe = document.createElement('canvas'); globe.width = globe.height = GS;
     }
-    const X = 12, Y = 494, w = 200, h = 100, st = G.st;
-    g.fillStyle = 'rgba(20,14,46,.78)'; rr(g, X - 4, Y - 4, w + 8, h + 8, 10); g.fill();
-    g.drawImage(thumb, X, Y, w, h);
-    g.fillStyle = 'rgba(255,215,64,.45)';
-    const seen = st.seen || '';
-    for (let i = 0; i < seen.length; i++) if (seen[i] === '1') g.fillRect(X + (i % 36) * w / 36, Y + Math.floor(i / 36) * h / 18, w / 36, h / 18);
-    g.fillStyle = '#ff3b6b'; g.beginPath(); g.arc(X + G.x / W * w, Y + G.y / H * h, 4, 0, 7); g.fill();
-    g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.stroke();
+    const st = G.st, seen = st.seen || '', [lon0, lat0] = ll(wrapX(G.x), wrapY(G.y)), key = Math.round(lon0 * 2) + ',' + Math.round(lat0 * 2) + seen;
+    if (key !== gkey) {
+      gkey = key;
+      const gx = globe.getContext('2d'), im = gx.createImageData(GS, GS), d = im.data, p0 = lat0 * Math.PI / 180, sp0 = Math.sin(p0), cp0 = Math.cos(p0);
+      for (let j = 0; j < GS; j++) for (let i = 0; i < GS; i++) {
+        const nx = (i + .5 - GR) / GR, ny = (GR - j - .5) / GR, r2 = nx * nx + ny * ny; if (r2 >= 1) continue;
+        const rho = Math.sqrt(r2), c = Math.asin(rho), sc = Math.sin(c), cc = Math.cos(c);
+        const lat = rho ? Math.asin(cc * sp0 + ny * sc * cp0 / rho) * 180 / Math.PI : lat0;
+        let lon = lon0 + (rho ? Math.atan2(nx * sc, rho * cp0 * cc - ny * sp0 * sc) * 180 / Math.PI : 0);
+        lon = ((lon + 180) % 360 + 360) % 360;
+        const tx = Math.min(359, lon | 0), ty = clamp((90 - lat) | 0, 0, 179), s = (tx + ty * 360) * 4, o = (i + j * GS) * 4;
+        const lit = 0.5 + 0.5 * Math.sqrt(1 - r2), gold = seen[Math.floor(ty / 10) * 36 + Math.floor(tx / 10)] === '1' ? .3 : 0;
+        d[o] = (tpx[s] * (1 - gold) + 255 * gold) * lit; d[o + 1] = (tpx[s + 1] * (1 - gold) + 215 * gold) * lit; d[o + 2] = (tpx[s + 2] * (1 - gold) + 64 * gold) * lit; d[o + 3] = 255;
+      }
+      gx.putImageData(im, 0, 0);
+    }
+    const X = 14, Y = 436, cx = X + GR, cy2 = Y + GR;
+    g.fillStyle = 'rgba(20,14,46,.78)'; g.beginPath(); g.arc(cx, cy2, GR + 7, 0, 7); g.fill();
+    g.drawImage(globe, X, Y);
+    g.strokeStyle = 'rgba(160,210,255,.8)'; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy2, GR, 0, 7); g.stroke();
+    g.fillStyle = '#ff3b6b'; g.beginPath(); g.arc(cx, cy2, 5, 0, 7); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 2; g.stroke();
+    const cc = countryAt(lon0, lat0); txt(cc ? COUNTRIES[cc][0].replace(/^the /, '') : 'Ocean', cx, Y + GS + 18, 15, '#fff', 'center', 900);
   }
   CH.push({
     n: 5, name: 'World Tour', short: 'World', c1: '#ff9800', c2: '#b34700', bgc: '#2a6fb5', rim: '#ffd23f',
@@ -1454,6 +1476,7 @@ const CH = [null];
       petra: ['Petra', 5, { tags: 'landmark,wonder', s: 1.3 }], machu: ['Machu Picchu', 5, { tags: 'landmark,wonder', s: 1.3 }], basil: ["St. Basil's Cathedral", 5, { tags: 'landmark', s: 1.3 }],
       table: ['Table Mountain', 5, { tags: 'landmark', s: 1.3 }],
       island: ['island', 7, { tags: 'island' }], peak: ['tall mountain', 8],
+      flag: ['flag', 1, { tags: 'flag', s: 1.4 }], hat: ['top hat', 1],
     }),
     zones, zoneAt,
     objInit(o) { if (o.zn !== 'ocean') { const [lon, lat] = ll(wrapX(o.x), wrapY(o.y)); o.cc = countryAt(lon, lat); } else o.cc = null; },
@@ -1465,6 +1488,8 @@ const CH = [null];
       for (const [id, k, lon, lat, n, place, cc, fact, wonder] of LM) add(k, ...P(lon, lat), { keep: 1, id, label: n, sub: place, cc, fact: fact + (wonder ? ' (One of the 7 World Wonders!)' : '') });
       ISLANDS.forEach(([n, sub, cc, lon, lat], i) => add('island', ...P(lon, lat), { keep: 1, id: 'isl' + i, label: n, sub, cc }));
       PEAKS.forEach(([n, sub, cc, lon, lat, fact], i) => add('peak', ...P(lon, lat), { keep: 1, id: 'peak' + i, label: n, sub, cc, fact }));
+      // one flag per country, planted at its heart: the Educational "find France" targets (labels show only when targeted)
+      for (const [cc, [n, seeds]] of Object.entries(COUNTRIES)) add('flag', ...P(seeds[0][0] + .6, seeds[0][1] - .4), { keep: 1, id: 'flag_' + cc, label: 'Flag of ' + n.replace(/^the /, 'the '), quiet: 1, cc, pal: { a: FLAGC[cc] || '#e53935' } });
     },
     tick() {
       const st = G.st, i = Math.floor(G.y / H * 18) * 36 + Math.floor(G.x / W * 36);
@@ -1486,9 +1511,30 @@ const CH = [null];
     },
     cineDraw() {
       const p = (G.now - G.cine.t0) / 5200;
-      g.fillStyle = `rgba(0,0,20,${Math.min(0.3, p * 2)})`; g.fillRect(0, 0, STAGE_W, STAGE_H);
+      // the endgame sky: space opens above the globe — the Sun, Mercury, Mars, and the Moon rolling in (v4 clarification 4d)
+      const a = Math.min(1, p * 3); g.fillStyle = `rgba(2,4,24,${0.62 * a})`; g.fillRect(0, 0, STAGE_W, STAGE_H);
+      g.save(); g.globalAlpha = a; const r9 = mulberry(9);
+      g.fillStyle = '#fff'; for (let i = 0; i < 140; i++) g.fillRect(r9() * STAGE_W, r9() * STAGE_H, 1 + r9() * 2, 1 + r9() * 2);
+      const sx = STAGE_W - 170, sy = 130, sg = g.createRadialGradient(sx, sy, 20, sx, sy, 190); sg.addColorStop(0, 'rgba(255,214,90,.95)'); sg.addColorStop(.35, 'rgba(255,170,40,.45)'); sg.addColorStop(1, 'rgba(255,140,0,0)');
+      g.fillStyle = sg; g.fillRect(sx - 190, sy - 190, 380, 380); g.fillStyle = '#ffd34d'; g.beginPath(); g.arc(sx, sy, 62, 0, 7); g.fill();
+      const ball = (x, y, r, c1, c2) => { const bg2 = g.createRadialGradient(x - r * .35, y - r * .35, r * .1, x, y, r); bg2.addColorStop(0, c1); bg2.addColorStop(1, c2); g.fillStyle = bg2; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); };
+      ball(sx - 150, sy + 70, 9, '#ddd6cc', '#7a746c'); ball(170, 120, 24, '#ff9a6a', '#9c2f12');
+      for (const [s2, x, y] of [['the Sun', sx, sy + 86], ['Mercury', sx - 150, sy + 92], ['Mars', 170, 162]]) txt(s2, x, y, 16, 'rgba(255,255,255,.85)', 'center', 800);
+      g.restore();
       txt(p < 0.62 ? 'THE MOON!' : 'GULP!', STAGE_W / 2, 150, 64, '#ffd23f', 'center', 900);
     },
+    ispy: ['#eiffel', '#colosseum', '#greatwall', '#taj', '#pyramids|the Egyptian pyramids', '#liberty', '#bigben', '#opera', '#christ', '#chichen', '#fuji', '#marina', '#petra',
+      '#machu', '#basil', '#table', '#isl0', '#isl3', '#peak0', 'hat', 'penguin', 'kangaroo', 'panda', 'giraffe', 'elephant', 'llama', 'camel', 'polarbear', 'whale', 'parrot'],
+    eduSubj: 'geography',
+    edu: [
+      { n: 'Find the country', s: ['i:#flag_FR|Find France', 'i:#flag_JP|Find Japan', 'i:#flag_BR|Find Brazil'] },
+      { n: 'Famous places', s: ['i:#pyramids|I spy the Egyptian pyramids', 'i:#eiffel|Find the Eiffel Tower in France', 'i:#taj|Find the Taj Mahal in India'] },
+      { n: 'Around the world', s: ['i:#flag_CA|Find Canada', 'i:#flag_EG|Find Egypt', 'i:#flag_AU|Find Australia'] },
+      { n: 'Animals of the world', s: ['f:kangaroo,panda,llama', 'f:giraffe,elephant,lion', 'f:penguin,polarbear'] },
+      { n: 'Mountains and islands', s: ['i:#peak0|Find Mount Everest', 'i:#fuji|Find Mount Fuji in Japan', 'i:#isl0|Find Hawaii'] },
+      { n: 'More countries', s: ['i:#flag_IT|Find Italy', 'i:#flag_IN|Find India', 'i:#flag_MX|Find Mexico'] },
+      { n: 'Travel maths', s: ['m:add', 'm:sub', 'm:mul'] },
+    ],
     doneTxt: 'Seven Wonders, six passport stamps, an island… and THE MOON!',
     words: ['EARTH', 'MAP', 'NILE', 'ROME', 'PARIS', 'TOKYO', 'CAIRO', 'WORLD', 'LIMA', 'OCEAN'],
     check: ['c:wonder:7|g|Collect the 7 World Wonders', 'k:6', 'b:island|g|Eat a whole island'],
@@ -1547,17 +1593,22 @@ const CH = [null];
     ['neptune', 23000, 0.2, 'Planet 8 — the farthest planet', 'Neptune has the fastest winds in the solar system.'],
   ];
   const BELT = [7600, 9600], KUIPER = 24800;
-  const EARTH = orb(4800, 4.0);
+  const EARTH = orb(4800, 4.0), MARS = orb(6200, 5.0), JUP = orb(12500, 1.2), SAT = orb(16000, 3.0);
+  const RINGS = [260, 900];                                  // Saturn's rings: a field of eatable ice and rock bits
   function zoneAt(x, y) {
     if (x < 0 || y < 0 || x > W || y > H) return null;
     const r = Math.hypot(x - SX, y - SY);
     if (r < 1500) return null;
     if (Math.hypot(x - EARTH[0], y - EARTH[1]) < 1300) return 'earthorbit';
+    const rs = Math.hypot(x - SAT[0], y - SAT[1]); if (rs > RINGS[0] && rs < RINGS[1]) return 'rings';
     if (r > BELT[0] && r < BELT[1]) return 'belt';
     if (r > KUIPER) return 'kuiper';
     return 'space';
   }
   const pl = (n, t, c1, c2, o) => [n, t, Object.assign({ planet: 1 }, o || {})];
+  const PW = { pluto: 14, europa: 17, io: 18, moon: 22, callisto: 23, titan: 24, ganymede: 25, mercury: 30, mars: 40, venus: 56, earth: 60,
+    neptune: 110, uranus: 118, saturn: 175, jupiter: 210, sun: 330 };   // fit widths in play units, compressed real order (clarification 4c)
+  const sized = (n, k, o) => [n, 1, Object.assign({ planet: 1, m: [PW[k], PW[k]] }, o || {})];
   CH.push({
     n: 6, name: 'Space', short: 'Space', c1: '#3949ab', c2: '#0d1240', bgc: '#03030c', rim: '#a98bff', space: 1,
     W, H, start: [EARTH[0] + 420, EARTH[1] + 380], cost: 3.6, need: 90, pv: 1.2, view: 13,
@@ -1569,34 +1620,52 @@ const CH = [null];
       satellite: ['satellite', 2], meteor: ['meteor', 2, { s: .7, mv: 'fly' }], astronaut: ['astronaut', 2, { mv: 'w' }], asteroid: ['asteroid', 2, { tags: 'asteroid' }],
       probe: ['space probe', 2], telescope: ['space telescope', 2],
       comet: ['comet', 3, { s: 1.2, mv: 'fly' }], ufo: ['UFO', 3, { mv: 'fly' }], rocket: ['rocket', 3, { mv: 'w' }], alien: ['alien', 3, { mv: 'w' }],
-      bigast: ['big asteroid', 3, { tags: 'asteroid', s: 1.1 }], iss: ['space station', 3, { s: 1.4 }],
+      bigast: ['big asteroid', 3, { tags: 'asteroid', s: 1.1 }], iss: ['International Space Station', 1, { m: [14, 6] }],
       station: ['space station', 4, {}], outpost: ['alien outpost', 4, {}],
       giantcomet: ['giant comet', 5, { s: 1.4, mv: 'fly' }], mothership: ['alien mothership', 5, { s: 1.3, mv: 'w' }], ringstation: ['mega space station', 6, {}],
-      moon: pl('the Moon', 4, '#efefe8', '#8d8d88', { s: .7 }), pluto: pl('Pluto', 3, '#e7d2b5', '#8c6f55'),
-      mercury: pl('Mercury', 4, '#c9c3bb', '#6f6a64'), venus: pl('Venus', 5, '#f3dfa2', '#b8893c'), earth: ['Earth', 5], mars: pl('Mars', 4, '#f08a5d', '#a33b1c', { s: 1.1 }),
-      jupiter: pl('Jupiter', 8, '#e9caa0', '#a0703c', { band: 'rgba(150,90,40,.45)', s: 1.2 }), saturn: pl('Saturn', 8, '#f1dcaa', '#b99556', { ring: '#d8c08a', s: 1.3 }),
-      uranus: pl('Uranus', 7, '#b9f3f3', '#4aa9b5'), neptune: pl('Neptune', 7, '#7fa8ff', '#2340a8'),
-      sun: ['the Sun', 9, { c1: '#ffcc33', s: 1.5 }],
+      moon: sized('the Moon', 'moon'), pluto: sized('Pluto', 'pluto'), io: sized('Io', 'io'), europa: sized('Europa', 'europa'), ganymede: sized('Ganymede', 'ganymede'),
+      callisto: sized('Callisto', 'callisto'), titan: sized('Titan', 'titan'),
+      mercury: sized('Mercury', 'mercury'), venus: sized('Venus', 'venus'), earth: sized('Earth', 'earth'), mars: sized('Mars', 'mars'),
+      jupiter: sized('Jupiter', 'jupiter'), saturn: sized('Saturn', 'saturn'), uranus: sized('Uranus', 'uranus'), neptune: sized('Neptune', 'neptune'),
+      sun: ['the Sun', 1, { c1: '#ffcc33', m: [PW.sun, PW.sun] }],
+      rover: ['Mars rover', 1, { m: [9, 6] }], ringice: ['ring ice', 1, { s: .7 }], ringrock: ['ring rock', 1, { s: .8 }], hat: ['top hat', 1],
     },
     zones: {
       space: { d: .8, t: ['rock:3,ice,bolt,glove,stardust:2', 'satellite,meteor:2,astronaut,probe', 'comet:2,ufo:2,rocket,alien', 'station:.3,outpost:.5', 'giantcomet,mothership', 'ringstation'] },
       earthorbit: { d: 1.4, coin: .35, t: ['bolt:3,glove:2,rock', 'satellite:4,astronaut:2,telescope', 'rocket:2,ufo', 'station'] },
       belt: { d: 1.5, t: ['rock:4,stardust', 'asteroid:8', 'bigast:5,comet', 'outpost', 'mothership'] },
       kuiper: { d: .9, t: ['ice:5,rock', 'meteor', 'comet:3', '', 'giantcomet:2'] },
+      rings: { d: 2.2, coin: .3, t: ['ringice:6,ringrock:4', 'ringice:3,ringrock:2,asteroid', 'bigast'] },
+      xspace: { d: .25, deco: 1, t: ['rock:3,ice:2', 'meteor,satellite', 'comet:2', '', 'giantcomet'] },
     },
-    zoneAt,
+    zoneAt, outside: () => 'xspace',
     build(add) {
       PLANETS.forEach(([id, r, a, sub, fact]) => add(id, ...orb(r, a), { keep: 1, id, label: tname(CH[6], id), sub, fact }));
       add('moon', EARTH[0] + 380, EARTH[1] - 260, { keep: 1, id: 'moon', label: 'The Moon', sub: 'Earth\'s moon' });
+      [['io', 'Io', 'Io has hundreds of volcanoes.'], ['europa', 'Europa', 'Europa has an ocean under its ice.'], ['ganymede', 'Ganymede', 'Ganymede is the biggest moon in the solar system.'],
+        ['callisto', 'Callisto', 'Callisto is covered in craters.']].forEach(([id, n, fact], i) => add(id, JUP[0] + Math.cos(i * 1.6 + .4) * (420 + i * 120), JUP[1] + Math.sin(i * 1.6 + .4) * (420 + i * 120), { keep: 1, id, label: n, sub: 'a moon of Jupiter', fact }));
+      add('titan', SAT[0] + 1100, SAT[1] - 300, { keep: 1, id: 'titan', label: 'Titan', sub: 'a moon of Saturn', fact: 'Titan has lakes — but they are not water!' });
+      add('rover', MARS[0] + 90, MARS[1] - 110, { keep: 1, id: 'rover', label: 'Mars rover', sub: 'exploring Mars', fact: 'Rovers are robots that drive on Mars and study its rocks.' });
       add('pluto', ...orb(26500, 2.6), { keep: 1, id: 'pluto', label: 'Pluto', sub: 'a dwarf planet', fact: 'Pluto is a dwarf planet, far out past Neptune.' });
-      add('sun', SX, SY, { keep: 1, id: 'sun', label: 'The Sun', sub: 'our star', fact: 'The Sun is a star. All the planets go around it.', after: 0 });
-      add('iss', EARTH[0] + 300, EARTH[1] + 150, { label: 'International Space Station', sub: 'orbiting Earth' });
-      add('telescope', EARTH[0] - 260, EARTH[1] + 260, { label: 'Space telescope' });
-      add('probe', ...orb(27200, 5.6), { label: 'Voyager 1', sub: 'the farthest spacecraft' });
+      add('sun', SX, SY, { keep: 1, id: 'sun', label: 'The Sun', sub: 'our star', fact: 'The Sun is a star. All the planets go around it.', needs: PLANETS.map(p => p[0]), needTxt: 'eat all 8 planets' });
+      add('iss', EARTH[0] + 300, EARTH[1] + 150, { keep: 1, id: 'iss', label: 'International Space Station', sub: 'orbiting Earth', fact: 'Astronauts live and work on the ISS, high above the Earth.' });
+      add('telescope', EARTH[0] - 260, EARTH[1] + 260, { keep: 1, id: 'telescope', label: 'Space telescope' });
+      add('probe', ...orb(27200, 5.6), { keep: 1, id: 'voyager', label: 'Voyager 1', sub: 'the farthest spacecraft' });
     },
-    hint: w => w === 'asteroid' ? orb(8600, Math.atan2(G.y / (G.C.mapK || 1) - SY, G.x / (G.C.mapK || 1) - SX)) : null,
+    hint: w => w === 'asteroid' ? orb(8600, Math.atan2(G.y - SY, G.x - SX)) : null,
     finish() { speak('You ate the Sun!'); setTimeout(() => { SFX.fanfare(); UI.complete(); }, 1200); },
-    doneTxt: 'All 8 planets in order, the asteroid belt, and THE SUN. But wait… zoom out…',
+    ispy: ['#mercury', '#venus', '#earth', '#mars', '#jupiter', '#saturn', '#uranus', '#neptune', '#moon', '#pluto', '#iss', '#rover', '#io', '#europa', '#ganymede',
+      '#callisto', '#titan', '#voyager', 'satellite', 'astronaut', 'comet', 'ufo', 'rocket', 'alien', 'asteroid', '#telescope', 'meteor', 'glove', 'hat', 'ringice'],
+    eduSubj: 'science',
+    edu: [
+      { n: 'Our corner of space', s: ['i:#iss|Find the International Space Station', 'i:#moon|Absorb the Moon', 'i:#earth|Absorb planet Earth'] },
+      { n: 'Mission to Mars', s: ['i:#rover|Find the Mars rover', 'i:#mercury|Absorb Mercury, closest to the Sun', 'i:#mars|Absorb Mars, the red planet'] },
+      { n: 'Moons first', s: ['i:#io|Find Io, a moon of Jupiter', 'i:#europa|Find Europa, the icy moon', 'i:#titan|Find Titan, a moon of Saturn'] },
+      { n: 'The giants', s: ['f:ringice,ringrock', 'i:#saturn|Absorb Saturn', 'i:#jupiter|Absorb Jupiter, the biggest planet'] },
+      { n: 'Far out', s: ['i:#neptune|Absorb Neptune', 'i:#pluto|Find Pluto, the dwarf planet', 'i:#voyager|Find Voyager 1'] },
+      { n: 'Countdown maths', s: ['m:add', 'm:sub', 'm:mul'] },
+    ],
+    doneTxt: 'All 8 planets, their moons, the asteroid belt, and THE SUN. But wait… zoom out…',
     words: ['MOON', 'STAR', 'SUN', 'MARS', 'COMET', 'ORBIT', 'PLANET', 'ROCKET', 'EARTH', 'SPACE'],
     check: ['q:@mercury,venus,earth,mars,jupiter,saturn,uranus,neptune|c|Eat the 8 planets in order', 'c:asteroid:10|c|Eat 10 asteroids from the belt', 'b:sun|c|Eat the Sun'],
     quests: [
@@ -1616,6 +1685,7 @@ const CH = [null];
       g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = Math.max(6, 1.5 * pw);
       for (const p of PLANETS) { g.beginPath(); g.arc(SX, SY, p[1], 0, 7); g.stroke(); }
       g.setLineDash([40 * pw, 30 * pw]); g.beginPath(); g.arc(SX, SY, 26500, 0, 7); g.stroke(); g.setLineDash([]);
+      g.fillStyle = 'rgba(230,210,160,.16)'; g.beginPath(); g.arc(SAT[0], SAT[1], RINGS[1], 0, 7); g.arc(SAT[0], SAT[1], RINGS[0], 0, 7, true); g.fill();
       g.textAlign = 'center'; g.textBaseline = 'middle';
       const lab = (s, x, y, px, col) => { g.font = `900 ${px * pw}px ${UI_FONT}`; g.fillStyle = col; g.fillText(s, x, y); };
       for (const a of [0.9, 2.6, 4.4, 5.9]) { const [x, y] = orb(8600, a); lab('ASTEROID BELT', x, y - 16 * pw, 18, 'rgba(255,230,180,.75)'); lab('between Mars and Jupiter', x, y + 8 * pw, 13, 'rgba(255,230,180,.6)'); }
@@ -1629,9 +1699,12 @@ const CH = [null];
   const W = 64000, H = 64000;
   const rng = mulberry(777);
   const NEB = Array.from({ length: 46 }, () => [rng() * W, rng() * H, 2500 + rng() * 6000, ['#ff4fd8', '#7b5cff', '#2de2e6', '#ff9f43', '#55efc4'][Math.floor(rng() * 5)]]);
+  const NEBX = Array.from({ length: 40 }, () => { let x, y; do { x = (rng() * 1.6 - .3) * W; y = (rng() * 1.6 - .3) * H; } while (x > 0 && y > 0 && x < W && y < H); return [x, y, 3000 + rng() * 7000, ['#ff4fd8', '#7b5cff', '#2de2e6', '#ff9f43', '#55efc4'][Math.floor(rng() * 5)]]; });
+  const DEBRIS = Array.from({ length: 14 }, () => [4000 + rng() * (W - 8000), 4000 + rng() * (H - 8000), 1200 + rng() * 1500]);   // space-junk fields
   const CLUSTERS = Array.from({ length: 18 }, () => [rng() * W, rng() * H, 2500 + rng() * 2500]);
   function zoneAt(x, y) {
     if (x < 0 || y < 0 || x > W || y > H) return null;
+    for (const [cx, cy, r] of DEBRIS) if (Math.hypot(x - cx, y - cy) < r) return 'debris';
     for (const [cx, cy, r] of CLUSTERS) if (Math.hypot(x - cx, y - cy) < r) return 'cluster';
     for (const [cx, cy, r] of NEB) if (Math.hypot(x - cx, y - cy) < r * .7) return 'nebula';
     return 'void';
@@ -1653,18 +1726,28 @@ const CH = [null];
       bluestar: st('blue star', 6, '#6ad1ff'), crystalmoon: ['crystal moon', 6, {}], ringstation: ['mega space station', 6, { s: 1.3 }],
       giantufo: ['giant UFO', 7, { tags: 'giantufo', s: 1.3, mv: 'w' }], superplanet: pl('super planet', 7, '#7cf7c6', '#1b8a6b', { ring: '#bff', band: 'rgba(0,80,60,.3)' }),
       giantstar: st('giant star', 8, '#ff9f43', { tags: 'giantstar', s: 1.2 }), supergiant: st('supergiant star', 9, '#e8f4ff', { s: 1.3 }),
+      // no scale here (clarification 5): maximal playful chaos, original designs only
+      panel: ['solar panel', 1], hat: ['top hat', 1], spacecow: ['space cow', 2, { mv: 'w' }], flycar: ['flying car', 2, { mv: 'fly' }], wizard: ['space wizard', 3, { mv: 'w' }],
+      starfighter: ['starfighter', 3, { mv: 'fly' }], spaceduck: ['giant rubber duck', 4, { mv: 'w' }], spacewhale: ['space whale', 5, { mv: 'w', s: 1.3 }],
+      bigteapot: ['teapot planet', 6, { s: 1.2 }], serpent: ['star serpent', 7, { mv: 'w', s: 1.4 }],
     },
     zones: {
-      void: { d: .7, t: ['rock:3,ice:2,star:2', 'comet,satellite,ufo', 'planet,icemoon,redplanet', 'giantmoon', 'redstar', 'bluestar:3,crystalmoon'] },
-      nebula: { d: 1.1, t: ['sparkle:4,star:3', 'comet:2,ufo,alien', 'planet:2,icemoon', 'giantplanet:2,giantmoon', 'yellowstar,station', 'bluestar,ringstation:.5,crystalmoon:.3', 'superplanet:.6'] },
-      cluster: { d: 1.2, coin: .4, t: ['star:5,sparkle:2', 'ufo:2,alien', 'redplanet', 'giantplanet', 'yellowstar:2,redstar:2', 'bluestar:2', 'superplanet', 'giantstar:.3'] },
+      void: { d: .75, t: ['rock:3,ice:2,star:2,panel', 'comet,satellite,ufo,flycar:2,spacecow', 'planet,icemoon,redplanet,starfighter:2,wizard', 'giantmoon,spaceduck', 'redstar,spacewhale', 'bluestar:3,crystalmoon,bigteapot', 'serpent:.5'] },
+      nebula: { d: 1.15, t: ['sparkle:4,star:3', 'comet:2,ufo,alien,spacecow,flycar', 'planet:2,icemoon,wizard', 'giantplanet:2,giantmoon,spaceduck:2', 'yellowstar,station,spacewhale:2', 'bluestar,ringstation:.5,crystalmoon:.3,bigteapot', 'superplanet:.6,serpent'] },
+      cluster: { d: 1.2, coin: .4, t: ['star:5,sparkle:2', 'ufo:2,alien,flycar', 'redplanet,starfighter:2', 'giantplanet', 'yellowstar:2,redstar:2', 'bluestar:2', 'superplanet', 'giantstar:.3'] },
+      debris: { d: 1.8, coin: .3, t: ['panel:5,rock:2,sparkle', 'satellite:4,flycar', 'starfighter,ufo', 'station'] },
+      xvoid: { d: .3, deco: 1, t: ['star:3,rock', 'comet,ufo', 'planet,redplanet', 'giantplanet', 'yellowstar,redstar', 'bluestar', 'superplanet'] },
     },
-    zoneAt,
+    zoneAt, outside: () => 'xvoid',
     build(add) {
       [[16000, 16000], [48000, 15000], [15000, 49000], [47000, 47000]].forEach(([x, y], i) => add('giantstar', x, y, { keep: 1, id: 'gstar' + i, label: 'Giant star' }));
       [[40000, 28000], [22000, 38000]].forEach(([x, y], i) => add('giantufo', x, y, { keep: 1, id: 'gufo' + i, label: 'Giant UFO' }));
       add('ringstation', 35000, 33000, { label: 'Mega Ring Station' }); add('crystalmoon', 28000, 36000, { label: 'Crystal Moon' });
       add('supergiant', 8000, 32000, { label: 'Supergiant star' }); add('supergiant', 56000, 32000, { label: 'Supergiant star' });
+      add('wizard', W / 2 + 300, H / 2 - 200, { keep: 1, id: 'wizard', label: 'The space wizard' });
+      add('spacewhale', 26000, 22000, { keep: 1, id: 'whale1', label: 'The great space whale', s: 1.6 });
+      add('serpent', 44000, 40000, { keep: 1, id: 'serpent1', label: 'The star serpent' });
+      add('bigteapot', 20000, 46000, { keep: 1, id: 'teapot1', label: 'The teapot planet' });
     },
     finish(first) {
       G.cine = { k: 'finale', t0: G.now, first, objs: [] }; G.joy = null;
@@ -1699,6 +1782,16 @@ const CH = [null];
       else if (e < 4.3) { g.fillStyle = `rgba(255,255,255,${1 - (e - 3.5) / 0.8})`; g.fillRect(0, 0, STAGE_W, STAGE_H); }
       else if (e > 5) { txt('YOU ARE', cx, cy - 170, 54, '#fff', 'center', 900); txt('THE BLACK HOLE', cx, cy + 180, 78, '#ffd23f', 'center', 900); if (!G.cine.said) { G.cine.said = 1; speak('You are the black hole!'); } }
     },
+    ispy: ['star', 'comet', 'ufo', 'alien', 'planet', 'icemoon', 'redplanet', 'giantplanet', 'giantmoon', 'yellowstar', 'redstar', 'bluestar', 'crystalmoon', 'ringstation', 'giantufo',
+      'superplanet', 'giantstar', 'spacewhale', 'flycar', 'starfighter', 'serpent', '#wizard', 'panel', 'spacecow', 'spaceduck', 'bigteapot', 'satellite', 'hat', 'sparkle', 'station'],
+    eduSubj: 'science',
+    edu: [
+      { n: 'Silly space zoo', s: ['f:spacecow,spaceduck', 'f:spacewhale', 'i:#serpent1|Find the star serpent'] },
+      { n: 'Star colours', s: ['f:yellowstar', 'f:redstar', 'f:bluestar'] },
+      { n: 'Space rides', s: ['f:flycar,ufo', 'f:starfighter', 'f:station'] },
+      { n: 'The wizard\'s tea party', s: ['i:#wizard|Find the space wizard', 'i:#teapot1|Find the teapot planet', 'f:icemoon,crystalmoon'] },
+      { n: 'Galaxy maths', s: ['m:add', 'm:sub', 'm:mul'] },
+    ],
     doneTxt: 'YOU ARE THE BLACK HOLE.',
     words: ['GALAXY', 'STAR', 'SPACE', 'LIGHT', 'GIANT', 'NOVA', 'ORBIT', 'COMET', 'ALIEN', 'ROCKET'],
     check: ['c:giantstar:2', 'b:giantufo', 'q:GALAXY|s|Spell G-A-L-A-X-Y'],
@@ -1712,31 +1805,18 @@ const CH = [null];
     ],
     bg(g, V) {
       const pw = 1 / V.z;
-      for (const [x, y, r, c] of NEB) {
+      for (const [x, y, r, c] of NEB.concat(NEBX)) {
         if (x + r < V.x0 || x - r > V.x1 || y + r < V.y0 || y - r > V.y1) continue;
         const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, c + '55'); gr.addColorStop(1, c + '00');
         g.fillStyle = gr; g.fillRect(x - r, y - r, 2 * r, 2 * r);
       }
       g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = Math.max(10, 2 * pw);
       for (const [x, y, r] of CLUSTERS) if (!(x + r < V.x0 || x - r > V.x1 || y + r < V.y0 || y - r > V.y1)) { g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke(); }
-      g.strokeStyle = 'rgba(255,90,90,.4)'; g.lineWidth = Math.max(30, 4 * pw); g.strokeRect(0, 0, W, H);
+      g.strokeStyle = 'rgba(200,200,200,.06)'; for (const [x, y, r] of DEBRIS) if (!(x + r < V.x0 || x - r > V.x1 || y + r < V.y0 || y - r > V.y1)) { g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke(); }
     },
   });
 })();
 
-/* v3 pace: shrink a chapter's map by k (every place keeps its relative position; object sizes are tiers, unchanged) */
-function shrinkMap(C, k) {
-  const z = C.zoneAt, bg = C.bg, build = C.build, hint = C.hint, ra = C.regionAt, rp = C.regionPos;
-  C.W = Math.round(C.W * k); C.H = Math.round(C.H * k); C.start = [C.start[0] * k, C.start[1] * k]; C.mapK = C.v2k = k;
-  C.zoneAt = (x, y) => z(x / k, y / k);
-  if (ra) C.regionAt = (x, y) => ra(x / k, y / k);
-  if (rp) C.regionPos = r => { const p = rp(r); return p && [p[0] * k, p[1] * k]; };
-  if (hint) C.hint = w => { const p = hint(w); return p && [p[0] * k, p[1] * k]; };
-  if (C.areas) for (const a in C.areas) C.areas[a] = C.areas[a].map(v => v * k);
-  C.build = (add, rng) => build((t, x, y, o) => add(t, x * k, y * k, o && o.path ? Object.assign({}, o, { path: o.path.map(v => v * k) }) : o), rng);
-  C.bg = (g, V) => { g.save(); g.scale(k, k); bg(g, { z: V.z * k, cx: V.cx / k, cy: V.cy / k, x0: V.x0 / k, y0: V.y0 / k, x1: V.x1 / k, y1: V.y1 / k, px: V.px / k }); g.restore(); };
-}
-shrinkMap(CH[6], 0.42); shrinkMap(CH[7], 0.42);
 
 /* =====================================================================
    3. ENGINE
@@ -2130,7 +2210,7 @@ function addPoints(p) {
 function isInactive(o) {
   if (o.tile) return !o.on;
   if (o.seq) { const s = o.seq; return s.items[s.get()] !== o.id; }
-  if (o.after !== undefined) return G.st.check[o.after] < G.C.CK[o.after].n;
+  if (o.needs) return o.needs.some(id => G.auth.some(a => a.id === id && !a.dead));   // e.g. the Sun waits for all 8 planets
   return false;
 }
 const fits = (o, D) => o.fw <= (D || holeD()) * 1.000001;          // fit-width vs hole diameter
@@ -2192,7 +2272,7 @@ function bump(o, sup, D, speed) {
     if (G.now - (o.said || 0) > 1300) {
       o.said = G.now;
       speak(o.tile ? o.txt : o.label || tname(G.C, o.id));
-      if (o.after !== undefined) toast('First: ' + G.C.CK[o.after].txt + '!', '#ffd96a');
+      if (o.needs) toast('First: ' + o.needTxt + '!', '#ffd96a');
     }
     return;
   }
@@ -2479,7 +2559,7 @@ const MODES = {
         const d = genQuestion(st.op), owner = { edu: 1 }; st.d = d; st.owner = owner;
         spawnTiles(d.opts.map((v, j) => ({ txt: v, ok: v === d.a, j })), owner, null, null, areaKey(G.x, G.y));
         st.txt = d.q;
-      } else for (const t of st.t) { t.o = findTarget(t.spec, rng, t.pal); if (t.o) { t.o.tgt = 1; t.o.label = t.o.label || t.name; } }
+      } else for (const t of st.t) { t.o = findTarget(t.spec, rng, t.pal); if (t.o) { t.o.tgt = 1; if (t.spec[0] === '#' && t.o.label) t.name = t.o.label; else t.o.label = t.o.label || t.name; } }
       speak(st.txt);
     },
     eat(o) {
@@ -2867,6 +2947,19 @@ const MODEL = (() => {
     jeep: p => [...R.car({ a: p.a || '#6b8e23', d: 2 }), bx(.9, .1, .6, 0, 1.05, -.5, '#333'), cy(.5, .2, .5, 0, .6, -1.15, TYRE, { rx: 1.5708 })],
     windmill: p => [cy(.6, 6, .6, 0, 3, 0, '#eceff1', { top: .6 }), bx(.4, .4, .6, 0, 6.1, .2, '#cfd8dc'), ...[0, 2.09, 4.19].map(a => bx(.25, 3, .06, Math.sin(a) * 1.5, 6.1 + Math.cos(a) * 1.5, .55, '#fafafa', { rz: -a }))],
     skull: p => [sp(1, .7, .9, 0, .4, 0, '#efe8d8'), ...[-1, 1].map(s => co(.2, .9, .2, s * .65, .6, -.1, '#efe8d8', { rz: -s * 1.2 })), sp(.2, .2, .1, -.22, .5, .42, '#333'), sp(.2, .2, .1, .22, .5, .42, '#333')],
+    /* ---- v4 space things (original designs only) ---- */
+    rover: p => [bx(1.2, .35, 1.6, 0, .62, 0, '#eceff1'), bx(1.4, .05, 1.1, 0, .84, -.2, '#1e3a8a'), cy(.06, .8, .06, .35, 1.2, .55, '#bbb'), bx(.4, .25, .25, .35, 1.65, .55, '#eceff1'),
+      sp(.12, .12, .12, .35, 1.65, .7, '#222'), ...[-.65, 0, .65].flatMap(z => [-1, 1].map(s => cy(.42, .22, .42, s * .72, .21, z, '#555', { rz: 1.5708 })))],
+    panel: p => [bx(1, .05, 1.6, 0, .03, 0, '#1e3a8a'), bx(.04, .06, 1.6, 0, .05, 0, '#c0c0c0'), bx(1, .06, .04, 0, .05, 0, '#c0c0c0'), cy(.05, .6, .05, .5, .2, -.8, '#9e9e9e', { rz: .8 })],
+    flycar: p => [...R.car(p), bx(2.3, .07, .6, 0, .55, -.3, p.b || '#b0bec5'), cy(.2, .4, .2, -.32, .45, -1.2, '#7ff3ff', { rx: 1.5708, glow: 1 }), cy(.2, .4, .2, .32, .45, -1.2, '#7ff3ff', { rx: 1.5708, glow: 1 })],
+    starfighter: p => [bx(.55, .4, 2.4, 0, .5, 0, p.a || '#eceff1'), co(.28, .7, .28, 0, .5, 1.55, p.a || '#eceff1', { rx: 1.5708 }), bx(2.6, .08, .8, 0, .48, -.45, p.b || '#ff7043'),
+      bx(.08, .6, .5, 1.25, .62, -.55, p.b || '#ff7043'), bx(.08, .6, .5, -1.25, .62, -.55, p.b || '#ff7043'), sp(.35, .25, .6, 0, .76, .35, '#7ff3ff'),
+      cy(.18, .3, .18, .3, .5, -1.3, '#ffb300', { rx: 1.5708, glow: 1 }), cy(.18, .3, .18, -.3, .5, -1.3, '#ffb300', { rx: 1.5708, glow: 1 })],
+    serpent: p => { const a = p.a || '#26a69a', b = p.b || '#80cbc4', o = []; for (let i = 0; i < 9; i++) o.push(sp(.62 - i * .04, .52 - i * .03, .6, Math.sin(i * .9) * .5, .4, 1.3 - i * .42, i % 2 ? a : b));
+      return o.concat([sp(.75, .6, .85, 0, .5, 1.9, a), sp(.13, .13, .13, -.22, .78, 2.15, '#ffeb3b', { glow: 1 }), sp(.13, .13, .13, .22, .78, 2.15, '#ffeb3b', { glow: 1 }),
+        co(.12, .45, .12, -.25, .95, 1.75, '#fff'), co(.12, .45, .12, .25, .95, 1.75, '#fff'), bx(.06, .5, .5, 0, .85, 1.0, '#ff7043')]); },
+    wizard: p => [co(1, 1.6, 1, 0, .8, 0, p.a || '#5e35b1'), sp(.5, .5, .5, 0, 1.8, 0, SKIN), co(.4, .5, .3, 0, 1.55, .2, '#eeeeee', { rx: 3.14 }), cy(1.1, .06, 1.1, 0, 2.02, 0, p.a || '#5e35b1'),
+      co(.6, 1.1, .6, 0, 2.6, 0, p.a || '#5e35b1'), sp(.1, .1, .1, 0, 2.5, .28, '#ffd23f', { glow: 1 }), cy(.06, 1.9, .06, .62, .95, .2, '#8d6e63'), sp(.2, .2, .2, .62, 1.95, .2, '#7ff3ff', { glow: 1 })],
     /* ---- buildings ---- */
     house: p => { const L = p.d || 1.3, hh = p.hh || 1; return [bx(1, .9 * hh, L, 0, .45 * hh, 0, p.a || '#f4e1c1'), pr(1.12, .55, L * 1.06, 0, .9 * hh + .27, 0, p.b || '#c0392b', { ry: 1.5708 }), bx(.22, .4, .04, 0, .2, L / 2 + .01, '#6b4423'), bx(.2, .2, .04, -.3, .55 * hh, L / 2 + .01, WIN), bx(.2, .2, .04, .3, .55 * hh, L / 2 + .01, WIN), bx(.15, .4, .15, .3, 1.1 * hh + .2, -L * .2, '#7a4a3a')]; },
     shed: p => [bx(1, .8, 1.3, 0, .4, 0, p.a || '#7a9a6a'), pr(1.1, .4, 1.4, 0, 1, 0, p.b || '#555', { ry: 1.5708 }), bx(.4, .6, .04, 0, .3, .66, '#4a5f3f')],
@@ -3020,6 +3113,11 @@ const MODEL = (() => {
     snowman: ['snowman', {}], iceblock: ['iceberg', {}], flag: ['flag', {}], buoy: ['buoy', {}], haybale: ['hay', {}], sled: ['sled', {}], moose: ['quad', { a: '#4e342e', horn: '#d7ccc8', d: 2.2, lh: 1, neck: .3 }],
     snowmobile: ['snowmobile', {}], igloo: ['igloo', {}], jeep: ['jeep', {}], rv: ['van', { a: '#f5f5f5', c: '#8d6e63', d: 3.4 }], fishboat: ['boat', { a: '#1565c0', b: '#fafafa', cab: .5, d: 2.6 }],
     windmill: ['windmill', {}], skull: ['skull', {}], worm: ['worm', { a: '#e57373', b: '#ef9a9a' }], mesa: ['mesa', { a: '#c0703a' }],
+    rover: ['rover', {}], panel: ['panel', {}], flycar: ['flycar', { v: [{ a: '#e53935' }, { a: '#00bcd4' }, { a: '#ffeb3b' }, { a: '#ab47bc' }] }], starfighter: ['starfighter', {}],
+    serpent: ['serpent', {}], wizard: ['wizard', {}], spacecow: ['quad', { a: '#fafafa', b: '#222', spots: 1, horn: '#ddd', d: 2 }], spaceduck: ['duck', { a: '#ffeb3b' }],
+    spacewhale: ['fish', { a: '#5e35b1', belly: '#d1c4e9', d: 3.6, h: 1.1 }], bigteapot: ['teapot', { a: '#f48fb1' }], ringice: ['rock', { a: '#e3f2fd', h: .6 }], ringrock: ['rock', { a: '#bcaaa4' }],
+    io: ['planet', { a: '#f4e04d', b: '#d08a2c' }], europa: ['planet', { a: '#f1e9dc', b: '#b98d6a' }], ganymede: ['planet', { a: '#bfb3a3', b: '#7d7064' }], callisto: ['planet', { a: '#8d7f74', b: '#5a4f47' }],
+    titan: ['planet', { a: '#e7b45a', b: '#c48a35' }],
     rduck: ['duck', {}], toothbrush: ['brush', { v: [{ a: '#29b6f6' }, { a: '#ec407a' }] }], toothpaste: ['tube', { a: '#e53935' }], shampoo: ['bottle', { a: '#26a69a', b: '#fff' }],
     soap: ['blk', { a: '#f8bbd0', h: .35, d: .6 }], sponge: ['blk', { a: '#fdd835', h: .4, d: .6, b: '#2e7d32' }], eraser: ['blk', { a: '#ff8a80', h: .3, d: .5, b: '#1e88e5' }],
     jar: ['can', { a: '#f4e1c1', b: '#c62828', h: 1.3, c: '#c62828' }], cereal: ['blk', { a: '#e53935', h: 1.5, d: .35, f: '#fdd835' }], toaster: ['blk', { a: '#c9ccd1', h: .7, d: .55, b: '#222' }],
@@ -3091,7 +3189,7 @@ const MODEL = (() => {
     up_vacuum: ['ifunnel', {}], up_lucky: ['iclover', {}], up_payday: ['iclip', {}], up_wide: ['ieye', {}], up_head: ['iflag', {}],
   };
   const PER = { // per-chapter meanings of shared ids
-    '1:bottle': ['bottle', { a: '#e3f2fd', b: '#ffcc80' }], '1:can': ['can', { a: '#e0e0e0', b: '#c62828', h: 1.4 }], '3:lodge': ['bld', { a: '#8a5a32', h: .5, d: 1.4, fl: 2, roof: .35, b: '#4a3a2a' }], '3:bus': ['bus', { a: '#fafafa', b: '#1565c0' }], '3:newspaper': ['nbox', {}], '4:dino': ['dino', { a: '#ede3c8' }], '4:bottle': ['bottle', { a: '#7fb88a', b: '#c9a06a' }], '4:island': ['island', {}], '5:island': ['island', {}], '5:car': ['car', { v: [{ a: '#e53935' }, { a: '#1e88e5' }] }],
+    '1:bottle': ['bottle', { a: '#e3f2fd', b: '#ffcc80' }], '1:can': ['can', { a: '#e0e0e0', b: '#c62828', h: 1.4 }], '3:lodge': ['bld', { a: '#8a5a32', h: .5, d: 1.4, fl: 2, roof: .35, b: '#4a3a2a' }], '3:bus': ['bus', { a: '#fafafa', b: '#1565c0' }], '3:newspaper': ['nbox', {}], '4:dino': ['dino', { a: '#ede3c8' }], '4:station': ['bld', { a: '#e65100', h: .3, d: 1.6, fl: 1, roof: .1, b: '#455a64' }], '4:bottle': ['bottle', { a: '#7fb88a', b: '#c9a06a' }], '4:island': ['island', {}], '5:island': ['island', {}], '5:car': ['car', { v: [{ a: '#e53935' }, { a: '#1e88e5' }] }],
     '5:house': ['house', { v: [{ a: '#f4e1c1', b: '#c0392b' }, { a: '#e8e0d0', b: '#455a64' }] }], '5:tower': ['tower', { hh: 3.6 }], '5:hotel': ['hotel', { hh: 4.4 }], '5:stadium': ['stadium', {}], '5:camel': ['quad', { a: '#d4a35a', hump: 1, neck: .5, d: 2, lh: 1 }],
     '5:guitar': ['guitar', { a: '#c0603a' }], '5:drum': ['drum', { a: '#8d6e63' }], '5:leaf': ['leaf', { a: '#d32f2f' }], '5:church': ['church', {}], '5:cruise': ['ship', { a: '#fafafa', b: '#0d47a1', decks: 3, d: 4.5 }],
     '6:ice': ['rock', { a: '#cfe8ff', h: .7 }], '7:ice': ['rock', { a: '#bfe9ff', h: .7 }], '7:station': ['station', {}], '7:comet': ['comet', { a: '#f8bbd0', b: '#ff4fd8' }], '7:ufo': ['ufo', { a: '#b0b8c8', b: '#55efc4' }],
