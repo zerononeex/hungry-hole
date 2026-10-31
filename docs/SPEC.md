@@ -807,3 +807,5 @@ The world-redo sequence so far: World 1 The Home (floorplan), Metro Vancouver (s
 **v5.15 addendum 2 (owner UX fix): THE MINIMAP MOVES TO THE TOP-LEFT** — in every world and mode (including the Globe's mini-globe). Bottom-left is joystick territory and he keeps tapping the map by accident mid-steer. The objective/quest stack rearranges so nothing overlaps; a minimap tap still opens the big map and still never steers.
 
 **v5.15 addendum 3 (owner, from a screenshot): METRO VANCOUVER GROUND** — residential areas currently render on a pale beige/sand ground; that reads wrong. **Residential ground becomes GREEN** (grass/lawn) everywhere in the Vancouver world. Beaches keep their sand colour; parks, water, and roads are unchanged.
+
+**v5.15 addendum 4 (owner, from a screenshot): WHISTLER'S GROUND IS SNOW** — the snowfall particle effect is there, but Whistler's ground renders beige/green/grey. In the Whistler zone the ENTIRE ground is white — no green, no beige. Darker grey stays acceptable for bare mountain rock only; roads, lakes and water keep their colours. (This overrides the Part-4 residential green inside the Whistler zone.)
