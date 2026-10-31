@@ -24,12 +24,21 @@ const SHIM = () => {
 (async () => {
   const b = await chromium.launch();
   const pages = {}, errs = [], results = [];
-  const queues = { A: Promise.resolve(), B: Promise.resolve() };
+  const queues = { A: Promise.resolve(), B: Promise.resolve() }, lat = { n: 0, sum: 0, max: 0 }, pend = { A: [], B: [] };
   const mk = async (who, other, name) => {
     const ctx = await b.newContext({ viewport: { width: 1180, height: 820 } });
     await ctx.addInitScript(SHIM);
+    // Messages to a page are delivered in order, in batches: whatever piled up while the last delivery ran goes over in ONE
+    // evaluate. (v5.1 sent one evaluate per message; at ~25 messages a second each way a busy page fell seconds behind, so
+    // tests read stale positions, late coins and late answers. A real data channel streams; so does this now.)
     await ctx.exposeFunction('__bcOut', (ch, json) => {
-      queues[other] = queues[other].then(() => pages[other] && !pages[other].isClosed() ? pages[other].evaluate(([c, j]) => window.__bcIn && window.__bcIn(c, j), [ch, json]).catch(() => {}) : null);
+      const q = pend[other]; q.push([ch, json, Date.now()]);
+      if (q.length > 1) return;                       // a flush is already queued and will carry this one
+      queues[other] = queues[other].then(() => {
+        const batch = q.splice(0), t = Date.now();
+        for (const m of batch) { const d = t - m[2]; lat.n++; lat.sum += d; lat.max = Math.max(lat.max, d); }
+        return pages[other] && !pages[other].isClosed() ? pages[other].evaluate(list => { for (const [c, j] of list) window.__bcIn && window.__bcIn(c, j); }, batch.map(m => [m[0], m[1]])).catch(() => {}) : null;
+      });
     });
     const p = await ctx.newPage();
     p.on('pageerror', e => errs.push(who + ' PAGEERR ' + e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(who + ' ' + m.text()); });
@@ -64,17 +73,21 @@ const SHIM = () => {
   await T('position sync both ways (guest -> host at ~10 Hz, host -> guest in the state message)', async () => {
     await B.evaluate(() => { const G = HH.G; G.x += 3; G.y += 2; G.vx = G.vy = 0; });
     await A.evaluate(() => { const G = HH.G; G.x -= 2; G.vx = G.vy = 0; });
-    await sleep(1000);
-    const gp = await B.evaluate(() => [HH.G.x, HH.G.y]), hp = await A.evaluate(() => [HH.G.x, HH.G.y]);
-    const seenByHost = await A.evaluate(() => [HH.G.mate.x, HH.G.mate.y]);
-    const seenByGuest = await B.evaluate(() => [HH.G.mate.x, HH.G.mate.y]);
+    // fresh within 3 s on each side (each hole's own position read on its own iPad, then the partner's view of it)
+    const near = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]) < 0.3;
+    let gp, hp, seenByHost, seenByGuest;
+    for (const t0 = Date.now(); Date.now() - t0 < 3000;) {
+      await sleep(200);
+      gp = await B.evaluate(() => [HH.G.x, HH.G.y]); hp = await A.evaluate(() => [HH.G.x, HH.G.y]);
+      seenByHost = await A.evaluate(() => [HH.G.mate.x, HH.G.mate.y]); seenByGuest = await B.evaluate(() => [HH.G.mate.x, HH.G.mate.y]);
+      if (near(gp, seenByHost) && near(hp, seenByGuest)) break;
+    }
     if (process.env.HH_SHOTS) { await A.screenshot({ path: process.env.HH_SHOTS + '/coop-host.png' }); await B.screenshot({ path: process.env.HH_SHOTS + '/coop-guest.png' }); }
     if (process.env.HH_SHOTS) {
       for (let i = 0; i < 8; i++) { await B.evaluate(h => { HH.G.x = h[0] + 0.25; HH.G.y = h[1] + 0.12; HH.G.fl = HH.G.mate.fl; HH.G.vx = HH.G.vy = 0; }, hp); await sleep(100); }
       await A.screenshot({ path: process.env.HH_SHOTS + '/coop-near-host.png' }); await B.screenshot({ path: process.env.HH_SHOTS + '/coop-near-guest.png' });
       await B.evaluate(g => { HH.G.x = g[0]; HH.G.y = g[1]; }, gp); await sleep(600);
     }
-    const near = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]) < 0.3;
     return { ok: near(gp, seenByHost) && near(hp, seenByGuest), info: { gp, seenByHost, hp, seenByGuest } };
   });
 
@@ -184,7 +197,7 @@ const SHIM = () => {
   await T('I SPY win bonus pays into BOTH wallets', async () => {
     const w = await both(() => HH.S.ch[2].w);
     const bonusSent = await A.evaluate(() => { const g0 = HH.asMate(() => HH.G.st.w); HH.net.win('ispy', 500); return HH.asMate(() => HH.G.st.w) - g0; });
-    await sleep(1000);
+    await until(B, need => HH.S.ch[2].w >= need, 4000, w[1] + bonusSent);
     const w2 = await both(() => HH.S.ch[2].w);
     return { ok: w2[1] - w[1] >= bonusSent && bonusSent > 0, info: { before: w, after: w2, bonusSent } };
   });
@@ -197,7 +210,7 @@ const SHIM = () => {
     const gset = await B.evaluate(() => HH.G.run.set);
     const L0 = await both(() => JSON.stringify(HH.S.learn));
     await A.evaluate(() => { HH.G.eatBy = 'g'; try { HH.net.learn(Object.keys(HH.S.learn)[0]); } finally { HH.G.eatBy = null; } });
-    await sleep(600);
+    await until(B, l0 => JSON.stringify(HH.S.learn) !== l0, 4000, L0[1]); await sleep(300);   // (and the host's own save stays put)
     const L1 = await both(() => JSON.stringify(HH.S.learn));
     const gl0 = JSON.parse(L0[1]), gl1 = JSON.parse(L1[1]);
     const guestUp = Object.keys(gl1).some(k => gl1[k] === gl0[k] + 1), hostSame = L0[0] === L1[0];
@@ -299,6 +312,7 @@ const SHIM = () => {
   for (const [n, ok, info] of results) console.log((ok ? 'PASS ' : 'FAIL ') + n + '  ' + JSON.stringify(info));
   const pass = results.filter(r => r[1]).length;
   console.log(`${pass}/${results.length} passed; console errors: ${filt.length}`, filt.slice(0, 8));
+  console.log(`wire: ${lat.n} messages, queue wait avg ${(lat.sum / Math.max(1, lat.n)).toFixed(0)} ms, max ${lat.max} ms`);
   await b.close();
   process.exit(pass === results.length && !filt.length ? 0 : 1);
 })();

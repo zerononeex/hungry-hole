@@ -3612,8 +3612,11 @@ function asMate(fn) {
   try { return fn(); } finally { G.isMate = false; for (const f of MATE_F) { const v = G[f]; G[f] = M[f]; M[f] = v; } }
 }
 /* host, every frame: follow the guest's streamed position and run its hole over the things around it */
+/* the partner's hole eases toward its last streamed spot by WALL time, not per frame (v5.2: at a few frames a second
+   a per-frame ease left the partner trailing a metre behind for seconds) */
+function followK(M) { const t = performance.now(), el = Math.min(0.5, (t - (M.ft || t)) / 1000); M.ft = t; return 1 - Math.exp(-12 * el); }
 function mateStep(dt) {
-  const M = G.mate, C = G.C, k = Math.min(1, dt * 12);
+  const M = G.mate, C = G.C, k = followK(M);
   if (C.poleFold && Math.abs(dx(M.tx, M.x)) > C.W / 4) { M.x = M.tx; M.y = M.ty; }    // the partner went over a pole: no slide round the world
   M.x += dx(M.tx, M.x) * k; M.y += dy(M.ty, M.y) * k; M.vx = M.tvx; M.vy = M.tvy; M.fl = M.tfl;
   wrapXY(C, M);
@@ -3756,14 +3759,14 @@ function netSession(role, opts) {
   N.ups = () => { if (role === 'guest') N.send({ t: 'ups', ups: G.st.up.slice() }); };
   /* ---- every frame ---- */
   N.tick = () => {
-    const t = now(), dt = Math.min(0.1, (t - N.last) / 1000); N.last = t;
+    const t = now(); N.last = t;
     if (N.link && N.link.open && t - N.sentAt > 1000) N.send({ t: 'hb' });
     if (N.link && t - N.heard > 6000) return N.end('lost');
     if (!N.on) return;
     const paused = G.mode !== 'play' || !!G.paused;
     if (paused !== N.pauseSent) { N.pauseSent = paused; N.send({ t: 'pause', on: paused ? 1 : 0 }); }
     const M = G.mate;
-    if (role === 'guest' && M && !M.gone) { const k = Math.min(1, dt * 12); if (G.C.poleFold && Math.abs(dx(M.tx, M.x)) > G.C.W / 4) { M.x = M.tx; M.y = M.ty; } M.x += dx(M.tx, M.x) * k; M.y += dy(M.ty, M.y) * k; M.fl = M.tfl; wrapXY(G.C, M); }
+    if (role === 'guest' && M && !M.gone) { const k = followK(M); if (G.C.poleFold && Math.abs(dx(M.tx, M.x)) > G.C.W / 4) { M.x = M.tx; M.y = M.ty; } M.x += dx(M.tx, M.x) * k; M.y += dy(M.ty, M.y) * k; M.fl = M.tfl; wrapXY(G.C, M); }
     if (t - N.stT < 100) return;
     N.stT = t;
     if (role === 'guest') { N.send({ t: 'pos', x: G.x, y: G.y, vx: G.vx, vy: G.vy, fl: G.fl || 0 }); return; }
@@ -3894,8 +3897,11 @@ const GUESTRX = {
   },
   add(N, m) { if (N.on) N.addFrom(m); },
   learn(N, m) {
-    const t = performance.now(); if (!N.on || !Object.values(SUBJ).includes(m.s) || t - (N.learnT || 0) < 250) return;
-    N.learnT = t; S.learn[m.s]++; persist();
+    // flood guard: at most 4 credits in any second. (v5.1 dropped any credit within 250 ms of the last one, so two right
+    // answers that reached the guest together, as a network burst can deliver them, counted once.)
+    const t = performance.now(); if (!N.on || !Object.values(SUBJ).includes(m.s)) return;
+    N.learnTs = (N.learnTs || []).filter(x => t - x < 1000); if (N.learnTs.length >= 4) return;
+    N.learnTs.push(t); S.learn[m.s]++; persist();
   },
   win(N, m) {
     if (!N.on || (m.k !== 'ispy' && m.k !== 'edu')) return;
