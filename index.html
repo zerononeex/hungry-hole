@@ -81,6 +81,8 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
 #b-quest-hud,#b-up-hud{display:none}
 #hudbtns.mode #b-quest-hud{display:flex}
 #hudbtns.on #b-up-hud{display:flex}
+#b-up-hud{width:auto;height:56px;padding:0 22px;border-radius:28px;background:#ff8c1a;border:3px solid #fff;color:#fff;font:900 20px/1 system-ui,sans-serif;letter-spacing:1px;box-shadow:0 4px 0 #b85a00,0 6px 14px rgba(0,0,0,.35)}
+#b-up-hud:active{transform:translateY(2px);box-shadow:0 2px 0 #b85a00}
 .ucard img.uic{width:72px;height:72px;display:block;margin:0 auto 4px}
 .tgts{position:absolute;left:12px;top:12px;display:flex;flex-direction:column;gap:6px}
 .qitem.done .tk{background:#2eb84a;border-color:#2eb84a}
@@ -162,7 +164,7 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
 
   <div id="hudbtns">
     <button class="round" id="b-quest-hud" aria-label="Quests"></button>
-    <button class="round" id="b-up-hud" aria-label="Upgrades"></button>
+    <button class="round" id="b-up-hud">UPGRADES</button>
     <button class="round" id="b-sound-hud" aria-label="Sound"></button>
     <button class="round" id="b-pause" aria-label="Pause"></button>
   </div>
@@ -228,7 +230,6 @@ const ICON = {
   check:'<path d="m5 12.5 4.5 4.5L19 7"/>',
   play:'<path d="M7 4v16l13-8z"/>',
   board:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
-  up:'<path d="M12 20V5M5 11l7-7 7 7"/>',
   help:'<circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 1 1 3.8 2.6c-.8.3-1.1.9-1.1 1.7v.6M12 17.2v.3"/>',
 };
 const svg = (k, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24">${ICON[k]}</svg>`;
@@ -1966,7 +1967,8 @@ function debugAudio() {
   let level = 0;
   if (MUSIC.an) { const a = new Float32Array(MUSIC.an.fftSize); MUSIC.an.getFloatTimeDomainData(a); for (const v of a) level = Math.max(level, Math.abs(v)); }
   return { track: MUSIC.src ? MUSIC.name : null, playing: !!MUSIC.src && !!AU.ctx && AU.ctx.state === 'running', ctxState: AU.ctx ? AU.ctx.state : 'none',
-    gainValue: MUSIC.gain ? MUSIC.gain.gain.value : 0, level: +level.toFixed(4), time: AU.ctx ? +AU.ctx.currentTime.toFixed(2) : 0 };
+    gainValue: MUSIC.gain ? MUSIC.gain.gain.value : 0, level: +level.toFixed(4), time: AU.ctx ? +AU.ctx.currentTime.toFixed(2) : 0,
+    sfx: Object.keys(MUSIC.buf).filter(f => f.startsWith('sfx-')).length, sfxListed: [...AUDIO_FILES].filter(f => f.startsWith('sfx-')).length, bad: Object.keys(MUSIC.bad) };
 }
 /* a named SFX file if the owner added it (decoded buffer, same context), else the synth fallback */
 function sfxFile(name, synth) {
@@ -4221,7 +4223,7 @@ window.addEventListener('pagehide', persist);
 $('b-start').onclick = () => { audioInit(); startChapter(S.ch[S.last] && S.ch[S.last].u ? S.last : 1); };
 $('b-ispy').onclick = () => { audioInit(); UI.chapters('ispy'); };
 $('b-edu').onclick = () => { audioInit(); UI.chapters('edu'); };
-$('b-up-hud').innerHTML = svg('up'); $('b-quest-hud').innerHTML = svg('help');
+$('b-quest-hud').innerHTML = svg('help');
 $('b-up-hud').onclick = () => { if (G.mode !== 'play') return; G.paused = true; G.joy = null; persist(); UI.upgrades(G.C.n, true); };
 $('b-quest-hud').onclick = () => UI.quests();
 $('b-chapters').onclick = () => { audioInit(); UI.chapters(); };
@@ -4251,7 +4253,7 @@ requestAnimationFrame(frame);
 
 /* test hook for automated checks (harmless in play) */
 window.HH = { get S() { return S; }, G, CH, UI, prep, loadChapter, startChapter, eat, holeD, need, addXP, bankerTransfer, bankerArrive, buyUpgrade, upCost,
-  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole, labelOn, MODES, genCell, tierOf, mkObj, debugAudio };
+  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole, labelOn, MODES, genCell, tierOf, mkObj, debugAudio, syncMusic };
 </script>
 </body>
 </html>
