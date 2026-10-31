@@ -735,3 +735,8 @@ This addendum supersedes v2/v3/v3.1 wherever they conflict. Everything below is 
 (6) **THE FAR VIEW:** at big zooms the lot sits in a living backdrop — mountains, blue sky, drifting clouds — scenery you can see but never enter ("you don't clip into the air").
 
 **v5.5 addendum (owner, Metro Vancouver): TREES ON SIDEWALKS PRETTY MUCH EVERYWHERE** — the v5.1 street-tree rule, strengthened: tree-lined sidewalks are the citywide default in Ch3, not a garnish on a few streets.
+
+**v5.6 ruling (owner — CH3 MOUNTAIN RESORTS get real content; logged, not yet a prompt):**
+(1) **GROUSE MOUNTAIN** is wall-to-wall trees — absorbable, so the player visibly SHAVES a path through the forest (eaten trees stay eaten; the trail persists). The **GONDOLA is built**: towers, cables, moving gondola cars going up and down. At the top there's the mountaintop park/lodge area.
+(2) **CYPRESS MOUNTAIN** is snowy: a ZIPLINE, a snow-tubing area, and a snowboarding area (terrain park) on its runs.
+(3) **WHISTLER**: it's SNOWING there. The builder RESEARCHES the real layout — where the village buildings actually are, the curves of the runs, and where the gondolas run — and places Whistler's content to match the real place (same research-real doctrine as the Vancouver OSM base map).
