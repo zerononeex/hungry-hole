@@ -6,7 +6,7 @@ const { chromium } = require('playwright');
   await p.goto((process.env.HH_URL || 'http://localhost:8765/index.html')); await p.waitForTimeout(300);
   const res = await p.evaluate(() => {
     const out = [];
-    for (let n = 1; n <= 7; n++) {
+    for (let n = 1; n <= 5; n++) {
       const fails = [], C = HH.prep(HH.CH[n]); HH.S.ch[n].u = 1; HH.startChapter(n);
       const G = HH.G, auth = G.auth.concat(G.movers);
       const zoneTypes = new Set(); for (const Z of Object.values(C.Z)) for (const L of Z.t) if (L) for (const [k] of (L.items || L)) zoneTypes.add(Array.isArray(k) ? k[0] : k);
@@ -59,7 +59,7 @@ const { chromium } = require('playwright');
         else if (k === 'f') a.split(',').forEach(w => specOk(w, 'edu ' + E.n));
         else fails.push('edu unknown step ' + st);
       }
-      if (n === 3) {
+      if (C.key === 'van') {
         const ids = ['scienceworld', 'aquarium', 'mermaid', 'steamclock', 'canadaplace', 'bcplace', 'ubc', 'sfu', 'nightmarket', 'ikea', 'grouse', 'cypress', 'peacearch', 'whiterock', 'whistler', 'yvr'];
         for (const id of ids) if (!auth.some(o => o.id === id)) fails.push('Ch3 POI missing: ' + id);
         const sch = auth.filter(o => o.k === 'school').length, hs = auth.filter(o => o.k === 'highschool').length, cc = auth.filter(o => o.k === 'commcentre').length, cas = auth.filter(o => o.k === 'casino').length;

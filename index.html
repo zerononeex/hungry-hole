@@ -484,7 +484,7 @@ const CH = [null];
     return [x, y];
   };
   CH.push({
-    n: 1, name: 'The House', short: 'House', c1: '#4f7fd6', c2: '#2a3f8f', bgc: '#6aa84f', rim: '#9b6bff', metric: 1,
+    n: 1, key: 'home', mus: 'ch1.mp3', name: 'The Home', short: 'Home', c1: '#4f7fd6', c2: '#2a3f8f', bgc: '#6aa84f', rim: '#9b6bff', metric: 1,
     W, H, start: [14.25, 3.6], cost: 1, need: 280, needP: 1.2, pv: 1.5, view: 13, gap: GAP, walls3d: { rects: WALLS, h: 2.4, cut: 1 }, wallR: 0.36,
     sizes: [0, 0.045, 0.08, 0.14, 0.24, 0.42, 0.7, 1.15, 1.9],
     types: {
@@ -610,202 +610,6 @@ const CH = [null];
   });
 })();
 
-/* ---------- CHAPTER 2: BACKYARD & THE NEIGHBOURHOOD (5 x 5 blocks + the park, true scale: 1 unit = 1 metre) ---------- */
-(() => {
-  // a block = two rows of 8 lots back to back: front lawn, house, backyard | backyard, house, front lawn
-  const NC = 5, NR = 5, LOT = 15, NL = 8, FY = 7, HD = 10, YD = 18, BW = NL * LOT, BH = 2 * (FY + HD + YD), ST = 20, PER_X = BW + ST, PER_Y = BH + ST;
-  const bx = c => ST + c * PER_X, by = r => ST + r * PER_Y;
-  const W = bx(NC + 1), H = by(NR);
-  const HOME = [bx(0) + 2 * LOT, by(0) + FY + HD, 3 * LOT, YD];               // your backyard: three lots wide, fenced
-  const PARK = [bx(NC), by(0), BW, by(2) + BH - by(0)], WOODS = [bx(NC), by(3), BW, by(4) + BH - by(3)], POND = [bx(NC) + 60, by(1) + 35, 17];
-  const inR = (x, y, r) => x >= r[0] && y >= r[1] && x <= r[0] + r[2] && y <= r[1] + r[3];
-  const Q = Math.PI / 2;
-  const mod = (v, m) => ((v % m) + m) % m;
-  /* where a point sits in the repeating street grid (works past the map edge too, for the scenery surround) */
-  function cell(x, y) {
-    const c = Math.floor(x / PER_X), r = Math.floor(y / PER_Y), u = x - c * PER_X, v = y - r * PER_Y;
-    return { c, r, u, v, sx: u < ST, sy: v < ST, lx: u - ST, ly: v - ST };
-  }
-  const band = s => s < 2 || s > 18 ? 'sidewalk' : s < 4 || s > 16 ? 'verge' : 'road';
-  function lotPart(ly) {                     // within a block, north to south
-    const half = FY + HD + YD;
-    const m = ly < half ? ly : BH - ly;
-    return m < FY ? 'front' : m < FY + HD ? 'house' : 'yard';
-  }
-  function zoneAt(x, y) {
-    if (x < 0 || y < 0 || x > W || y > H) return null;
-    if (inR(x, y, PARK)) return Math.hypot(x - POND[0], y - POND[1]) < POND[2] ? 'pond' : 'park';
-    if (inR(x, y, WOODS)) return 'woods';
-    const k = cell(x, y);
-    if (k.sx && k.sy) return 'road';
-    if (k.sx) return band(k.u);
-    if (k.sy) return band(k.v);
-    const p = lotPart(k.ly);
-    if (p === 'house') { const s = mod(k.lx, LOT); return s < 1.5 || s > 13.5 ? 'side' : null; }
-    if (p === 'yard' && inR(x, y, HOME)) return 'myyard';
-    return p;
-  }
-  function outside(x, y) {
-    const k = cell(x, y);
-    if (x > W + 160 && x < W + 200) return 'xhwy';
-    if (k.sx || k.sy) return 'xstreet';
-    const p = lotPart(k.ly); return p === 'house' ? null : 'xyard';
-  }
-  // logical placement: cars park at the curb or drive in lanes, people stay on the sidewalk, things never land in a house
-  function atStreet(k, x, y, rng) {
-    const q = cell(x, y);
-    if (q.sx && q.sy) return null;                                     // nothing parks in an intersection
-    const along = q.sx ? 'v' : 'h', s = q.sx ? q.u : q.v, base = q.sx ? x - q.u : y - q.v;
-    const lane = s < 10 ? 5.3 : 14.7;
-    const p = along === 'v' ? [base + lane, y] : [x, base + lane];
-    return [p[0], p[1], along === 'v' ? 0 : Q];
-  }
-  const CARS = 'car:4,van,police:.3,ambulance:.2,firetruck:.15,bus:.2,truck:.3';
-  CH.push({
-    n: 2, name: 'Backyard & the Neighbourhood', short: 'Neighbourhood', c1: '#4caf50', c2: '#1b5e20', bgc: '#5f9e48', rim: '#ffcf4a', metric: 1,
-    W, H, start: [HOME[0] + HOME[2] / 2, HOME[1] + HOME[3] * .6], cost: 1.3, need: 155, pv: 0.9, view: 13,
-    sizes: [0, .3, .5, .85, 1.4, 2.4, 4, 6.5, 10.5, 16],
-    tagN: { tree: 'tree', house: 'house' },
-    types: {
-      flower: ['flower', 1], shoe: ['shoe', 1], boot: ['boot', 1], sprout: ['sprout', 1], mushroom: ['mushroom', 1], gnome: ['garden gnome', 1],
-      snail: ['snail', 1], ball: ['baseball', 1], leaf: ['leaf', 1, { pl: 'leaves' }], ladybug: ['ladybug', 1], butterfly: ['butterfly', 1, { mv: 'w' }],
-      frisbee: ['frisbee', 1], tomato: ['tomato', 1, { pl: 'tomatoes' }], carrot: ['carrot', 1], hat: ['top hat', 1], extinguisher: ['fire extinguisher', 1],
-      bbq: ['BBQ', 1, { pl: 'BBQs' }], doghouse: ['dog house', 1], dog: ['dog', 1, { mv: 'w' }], cat: ['cat', 1, { mv: 'w' }], wagon: ['wagon', 1],
-      bucket: ['bucket', 1], lawnchair: ['lawn chair', 1], umbrella: ['patio umbrella', 1], pumpkin: ['pumpkin', 1], trampoline: ['trampoline', 1], swingset: ['swing set', 1],
-      sunflower: ['sunflower', 1], mailbox: ['mailbox', 1, { pl: 'mailboxes' }], duck: ['duck', 1, { mv: 'w' }], hydrant: ['fire hydrant', 1], lamp: ['lamppost', 1],
-      yardtree: ['backyard tree', 1, { tags: 'tree', sway: 1 }], streettree: ['street tree', 1, { tags: 'tree', sway: 1 }], pine: ['pine tree', 1, { tags: 'tree' }],
-      tent: ['tent', 1], shed: ['shed', 1], swan: ['swan', 1, { mv: 'w' }], fence: ['fence', 1], bench: ['bench', 1, { pl: 'benches' }], picnic: ['picnic table', 1],
-      car: ['car', 1], familycar: ['family car', 1], bike: ['bike', 1], bin: ['garbage bin', 1], person: ['neighbour', 1, { mv: 'w' }], jogger: ['jogger', 1, { mv: 'w' }],
-      kid: ['kid', 1, { mv: 'w' }], stroller: ['stroller', 1], scooter: ['scooter', 1], motorbike: ['motorbike', 1], slide: ['playground slide', 1],
-      van: ['van', 1], truck: ['delivery truck', 1], firetruck: ['fire truck', 1], bus: ['school bus', 1, { pl: 'school buses' }], ambulance: ['ambulance', 1],
-      police: ['police car', 1], bigtruck: ['big truck', 1], fountain: ['fountain', 1], carousel: ['carousel', 1],
-      house: ['house', 1, { tags: 'house' }], house2: ['house', 1, { tags: 'house' }], myhouse: ['your house', 1, { tags: 'house' }],
-    },
-    zones: {
-      yard: { d: .6, t: 'flower:3,sprout:2,snail,ball,leaf,ladybug,butterfly,frisbee,tomato,carrot,gnome,shoe,boot,extinguisher:.15,hat:.1,bbq,doghouse,dog,cat,bucket,lawnchair,umbrella,pumpkin,sunflower,wagon,trampoline:.3,swingset:.3,tent:.4' },
-      myyard: { d: 1.6, coin: .4, t: 'flower:3,tomato:2,carrot:2,sprout:2,snail,ladybug,butterfly,shoe,ball,gnome,frisbee,bbq,doghouse,sunflower:2,pumpkin,bucket,lawnchair,wagon' },
-      front: { d: .5, t: 'flower:3,leaf:2,shoe,ball,boot,gnome,sprout,cat,dog,bike:.5,wagon:.3' },
-      side: { d: .4, t: 'leaf:2,mushroom,snail,bucket,bin:.3' },
-      sidewalk: { d: .5, t: 'leaf:2,ball,shoe,person:3,jogger,kid:2,dog,stroller:.5,scooter:.5' },
-      verge: { d: .3, t: 'leaf:3,flower,mushroom,snail,cat:.3' },
-      road: { d: .25, coin: .1, t: CARS, at: atStreet },
-      park: { d: .9, t: 'flower:3,butterfly,ladybug,mushroom,ball,frisbee,dog,umbrella,sunflower,lawnchair,bucket,person:3,jogger,bike,kid:2,stroller,tent:.3,hat:.1' },
-      pond: { d: .5, coin: 0, t: 'duck:3,swan' },
-      woods: { d: .8, t: 'mushroom:3,leaf:2,flower,snail,dog,jogger,person,tent:.5,pine:.6,yardtree:.4' },
-      xyard: { d: .3, deco: 1, coin: 0, t: 'flower:3,sunflower,yardtree:.3,shed:.1,trampoline:.1' },
-      xstreet: { d: .12, deco: 1, coin: 0, t: 'car', at: atStreet },
-      xhwy: { d: .15, deco: 1, coin: 0, t: 'car:3,bigtruck,bus:.3' },
-    },
-    zoneAt, outside,
-    areaKey(x, y) { if (inR(x, y, PARK) || inR(x, y, WOODS)) return 'park'; const k = cell(x, y); return k.c + ',' + k.r; },
-    okSpot(x, y) { const z = zoneAt(x, y); return z && z !== 'road' && z !== 'pond'; },
-    build(add, rng) {
-      const lots = [];
-      for (let c = -1; c <= NC + 1; c++) for (let r = -1; r <= NR; r++) for (let i = 0; i < NL; i++) for (const top of [1, 0]) {
-        const inside = c >= 0 && c < NC && r >= 0 && r < NR;
-        if (!inside && c === NC && r >= 0 && r < NR) continue;                // the park column
-        const x = bx(c) + i * LOT + LOT / 2, y = top ? by(r) + FY + HD / 2 : by(r) + BH - FY - HD / 2;
-        const deco = inside ? undefined : 1;
-        if (inside && top && c === 0 && r === 0 && i >= 2 && i <= 4) { if (i === 3) add('myhouse', x, y, { yaw: Math.PI, keep: 1, id: 'myhouse', label: 'Your house' }); continue; }
-        add(rng() < .5 ? 'house' : 'house2', x, y, { yaw: top ? Math.PI : 0, deco });
-        if (!inside) continue;
-        const fy = top ? by(r) + 1.2 : by(r) + BH - 1.2;
-        add('mailbox', x - 5.5, fy, { yaw: top ? Math.PI : 0 });
-        if (rng() < .35) add(rng() < .8 ? 'car' : 'van', x + 4.5, top ? by(r) + 4 : by(r) + BH - 4, {});
-        if (rng() < .2) add('bin', x - 3.5, fy + (top ? .3 : -.3));
-        if (rng() < .45) add('yardtree', x + (rng() - .5) * 8, top ? by(r) + FY + HD + 6 + rng() * 8 : by(r) + BH - FY - HD - 6 - rng() * 8);
-        lots.push([x, y]);
-      }
-      // the hero's own backyard: big, fenced on its property lines, with its tree and the family car
-      const [hx, hy, hw, hh] = HOME;
-      for (let s = 1.2; s < hw; s += 2.4) add('fence', hx + s, hy + hh, { yaw: Q });
-      for (let s = 1.2; s < hh; s += 2.4) { add('fence', hx, hy + s, {}); add('fence', hx + hw, hy + s, {}); }
-      add('yardtree', hx + 8, hy + 6, { keep: 1, id: 'mytree', label: 'Your backyard tree' });
-      add('familycar', hx + hw - 6, by(0) + 3.5, { keep: 1, id: 'familycar', label: 'Your family car', yaw: Q });
-      add('bbq', hx + 20, hy + 3); add('trampoline', hx + 34, hy + 10); add('swingset', hx + 14, hy + 13); add('shed', hx + hw - 3, hy + hh - 3);
-      // street trees on the boulevards every 12 m, lampposts every 48 m, a hydrant every second block
-      for (let r = -1; r <= NR + 1; r++) for (let x = -60; x < W + 60; x += 12) for (const s of [3, 17]) {
-        const y = r * PER_Y + s, q = cell(x, y); if (q.sx) continue;
-        const inside = x > 0 && x < W && y > 0 && y < H; if (inR(x, y, PARK) || inR(x, y, WOODS)) continue;
-        add(Math.round(x / 12) % 4 === 0 ? 'lamp' : 'streettree', x, y, { deco: inside ? undefined : 1, yaw: s === 3 ? 0 : Math.PI });
-      }
-      for (let c = -1; c <= NC + 2; c++) for (let y = -50; y < H + 50; y += 12) for (const s of [3, 17]) {
-        const x = c * PER_X + s, q = cell(x, y); if (q.sy) continue;
-        const inside = x > 0 && x < W && y > 0 && y < H; if (inR(x, y, PARK) || inR(x, y, WOODS)) continue;
-        add(Math.round(y / 12) % 4 === 0 ? 'lamp' : 'streettree', x, y, { deco: inside ? undefined : 1 });
-      }
-      for (let c = 0; c <= NC; c++) for (let r = 0; r <= NR; r++) if ((c + r) % 2 === 0) add('hydrant', c * PER_X + 2.6, r * PER_Y + 2.6);
-      // the park: fountain, carousel, playground, pond, benches and picnic tables under big trees
-      const [px, py, pw, ph] = PARK;
-      add('fountain', px + 30, py + 30, { keep: 1, id: 'fountain', label: 'The park fountain' }); add('carousel', px + 85, py + 80, { keep: 1, id: 'carousel', label: 'The carousel' });
-      add('slide', px + 25, py + 110); add('slide', px + 33, py + 116); add('swingset', px + 45, py + 112);
-      for (let i = 0; i < 10; i++) add('bench', px + 10 + i * 10, py + 160, { yaw: Q });
-      for (let i = 0; i < 6; i++) add('picnic', px + 20 + (i % 3) * 30, py + 190 + Math.floor(i / 3) * 20);
-      for (let i = 0; i < 40; i++) { const x = px + 5 + rng() * (pw - 10), y = py + 5 + rng() * (ph - 10); if (Math.hypot(x - POND[0], y - POND[1]) > POND[2] + 6 && Math.hypot(x - px - 30, y - py - 30) > 8 && Math.hypot(x - px - 85, y - py - 80) > 10) add(rng() < .5 ? 'yardtree' : 'pine', x, y); }
-      // traffic: cars, buses and trucks circling blocks in the right-hand lane
-      const ring = (c, r, rev) => { const x0 = c * PER_X + (rev ? 7.5 : 12.5), y0 = r * PER_Y + (rev ? 7.5 : 12.5), x1 = (c + 1) * PER_X + (rev ? 12.5 : 7.5), y1 = (r + 1) * PER_Y + (rev ? 12.5 : 7.5);
-        return rev ? [x0, y0, x0, y1, x1, y1, x1, y0, x0, y0] : [x0, y0, x1, y0, x1, y1, x0, y1, x0, y0]; };
-      for (let i = 0; i < 26; i++) { const c = i % NC, r = Math.floor(i / NC) % NR;
-        add(['car', 'car', 'van', 'bus', 'truck', 'car', 'police', 'firetruck', 'ambulance', 'car'][i % 10], 0, 0, { path: ring(c, r, i % 2), loop: 1, face: 1, spd: 5 + rng() * 4, ph: rng() }); }
-      for (let i = 0; i < 10; i++) { const x = W + (i % 2 ? 175 : 185); add(i % 3 ? 'car' : 'bigtruck', x, 0, { path: i % 2 ? [x, -200, x, H + 200] : [x, H + 200, x, -200], loop: 1, face: 1, spd: 22 + rng() * 6, ph: rng(), deco: 1 }); }
-    },
-    hint: w => w === 'yardtree' ? [HOME[0] + 8, HOME[1] + 6] : null,
-    words: ['DOG', 'CAT', 'TREE', 'HOUSE', 'PARK', 'BIKE', 'CAR', 'BUS', 'DUCK', 'YARD'],
-    check: ['b:yardtree', 'b:familycar', 'c:house:3'],
-    quests: [
-      'c:flower:5', 't:20', 'c:snail:2', 'x:4', 'c:dog:2', 'a:dog:12', 'c:bbq:1', 'c:doghouse:1', 'c:streettree:3', 'x:6',
-      'c:bike:2', 'c:bin:3', 'c:person:3', 'a:person:15', 'c:mailbox:3', 'c:duck:3', 'b:firetruck', 't:120',
-      'f:add', 'f:sub', 'f:mul', 'f:miss', 'f:add', 'f:mul', 'q:2,4,6,8,10', 'f:miss',
-      'l:C', 'l:T', 'f:word', 'q:DOG', 'l:P', 'q:TREE',
-      'p:flower,shoe,flower,shoe', 'p:dog,cat,dog,cat', 'p:car,bike,car,bike', 'p:yardtree,pine,yardtree,pine',
-      'r:4', 's:4000', 'r:6', 's:20000',
-    ],
-    ispy: ['hat', 'gnome', 'trampoline', 'swingset', 'doghouse', 'bbq', 'pumpkin', 'sunflower', 'frisbee', 'snail', 'butterfly', 'tomato', 'carrot', 'lawnchair', 'umbrella',
-      'tent', 'bike', 'stroller', 'mailbox', 'hydrant', 'bin', 'firetruck', 'bus', 'ambulance', 'police', 'duck', 'swan', 'wagon', '#fountain', '#carousel'],
-    eduSubj: 'science',
-    edu: [
-      { n: 'Colour hunt: yellow and red', s: ['c:extinguisher:yellow', 'c:ball:red', 'c:bucket:yellow'] },
-      { n: 'Colour hunt: blue and green', s: ['c:frisbee:blue', 'c:wagon:green', 'c:car:blue'] },
-      { n: 'Colour hunt: purple, orange, pink', s: ['c:umbrella:purple', 'c:mailbox:orange', 'c:bike:pink'] },
-      { n: 'Garden fetch', s: ['f:tomato,carrot,sunflower', 'f:snail,ladybug,butterfly'] },
-      { n: 'Backyard fetch', s: ['f:frisbee,ball,wagon', 'f:bbq,lawnchair,trampoline'] },
-      { n: 'Street helpers', s: ['f:hydrant,mailbox,bin', 'f:police,firetruck,ambulance'] },
-      { n: 'Counting the street', s: ['m:add', 'm:sub', 'm:mul'] },
-    ],
-    doneTxt: 'Twenty-five blocks, the park and three whole houses. Time to see the city!',
-    bg(g, V) {
-      const x0 = V.x0, y0 = V.y0, x1 = V.x1, y1 = V.y1;
-      g.fillStyle = '#76757a'; g.fillRect(x0, y0, x1 - x0, y1 - y0);                       // asphalt everywhere, blocks on top
-      for (let c = Math.floor(x0 / PER_X) - 1; c <= Math.floor(x1 / PER_X); c++) for (let r = Math.floor(y0 / PER_Y) - 1; r <= Math.floor(y1 / PER_Y); r++) {
-        const X = c * PER_X + ST, Y = r * PER_Y + ST, sx = c * PER_X, sy = r * PER_Y;
-        g.fillStyle = '#cfcac0'; g.fillRect(sx, Y - 2, PER_X, 2); g.fillRect(sx, Y + BH, PER_X, 2); g.fillRect(X - 2, sy, 2, PER_Y); g.fillRect(X + BW, sy, 2, PER_Y);  // sidewalks
-        g.fillStyle = '#7fb85f'; g.fillRect(sx, Y - 4, PER_X, 2); g.fillRect(sx, Y + BH + 2, PER_X, 2); g.fillRect(X - 4, sy, 2, PER_Y); g.fillRect(X + BW + 2, sy, 2, PER_Y); // boulevards
-        g.fillStyle = '#cfcac0'; g.fillRect(X - 4, Y - 4, 4, 4);
-        const park = c === NC && r >= 0 && r <= 2, woods = c === NC && r >= 3 && r < NR;
-        if (park || woods) { g.fillStyle = park ? '#7ccf5c' : '#3f7f35'; g.fillRect(X, Y, BW, BH + (r < (park ? 2 : NR - 1) ? ST : 0)); continue; }
-        g.fillStyle = '#8fd16a'; g.fillRect(X, Y, BW, FY); g.fillRect(X, Y + BH - FY, BW, FY);
-        g.fillStyle = '#86c463'; g.fillRect(X, Y + FY, BW, HD); g.fillRect(X, Y + BH - FY - HD, BW, HD);
-        g.fillStyle = '#6fbf4a'; g.fillRect(X, Y + FY + HD, BW, 2 * YD);
-        g.fillStyle = '#b9b2a4'; for (let i = 0; i < NL; i++) { g.fillRect(X + i * LOT + 10.5, Y, 3, FY); g.fillRect(X + i * LOT + 10.5, Y + BH - FY, 3, FY); }   // driveways
-        if (V.z > 0.6) { g.strokeStyle = '#8b5a2b'; g.lineWidth = .12; g.beginPath();
-          for (let i = 0; i <= NL; i++) { g.moveTo(X + i * LOT, Y + FY + HD); g.lineTo(X + i * LOT, Y + BH - FY - HD); } g.moveTo(X, Y + BH / 2); g.lineTo(X + BW, Y + BH / 2); g.stroke(); }
-      }
-      if (V.z > 0.4) { g.strokeStyle = '#f4f1e1'; g.lineWidth = .15; g.setLineDash([3, 3]); g.beginPath();
-        for (let r = Math.floor(y0 / PER_Y); r <= Math.floor(y1 / PER_Y) + 1; r++) { g.moveTo(x0, r * PER_Y + 10); g.lineTo(x1, r * PER_Y + 10); }
-        for (let c = Math.floor(x0 / PER_X); c <= Math.floor(x1 / PER_X) + 1; c++) { g.moveTo(c * PER_X + 10, y0); g.lineTo(c * PER_X + 10, y1); }
-        g.stroke(); g.setLineDash([]); }
-      const [hx, hy, hw, hh] = HOME; g.fillStyle = '#7fd36a'; g.fillRect(hx, hy, hw, hh);
-      g.fillStyle = '#6d4c2f'; g.fillRect(hx + 3, hy + 9, 8, 6); g.fillStyle = '#c9b8a0'; g.fillRect(hx + 17, hy + .5, 8, 5);       // veggie patch + patio
-      const [px, py, pw, ph] = PARK;
-      g.strokeStyle = '#e8d8a8'; g.lineWidth = 3; g.beginPath(); g.ellipse(px + pw / 2, py + ph / 2, pw * .4, ph * .42, 0, 0, 7); g.stroke();
-      g.fillStyle = '#c9b8a0'; g.fillRect(px + 15, py + 100, 40, 25);
-      g.fillStyle = '#4aa3df'; g.beginPath(); g.arc(POND[0], POND[1], POND[2], 0, 7); g.fill();
-      g.fillStyle = '#3f7f35'; g.fillRect(W + 140, y0, 80, y1 - y0); g.fillStyle = '#4a4d52'; g.fillRect(W + 160, y0, 40, y1 - y0);
-      g.strokeStyle = '#ffd23f'; g.lineWidth = .3; g.beginPath(); g.moveTo(W + 180, y0); g.lineTo(W + 180, y1); g.stroke();
-    },
-  });
-})();
-
 /* ---------- CHAPTER 3: METRO VANCOUVER — real geography from OpenStreetMap (baked into data/ch3-osm.js), true scale ----------
    Roads, coastline, rivers, lakes, parks and land use are real; buildings are a generic library placed along the real
    streets (spec clarification 8); every school, community centre and casino sits at its real spot, and the famous
@@ -905,7 +709,7 @@ const CH = [null];
   const VEH = new Set(['car', 'taxi', 'bus', 'van', 'truck', 'bigtruck', 'foodtruck']);
   const WALK = { person: 2, jogger: 2, kid: 2, dog: 2.5, bike: 1, bin: 3, hydrant: 3.2, lamp: 3.5, light: 1, newspaper: 2.8, cone: -1.2, drain: -.4, streettree: 4.5, bench: 3 };
   function at(k, x, y, rng, out) {
-    const T = CH[3].T[k], fw = T.m ? T.m[0] : 2;
+    const T = CH[2].T[k], fw = T.m ? T.m[0] : 2;
     if (BLD.has(k)) {
       const r = nearRoad(x, y, 50); if (!r || r.k === 6) return null;
       const off = r.w / 2 + 4 + fw / 2, px = r.fx + r.nx * off, py = r.fy + r.ny * off;
@@ -931,7 +735,7 @@ const CH = [null];
   const WET = new Set(['seal', 'kayak', 'duck', 'sailboat', 'speedboat', 'yacht', 'tug', 'orca', 'cargo', 'ferry', 'cruise', 'seabus', 'seaplane']);
   const atX = (k, x, y, rng, out) => at(k, x, y, rng, out);
   CH.push({
-    n: 3, name: 'Metro Vancouver', short: 'Vancouver', c1: '#2d9cdb', c2: '#145a86', bgc: '#cfd8b8', rim: '#6ad1ff', metric: 1,
+    n: 2, key: 'van', mus: 'ch3.mp3', name: 'Metro Vancouver', short: 'Vancouver', c1: '#2d9cdb', c2: '#145a86', bgc: '#cfd8b8', rim: '#6ad1ff', metric: 1,
     W, H, start: P(-123.1185, 49.2835), cost: 1.8, need: 280, pv: 0.6, view: 13, agridSize: 900, bld: BLD, tries: t => t >= 5 ? 16 : 4,
     sizes: [0, 1.5, 2.5, 4.5, 8, 14, 25, 45, 80, 140, 250, 450],
     tagN: { house: 'house', tree: 'tree' }, regionAt, P, inv, inPlay, nearRoad, isWater,
@@ -1132,6 +936,8 @@ const CH = [null];
   });
 })();
 
+/* ---------- WORLD 3: STANLEY PARK (placeholder until built) ---------- */
+/*@STANLEY@*/
 /* ---------- CHAPTER 4: THE WILDERNESS — one journey, true scale: FOREST → GREENLANDS → DESERT → OCEAN → ANTARCTIC ICE ----------
    You start ant-sized at a forest campsite (1 unit = 1 metre); water is scenery, never food. */
 (() => {
@@ -1169,7 +975,7 @@ const CH = [null];
   }
   const BIOME = { forest: 'Forest', camp: 'Forest', lake: 'Forest', river: 'Greenlands', meadow: 'Greenlands', desert: 'Desert', oasis: 'Desert', beach: 'Ocean', ocean: 'Ocean', reef: 'Ocean', icewater: 'Antarctic ice', ice: 'Antarctic ice', station: 'Antarctic ice' };
   CH.push({
-    n: 4, name: 'The Wilderness', short: 'Wilderness', c1: '#8bc34a', c2: '#33691e', bgc: '#4f8a3c', rim: '#8ef08e', metric: 1,
+    n: 3, key: 'park', mus: 'ch4.mp3', name: 'Stanley Park', short: 'Stanley Park', c1: '#8bc34a', c2: '#33691e', bgc: '#4f8a3c', rim: '#8ef08e', metric: 1,
     W, H, start: [700, 3530], cost: 2.4, need: 235, view: 13,
     sizes: [0, .008, .016, .032, .065, .13, .26, .5, 1, 2, 4, 8, 16, 32, 64],
     tagN: { tree: 'tree', whale: 'whale' },
@@ -1274,6 +1080,124 @@ const CH = [null];
       for (const c of [...LAKES, OASIS]) { g.beginPath(); g.arc(c[0], c[1], c[2], 0, 7); g.fill(); }
       g.fillStyle = '#7a5a3a'; g.beginPath(); g.arc(700, 3500, 9, 0, 7); g.fill();                        // the campsite's trampled dirt
       g.fillStyle = 'rgba(255,255,255,.35)'; for (let x = 21300; x < W + 4000; x += 900) if (x > x0 - 900 && x < x1) g.fillRect(x, y0, 2, y1 - y0);   // ice cracks
+    },
+  });
+})();
+
+
+/* ---------- CHAPTER 6: SPACE — our solar system, in the real order (play-scale sizes/distances) ---------- */
+(() => {
+  const W = 56000, H = 56000, SX = 28000, SY = 28000;
+  const orb = (r, a) => [SX + Math.cos(a) * r, SY + Math.sin(a) * r];
+  // id, type, orbit radius, angle, label line 2, fact
+  const PLANETS = [
+    ['mercury', 2500, 0.6, 'Planet 1 — closest to the Sun', 'Mercury is the smallest planet.'],
+    ['venus', 3600, 2.2, 'Planet 2', 'Venus is the hottest planet.'],
+    ['earth', 4800, 4.0, 'Planet 3 — our home!', 'Earth is the only planet we know with life.'],
+    ['mars', 6200, 5.0, 'Planet 4 — the red planet', 'Mars has the tallest volcano in the solar system.'],
+    ['jupiter', 12500, 1.2, 'Planet 5 — the biggest', 'Jupiter is so big that all the other planets could fit inside it.'],
+    ['saturn', 16000, 3.0, 'Planet 6', 'Saturn\'s rings are made of ice and rock.'],
+    ['uranus', 19500, 4.6, 'Planet 7', 'Uranus spins on its side!'],
+    ['neptune', 23000, 0.2, 'Planet 8 — the farthest planet', 'Neptune has the fastest winds in the solar system.'],
+  ];
+  const BELT = [7600, 9600], KUIPER = 24800;
+  const EARTH = orb(4800, 4.0), MARS = orb(6200, 5.0), JUP = orb(12500, 1.2), SAT = orb(16000, 3.0);
+  const RINGS = [260, 900];                                  // Saturn's rings: a field of eatable ice and rock bits
+  function zoneAt(x, y) {
+    if (x < 0 || y < 0 || x > W || y > H) return null;
+    const r = Math.hypot(x - SX, y - SY);
+    if (r < 1500) return null;
+    if (Math.hypot(x - EARTH[0], y - EARTH[1]) < 1300) return 'earthorbit';
+    const rs = Math.hypot(x - SAT[0], y - SAT[1]); if (rs > RINGS[0] && rs < RINGS[1]) return 'rings';
+    if (r > BELT[0] && r < BELT[1]) return 'belt';
+    if (r > KUIPER) return 'kuiper';
+    return 'space';
+  }
+  const pl = (n, t, c1, c2, o) => [n, t, Object.assign({ planet: 1 }, o || {})];
+  const PW = { pluto: 14, europa: 17, io: 18, moon: 22, callisto: 23, titan: 24, ganymede: 25, mercury: 30, mars: 40, venus: 56, earth: 60,
+    neptune: 110, uranus: 118, saturn: 175, jupiter: 210, sun: 330 };   // fit widths in play units, compressed real order (clarification 4c)
+  const sized = (n, k, o) => [n, 1, Object.assign({ planet: 1, m: [PW[k], PW[k]] }, o || {})];
+  CH.push({
+    n: 4, key: 'space', mus: 'ch6.mp3', name: 'Space', short: 'Space', c1: '#3949ab', c2: '#0d1240', bgc: '#03030c', rim: '#a98bff', space: 1,
+    W, H, start: [EARTH[0] + 420, EARTH[1] + 380], cost: 3.6, need: 215, pv: 1.2, view: 13,
+    sizes: [0, 16, 26, 42, 66, 100, 150, 230, 350, 520],
+    real: [0, 3.5e6, 5e6, 7e6, 1e7, 1.4e7, 3e7, 6e7, 1.4e8, 1.4e9],
+    tagN: { asteroid: 'asteroid' },
+    types: {
+      rock: ['space rock', 1, { s: .6 }], ice: ['ice rock', 1], bolt: ['space bolt', 1], glove: ['lost glove', 1], stardust: ['stardust', 1, { pl: 'stardust' }],
+      satellite: ['satellite', 2], meteor: ['meteor', 2, { s: .7, mv: 'fly' }], astronaut: ['astronaut', 2, { mv: 'w' }], asteroid: ['asteroid', 2, { tags: 'asteroid' }],
+      probe: ['space probe', 2], telescope: ['space telescope', 2],
+      comet: ['comet', 3, { s: 1.2, mv: 'fly' }], ufo: ['UFO', 3, { mv: 'fly' }], rocket: ['rocket', 3, { mv: 'w' }], alien: ['alien', 3, { mv: 'w' }],
+      bigast: ['big asteroid', 3, { tags: 'asteroid', s: 1.1 }], iss: ['International Space Station', 1, { m: [14, 6] }],
+      station: ['space station', 4, {}], outpost: ['alien outpost', 4, {}],
+      giantcomet: ['giant comet', 5, { s: 1.4, mv: 'fly' }], mothership: ['alien mothership', 5, { s: 1.3, mv: 'w' }], ringstation: ['mega space station', 6, {}],
+      moon: sized('the Moon', 'moon'), pluto: sized('Pluto', 'pluto'), io: sized('Io', 'io'), europa: sized('Europa', 'europa'), ganymede: sized('Ganymede', 'ganymede'),
+      callisto: sized('Callisto', 'callisto'), titan: sized('Titan', 'titan'),
+      mercury: sized('Mercury', 'mercury'), venus: sized('Venus', 'venus'), earth: sized('Earth', 'earth'), mars: sized('Mars', 'mars'),
+      jupiter: sized('Jupiter', 'jupiter'), saturn: sized('Saturn', 'saturn'), uranus: sized('Uranus', 'uranus'), neptune: sized('Neptune', 'neptune'),
+      sun: ['the Sun', 1, { c1: '#ffcc33', m: [PW.sun, PW.sun] }],
+      rover: ['Mars rover', 1, { m: [9, 6] }], ringice: ['ring ice', 1, { s: .7 }], ringrock: ['ring rock', 1, { s: .8 }], hat: ['top hat', 1],
+    },
+    zones: {
+      space: { d: .8, t: ['rock:3,ice,bolt,glove,stardust:2', 'satellite,meteor:2,astronaut,probe', 'comet:2,ufo:2,rocket,alien', 'station:.3,outpost:.5', 'giantcomet,mothership', 'ringstation'] },
+      earthorbit: { d: 1.4, coin: .35, t: ['bolt:3,glove:2,rock', 'satellite:4,astronaut:2,telescope', 'rocket:2,ufo', 'station'] },
+      belt: { d: 1.5, t: ['rock:4,stardust', 'asteroid:8', 'bigast:5,comet', 'outpost', 'mothership'] },
+      kuiper: { d: .9, t: ['ice:5,rock', 'meteor', 'comet:3', '', 'giantcomet:2'] },
+      rings: { d: 2.2, coin: .3, t: ['ringice:6,ringrock:4', 'ringice:3,ringrock:2,asteroid', 'bigast'] },
+      xspace: { d: .25, deco: 1, t: ['rock:3,ice:2', 'meteor,satellite', 'comet:2', '', 'giantcomet'] },
+    },
+    zoneAt, outside: () => 'xspace',
+    build(add) {
+      PLANETS.forEach(([id, r, a, sub, fact]) => add(id, ...orb(r, a), { keep: 1, id, label: tname(CH[4], id), sub, fact }));
+      add('moon', EARTH[0] + 380, EARTH[1] - 260, { keep: 1, id: 'moon', label: 'The Moon', sub: 'Earth\'s moon' });
+      [['io', 'Io', 'Io has hundreds of volcanoes.'], ['europa', 'Europa', 'Europa has an ocean under its ice.'], ['ganymede', 'Ganymede', 'Ganymede is the biggest moon in the solar system.'],
+        ['callisto', 'Callisto', 'Callisto is covered in craters.']].forEach(([id, n, fact], i) => add(id, JUP[0] + Math.cos(i * 1.6 + .4) * (420 + i * 120), JUP[1] + Math.sin(i * 1.6 + .4) * (420 + i * 120), { keep: 1, id, label: n, sub: 'a moon of Jupiter', fact }));
+      add('titan', SAT[0] + 1100, SAT[1] - 300, { keep: 1, id: 'titan', label: 'Titan', sub: 'a moon of Saturn', fact: 'Titan has lakes — but they are not water!' });
+      add('rover', MARS[0] + 90, MARS[1] - 110, { keep: 1, id: 'rover', label: 'Mars rover', sub: 'exploring Mars', fact: 'Rovers are robots that drive on Mars and study its rocks.' });
+      add('pluto', ...orb(26500, 2.6), { keep: 1, id: 'pluto', label: 'Pluto', sub: 'a dwarf planet', fact: 'Pluto is a dwarf planet, far out past Neptune.' });
+      add('sun', SX, SY, { keep: 1, id: 'sun', label: 'The Sun', sub: 'our star', fact: 'The Sun is a star. All the planets go around it.', needs: PLANETS.map(p => p[0]), needTxt: 'eat all 8 planets' });
+      add('iss', EARTH[0] + 300, EARTH[1] + 150, { keep: 1, id: 'iss', label: 'International Space Station', sub: 'orbiting Earth', fact: 'Astronauts live and work on the ISS, high above the Earth.' });
+      add('telescope', EARTH[0] - 260, EARTH[1] + 260, { keep: 1, id: 'telescope', label: 'Space telescope' });
+      add('probe', ...orb(27200, 5.6), { keep: 1, id: 'voyager', label: 'Voyager 1', sub: 'the farthest spacecraft' });
+    },
+    hint: w => w === 'asteroid' ? orb(8600, Math.atan2(G.y - SY, G.x - SX)) : null,
+    finish() { setTimeout(() => { SFX.fanfare(); UI.complete(); }, 1200); },
+    ispy: ['#mercury', '#venus', '#earth', '#mars', '#jupiter', '#saturn', '#uranus', '#neptune', '#moon', '#pluto', '#iss', '#rover', '#io', '#europa', '#ganymede',
+      '#callisto', '#titan', '#voyager', 'satellite', 'astronaut', 'comet', 'ufo', 'rocket', 'alien', 'asteroid', '#telescope', 'meteor', 'glove', 'hat', 'ringice'],
+    eduSubj: 'science',
+    edu: [
+      { n: 'Our corner of space', s: ['i:#iss|Find the International Space Station', 'i:#moon|Absorb the Moon', 'i:#earth|Absorb planet Earth'] },
+      { n: 'Mission to Mars', s: ['i:#rover|Find the Mars rover', 'i:#mercury|Absorb Mercury, closest to the Sun', 'i:#mars|Absorb Mars, the red planet'] },
+      { n: 'Moons first', s: ['i:#io|Find Io, a moon of Jupiter', 'i:#europa|Find Europa, the icy moon', 'i:#titan|Find Titan, a moon of Saturn'] },
+      { n: 'The giants', s: ['f:ringice,ringrock', 'i:#saturn|Absorb Saturn', 'i:#jupiter|Absorb Jupiter, the biggest planet'] },
+      { n: 'Far out', s: ['i:#neptune|Absorb Neptune', 'i:#pluto|Find Pluto, the dwarf planet', 'i:#voyager|Find Voyager 1'] },
+      { n: 'Countdown maths', s: ['m:add', 'm:sub', 'm:mul'] },
+    ],
+    doneTxt: 'All 8 planets, their moons, the asteroid belt, and THE SUN. But wait… zoom out…',
+    words: ['MOON', 'STAR', 'SUN', 'MARS', 'COMET', 'ORBIT', 'PLANET', 'ROCKET', 'EARTH', 'SPACE'],
+    check: ['q:@mercury,venus,earth,mars,jupiter,saturn,uranus,neptune|c|Eat the 8 planets in order', 'c:asteroid:10|c|Eat 10 asteroids from the belt', 'b:sun|c|Eat the Sun'],
+    quests: [
+      'c:satellite:3|c', 't:30', 'c:comet:2|c', 'x:5', 'c:ufo:2', 'c:rocket:3', 'a:alien:15', 'c:astronaut:2|c', 'b:iss|c|Eat the International Space Station', 'b:moon|c|Eat the Moon',
+      'b:pluto|c|Eat Pluto, the dwarf planet', 'c:ice:5|c', 'c:asteroid:5|c', 'x:8', 'c:alien:3', 'c:station:2', 'b:mars|c|Eat Mars, the red planet', 't:300',
+      'f:add', 'f:sub', 'f:mul', 'f:miss', 'f:mul', 'f:add', 'f:sub', 'q:10,9,8,7,6,5,4,3,2,1|m|Countdown: eat 10 to 1. Blast off!',
+      'q:MOON', 'q:STAR', 'l:S', 'l:M', 'f:word', 'q:SUN',
+      'p:rocket,ufo,rocket,ufo', 'p:comet,satellite,comet,satellite', 'p:ice,rock,ice,rock', 'p:alien,astronaut,alien,astronaut',
+      'r:4', 's:4000', 'r:8', 's:15000',
+    ],
+    bg(g, V) {
+      const pw = 1 / V.z;
+      const gl = g.createRadialGradient(SX, SY, 300, SX, SY, 4000); gl.addColorStop(0, 'rgba(255,200,80,.35)'); gl.addColorStop(1, 'rgba(255,200,80,0)');
+      g.fillStyle = gl; g.fillRect(SX - 4000, SY - 4000, 8000, 8000);
+      g.fillStyle = 'rgba(160,140,120,.18)'; g.beginPath(); g.arc(SX, SY, BELT[1], 0, 7); g.arc(SX, SY, BELT[0], 0, 7, true); g.fill();
+      g.fillStyle = 'rgba(140,180,220,.08)'; g.beginPath(); g.arc(SX, SY, W / 2, 0, 7); g.arc(SX, SY, KUIPER, 0, 7, true); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = Math.max(6, 1.5 * pw);
+      for (const p of PLANETS) { g.beginPath(); g.arc(SX, SY, p[1], 0, 7); g.stroke(); }
+      g.setLineDash([40 * pw, 30 * pw]); g.beginPath(); g.arc(SX, SY, 26500, 0, 7); g.stroke(); g.setLineDash([]);
+      g.fillStyle = 'rgba(230,210,160,.16)'; g.beginPath(); g.arc(SAT[0], SAT[1], RINGS[1], 0, 7); g.arc(SAT[0], SAT[1], RINGS[0], 0, 7, true); g.fill();
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      const lab = (s, x, y, px, col) => { g.font = `900 ${px * pw}px ${UI_FONT}`; g.fillStyle = col; g.fillText(s, x, y); };
+      for (const a of [0.9, 2.6, 4.4, 5.9]) { const [x, y] = orb(8600, a); lab('ASTEROID BELT', x, y - 16 * pw, 18, 'rgba(255,230,180,.75)'); lab('between Mars and Jupiter', x, y + 8 * pw, 13, 'rgba(255,230,180,.6)'); }
+      for (const a of [1.5, 4.8]) { const [x, y] = orb(25600, a); lab('KUIPER BELT (icy far-out zone)', x, y, 16, 'rgba(190,220,255,.6)'); }
     },
   });
 })();
@@ -1470,7 +1394,7 @@ const CH = [null];
     const cc = countryAt(lon0, lat0); txt(cc ? COUNTRIES[cc][0].replace(/^the /, '') : 'Ocean', cx, Y + GS + 18, 15, '#fff', 'center', 900);
   }
   CH.push({
-    n: 5, name: 'World Tour', short: 'World', c1: '#ff9800', c2: '#b34700', bgc: '#2a6fb5', rim: '#ffd23f',
+    n: 5, key: 'globe', mus: 'ch5.mp3', name: 'The Globe', short: 'Globe', c1: '#ff9800', c2: '#b34700', bgc: '#2a6fb5', rim: '#ffd23f',
     W, H, wrap: 1, v2k: 200 / 400, spd: 5.2, start: P(-123.1, 49.28), cost: 3, need: 340, pv: 2, view: 13, agridSize: 4000,
     sizes: [0, 16, 26, 42, 66, 100, 150, 230, 350],
     real: [0, 800, 2000, 5000, 12000, 30000, 80000, 250000, 800000],
@@ -1520,7 +1444,7 @@ const CH = [null];
        wobbles over the gap, then takes the same tip-in fall as everything else (slow, many spins) */
     cineUpdate() {
       const c = G.cine, p = (G.now - c.t0) / 5200, R = holeD() / 2;
-      if (!c.moon) { c.moon = { mk: 'moon', mc: prep(CH[6]), fw: R * 3.2, sv: 1, x: G.x, y: G.y, bx: 0, by: 0, yaw: 0, ph: 0, lean: 0, wob: -1e9 }; c.objs = [c.moon]; }
+      if (!c.moon) { c.moon = { mk: 'moon', mc: prep(CH[4]), fw: R * 3.2, sv: 1, x: G.x, y: G.y, bx: 0, by: 0, yaw: 0, ph: 0, lean: 0, wob: -1e9 }; c.objs = [c.moon]; }
       const m = c.moon, fr = m.fw / 2;
       if (p < 0.4) { const e = 1 - (1 - p / 0.4) ** 2; m.x = G.x + lerp(R * 9, R + fr * 0.75, e); m.y = G.y - lerp(R * 5, R * 0.35, e); m.yaw = -e * 6; }
       else if (p < 0.62) { const e = (p - 0.4) / 0.22; m.ldir = Math.atan2(G.y - m.y, G.x - m.x); m.lean = 0.2 + e * 0.35; m.wobble = 1.2 * (1 - e); }
@@ -1595,294 +1519,86 @@ const CH = [null];
   });
 })();
 
-/* ---------- CHAPTER 6: SPACE — our solar system, in the real order (play-scale sizes/distances) ---------- */
-(() => {
-  const W = 56000, H = 56000, SX = 28000, SY = 28000;
-  const orb = (r, a) => [SX + Math.cos(a) * r, SY + Math.sin(a) * r];
-  // id, type, orbit radius, angle, label line 2, fact
-  const PLANETS = [
-    ['mercury', 2500, 0.6, 'Planet 1 — closest to the Sun', 'Mercury is the smallest planet.'],
-    ['venus', 3600, 2.2, 'Planet 2', 'Venus is the hottest planet.'],
-    ['earth', 4800, 4.0, 'Planet 3 — our home!', 'Earth is the only planet we know with life.'],
-    ['mars', 6200, 5.0, 'Planet 4 — the red planet', 'Mars has the tallest volcano in the solar system.'],
-    ['jupiter', 12500, 1.2, 'Planet 5 — the biggest', 'Jupiter is so big that all the other planets could fit inside it.'],
-    ['saturn', 16000, 3.0, 'Planet 6', 'Saturn\'s rings are made of ice and rock.'],
-    ['uranus', 19500, 4.6, 'Planet 7', 'Uranus spins on its side!'],
-    ['neptune', 23000, 0.2, 'Planet 8 — the farthest planet', 'Neptune has the fastest winds in the solar system.'],
-  ];
-  const BELT = [7600, 9600], KUIPER = 24800;
-  const EARTH = orb(4800, 4.0), MARS = orb(6200, 5.0), JUP = orb(12500, 1.2), SAT = orb(16000, 3.0);
-  const RINGS = [260, 900];                                  // Saturn's rings: a field of eatable ice and rock bits
-  function zoneAt(x, y) {
-    if (x < 0 || y < 0 || x > W || y > H) return null;
-    const r = Math.hypot(x - SX, y - SY);
-    if (r < 1500) return null;
-    if (Math.hypot(x - EARTH[0], y - EARTH[1]) < 1300) return 'earthorbit';
-    const rs = Math.hypot(x - SAT[0], y - SAT[1]); if (rs > RINGS[0] && rs < RINGS[1]) return 'rings';
-    if (r > BELT[0] && r < BELT[1]) return 'belt';
-    if (r > KUIPER) return 'kuiper';
-    return 'space';
-  }
-  const pl = (n, t, c1, c2, o) => [n, t, Object.assign({ planet: 1 }, o || {})];
-  const PW = { pluto: 14, europa: 17, io: 18, moon: 22, callisto: 23, titan: 24, ganymede: 25, mercury: 30, mars: 40, venus: 56, earth: 60,
-    neptune: 110, uranus: 118, saturn: 175, jupiter: 210, sun: 330 };   // fit widths in play units, compressed real order (clarification 4c)
-  const sized = (n, k, o) => [n, 1, Object.assign({ planet: 1, m: [PW[k], PW[k]] }, o || {})];
-  CH.push({
-    n: 6, name: 'Space', short: 'Space', c1: '#3949ab', c2: '#0d1240', bgc: '#03030c', rim: '#a98bff', space: 1,
-    W, H, start: [EARTH[0] + 420, EARTH[1] + 380], cost: 3.6, need: 215, pv: 1.2, view: 13,
-    sizes: [0, 16, 26, 42, 66, 100, 150, 230, 350, 520],
-    real: [0, 3.5e6, 5e6, 7e6, 1e7, 1.4e7, 3e7, 6e7, 1.4e8, 1.4e9],
-    tagN: { asteroid: 'asteroid' },
-    types: {
-      rock: ['space rock', 1, { s: .6 }], ice: ['ice rock', 1], bolt: ['space bolt', 1], glove: ['lost glove', 1], stardust: ['stardust', 1, { pl: 'stardust' }],
-      satellite: ['satellite', 2], meteor: ['meteor', 2, { s: .7, mv: 'fly' }], astronaut: ['astronaut', 2, { mv: 'w' }], asteroid: ['asteroid', 2, { tags: 'asteroid' }],
-      probe: ['space probe', 2], telescope: ['space telescope', 2],
-      comet: ['comet', 3, { s: 1.2, mv: 'fly' }], ufo: ['UFO', 3, { mv: 'fly' }], rocket: ['rocket', 3, { mv: 'w' }], alien: ['alien', 3, { mv: 'w' }],
-      bigast: ['big asteroid', 3, { tags: 'asteroid', s: 1.1 }], iss: ['International Space Station', 1, { m: [14, 6] }],
-      station: ['space station', 4, {}], outpost: ['alien outpost', 4, {}],
-      giantcomet: ['giant comet', 5, { s: 1.4, mv: 'fly' }], mothership: ['alien mothership', 5, { s: 1.3, mv: 'w' }], ringstation: ['mega space station', 6, {}],
-      moon: sized('the Moon', 'moon'), pluto: sized('Pluto', 'pluto'), io: sized('Io', 'io'), europa: sized('Europa', 'europa'), ganymede: sized('Ganymede', 'ganymede'),
-      callisto: sized('Callisto', 'callisto'), titan: sized('Titan', 'titan'),
-      mercury: sized('Mercury', 'mercury'), venus: sized('Venus', 'venus'), earth: sized('Earth', 'earth'), mars: sized('Mars', 'mars'),
-      jupiter: sized('Jupiter', 'jupiter'), saturn: sized('Saturn', 'saturn'), uranus: sized('Uranus', 'uranus'), neptune: sized('Neptune', 'neptune'),
-      sun: ['the Sun', 1, { c1: '#ffcc33', m: [PW.sun, PW.sun] }],
-      rover: ['Mars rover', 1, { m: [9, 6] }], ringice: ['ring ice', 1, { s: .7 }], ringrock: ['ring rock', 1, { s: .8 }], hat: ['top hat', 1],
-    },
-    zones: {
-      space: { d: .8, t: ['rock:3,ice,bolt,glove,stardust:2', 'satellite,meteor:2,astronaut,probe', 'comet:2,ufo:2,rocket,alien', 'station:.3,outpost:.5', 'giantcomet,mothership', 'ringstation'] },
-      earthorbit: { d: 1.4, coin: .35, t: ['bolt:3,glove:2,rock', 'satellite:4,astronaut:2,telescope', 'rocket:2,ufo', 'station'] },
-      belt: { d: 1.5, t: ['rock:4,stardust', 'asteroid:8', 'bigast:5,comet', 'outpost', 'mothership'] },
-      kuiper: { d: .9, t: ['ice:5,rock', 'meteor', 'comet:3', '', 'giantcomet:2'] },
-      rings: { d: 2.2, coin: .3, t: ['ringice:6,ringrock:4', 'ringice:3,ringrock:2,asteroid', 'bigast'] },
-      xspace: { d: .25, deco: 1, t: ['rock:3,ice:2', 'meteor,satellite', 'comet:2', '', 'giantcomet'] },
-    },
-    zoneAt, outside: () => 'xspace',
-    build(add) {
-      PLANETS.forEach(([id, r, a, sub, fact]) => add(id, ...orb(r, a), { keep: 1, id, label: tname(CH[6], id), sub, fact }));
-      add('moon', EARTH[0] + 380, EARTH[1] - 260, { keep: 1, id: 'moon', label: 'The Moon', sub: 'Earth\'s moon' });
-      [['io', 'Io', 'Io has hundreds of volcanoes.'], ['europa', 'Europa', 'Europa has an ocean under its ice.'], ['ganymede', 'Ganymede', 'Ganymede is the biggest moon in the solar system.'],
-        ['callisto', 'Callisto', 'Callisto is covered in craters.']].forEach(([id, n, fact], i) => add(id, JUP[0] + Math.cos(i * 1.6 + .4) * (420 + i * 120), JUP[1] + Math.sin(i * 1.6 + .4) * (420 + i * 120), { keep: 1, id, label: n, sub: 'a moon of Jupiter', fact }));
-      add('titan', SAT[0] + 1100, SAT[1] - 300, { keep: 1, id: 'titan', label: 'Titan', sub: 'a moon of Saturn', fact: 'Titan has lakes — but they are not water!' });
-      add('rover', MARS[0] + 90, MARS[1] - 110, { keep: 1, id: 'rover', label: 'Mars rover', sub: 'exploring Mars', fact: 'Rovers are robots that drive on Mars and study its rocks.' });
-      add('pluto', ...orb(26500, 2.6), { keep: 1, id: 'pluto', label: 'Pluto', sub: 'a dwarf planet', fact: 'Pluto is a dwarf planet, far out past Neptune.' });
-      add('sun', SX, SY, { keep: 1, id: 'sun', label: 'The Sun', sub: 'our star', fact: 'The Sun is a star. All the planets go around it.', needs: PLANETS.map(p => p[0]), needTxt: 'eat all 8 planets' });
-      add('iss', EARTH[0] + 300, EARTH[1] + 150, { keep: 1, id: 'iss', label: 'International Space Station', sub: 'orbiting Earth', fact: 'Astronauts live and work on the ISS, high above the Earth.' });
-      add('telescope', EARTH[0] - 260, EARTH[1] + 260, { keep: 1, id: 'telescope', label: 'Space telescope' });
-      add('probe', ...orb(27200, 5.6), { keep: 1, id: 'voyager', label: 'Voyager 1', sub: 'the farthest spacecraft' });
-    },
-    hint: w => w === 'asteroid' ? orb(8600, Math.atan2(G.y - SY, G.x - SX)) : null,
-    finish() { setTimeout(() => { SFX.fanfare(); UI.complete(); }, 1200); },
-    ispy: ['#mercury', '#venus', '#earth', '#mars', '#jupiter', '#saturn', '#uranus', '#neptune', '#moon', '#pluto', '#iss', '#rover', '#io', '#europa', '#ganymede',
-      '#callisto', '#titan', '#voyager', 'satellite', 'astronaut', 'comet', 'ufo', 'rocket', 'alien', 'asteroid', '#telescope', 'meteor', 'glove', 'hat', 'ringice'],
-    eduSubj: 'science',
-    edu: [
-      { n: 'Our corner of space', s: ['i:#iss|Find the International Space Station', 'i:#moon|Absorb the Moon', 'i:#earth|Absorb planet Earth'] },
-      { n: 'Mission to Mars', s: ['i:#rover|Find the Mars rover', 'i:#mercury|Absorb Mercury, closest to the Sun', 'i:#mars|Absorb Mars, the red planet'] },
-      { n: 'Moons first', s: ['i:#io|Find Io, a moon of Jupiter', 'i:#europa|Find Europa, the icy moon', 'i:#titan|Find Titan, a moon of Saturn'] },
-      { n: 'The giants', s: ['f:ringice,ringrock', 'i:#saturn|Absorb Saturn', 'i:#jupiter|Absorb Jupiter, the biggest planet'] },
-      { n: 'Far out', s: ['i:#neptune|Absorb Neptune', 'i:#pluto|Find Pluto, the dwarf planet', 'i:#voyager|Find Voyager 1'] },
-      { n: 'Countdown maths', s: ['m:add', 'm:sub', 'm:mul'] },
-    ],
-    doneTxt: 'All 8 planets, their moons, the asteroid belt, and THE SUN. But wait… zoom out…',
-    words: ['MOON', 'STAR', 'SUN', 'MARS', 'COMET', 'ORBIT', 'PLANET', 'ROCKET', 'EARTH', 'SPACE'],
-    check: ['q:@mercury,venus,earth,mars,jupiter,saturn,uranus,neptune|c|Eat the 8 planets in order', 'c:asteroid:10|c|Eat 10 asteroids from the belt', 'b:sun|c|Eat the Sun'],
-    quests: [
-      'c:satellite:3|c', 't:30', 'c:comet:2|c', 'x:5', 'c:ufo:2', 'c:rocket:3', 'a:alien:15', 'c:astronaut:2|c', 'b:iss|c|Eat the International Space Station', 'b:moon|c|Eat the Moon',
-      'b:pluto|c|Eat Pluto, the dwarf planet', 'c:ice:5|c', 'c:asteroid:5|c', 'x:8', 'c:alien:3', 'c:station:2', 'b:mars|c|Eat Mars, the red planet', 't:300',
-      'f:add', 'f:sub', 'f:mul', 'f:miss', 'f:mul', 'f:add', 'f:sub', 'q:10,9,8,7,6,5,4,3,2,1|m|Countdown: eat 10 to 1. Blast off!',
-      'q:MOON', 'q:STAR', 'l:S', 'l:M', 'f:word', 'q:SUN',
-      'p:rocket,ufo,rocket,ufo', 'p:comet,satellite,comet,satellite', 'p:ice,rock,ice,rock', 'p:alien,astronaut,alien,astronaut',
-      'r:4', 's:4000', 'r:8', 's:15000',
-    ],
-    bg(g, V) {
-      const pw = 1 / V.z;
-      const gl = g.createRadialGradient(SX, SY, 300, SX, SY, 4000); gl.addColorStop(0, 'rgba(255,200,80,.35)'); gl.addColorStop(1, 'rgba(255,200,80,0)');
-      g.fillStyle = gl; g.fillRect(SX - 4000, SY - 4000, 8000, 8000);
-      g.fillStyle = 'rgba(160,140,120,.18)'; g.beginPath(); g.arc(SX, SY, BELT[1], 0, 7); g.arc(SX, SY, BELT[0], 0, 7, true); g.fill();
-      g.fillStyle = 'rgba(140,180,220,.08)'; g.beginPath(); g.arc(SX, SY, W / 2, 0, 7); g.arc(SX, SY, KUIPER, 0, 7, true); g.fill();
-      g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = Math.max(6, 1.5 * pw);
-      for (const p of PLANETS) { g.beginPath(); g.arc(SX, SY, p[1], 0, 7); g.stroke(); }
-      g.setLineDash([40 * pw, 30 * pw]); g.beginPath(); g.arc(SX, SY, 26500, 0, 7); g.stroke(); g.setLineDash([]);
-      g.fillStyle = 'rgba(230,210,160,.16)'; g.beginPath(); g.arc(SAT[0], SAT[1], RINGS[1], 0, 7); g.arc(SAT[0], SAT[1], RINGS[0], 0, 7, true); g.fill();
-      g.textAlign = 'center'; g.textBaseline = 'middle';
-      const lab = (s, x, y, px, col) => { g.font = `900 ${px * pw}px ${UI_FONT}`; g.fillStyle = col; g.fillText(s, x, y); };
-      for (const a of [0.9, 2.6, 4.4, 5.9]) { const [x, y] = orb(8600, a); lab('ASTEROID BELT', x, y - 16 * pw, 18, 'rgba(255,230,180,.75)'); lab('between Mars and Jupiter', x, y + 8 * pw, 13, 'rgba(255,230,180,.6)'); }
-      for (const a of [1.5, 4.8]) { const [x, y] = orb(25600, a); lab('KUIPER BELT (icy far-out zone)', x, y, 16, 'rgba(190,220,255,.6)'); }
-    },
-  });
-})();
-
-/* ---------- CHAPTER 7: THE HUMBLING — fully fictional giant space (generic sci-fi only) ---------- */
-(() => {
-  const W = 64000, H = 64000;
-  const rng = mulberry(777);
-  const NEB = Array.from({ length: 46 }, () => [rng() * W, rng() * H, 2500 + rng() * 6000, ['#ff4fd8', '#7b5cff', '#2de2e6', '#ff9f43', '#55efc4'][Math.floor(rng() * 5)]]);
-  const NEBX = Array.from({ length: 40 }, () => { let x, y; do { x = (rng() * 1.6 - .3) * W; y = (rng() * 1.6 - .3) * H; } while (x > 0 && y > 0 && x < W && y < H); return [x, y, 3000 + rng() * 7000, ['#ff4fd8', '#7b5cff', '#2de2e6', '#ff9f43', '#55efc4'][Math.floor(rng() * 5)]]; });
-  const DEBRIS = Array.from({ length: 14 }, () => [4000 + rng() * (W - 8000), 4000 + rng() * (H - 8000), 1200 + rng() * 1500]);   // space-junk fields
-  const CLUSTERS = Array.from({ length: 18 }, () => [rng() * W, rng() * H, 2500 + rng() * 2500]);
-  function zoneAt(x, y) {
-    if (x < 0 || y < 0 || x > W || y > H) return null;
-    for (const [cx, cy, r] of DEBRIS) if (Math.hypot(x - cx, y - cy) < r) return 'debris';
-    for (const [cx, cy, r] of CLUSTERS) if (Math.hypot(x - cx, y - cy) < r) return 'cluster';
-    for (const [cx, cy, r] of NEB) if (Math.hypot(x - cx, y - cy) < r * .7) return 'nebula';
-    return 'void';
-  }
-  const pl = (n, t, c1, c2, o) => [n, t, Object.assign({ planet: 1 }, o || {})];
-  const st = (n, t, c1, o) => [n, t, o || {}];
-  CH.push({
-    n: 7, name: 'The Humbling', short: 'Humbling', c1: '#8e24aa', c2: '#2a0636', bgc: '#0d0221', rim: '#ff6bd6', space: 1,
-    W, H, start: [W / 2, H / 2], cost: 4.5, need: 170, pv: 5, view: 13,
-    sizes: [0, 16, 26, 42, 66, 100, 150, 230, 350, 520],
-    real: [0, 2e9, 5e9, 1.5e10, 4e10, 1e11, 3e11, 1e12, 4e12, 1.5e13],
-    tagN: { giantstar: 'giant star', giantufo: 'giant UFO' },
-    types: {
-      rock: ['space rock', 1, { s: .6 }], sparkle: ['stardust', 1, { pl: 'stardust' }], ice: ['ice chunk', 1], star: ['little star', 1],
-      comet: ['comet', 2, { mv: 'fly' }], ufo: ['UFO', 2, { mv: 'fly' }], satellite: ['old satellite', 2], alien: ['alien', 2, { mv: 'w' }],
-      planet: ['ringed planet', 3], icemoon: pl('ice moon', 3, '#d6f5ff', '#5aa9c9'), redplanet: pl('red planet', 3, '#ff8a65', '#9e2a12'),
-      giantplanet: pl('giant planet', 4, '#c3a6ff', '#5b3fb0', { band: 'rgba(80,40,140,.4)' }), giantmoon: pl('giant moon', 4, '#f0f0e8', '#7d7d78'),
-      yellowstar: st('yellow star', 5, '#ffd23f'), redstar: st('red star', 5, '#ff5e57'), station: ['space station', 5, {}],
-      bluestar: st('blue star', 6, '#6ad1ff'), crystalmoon: ['crystal moon', 6, {}], ringstation: ['mega space station', 6, { s: 1.3 }],
-      giantufo: ['giant UFO', 7, { tags: 'giantufo', s: 1.3, mv: 'w' }], superplanet: pl('super planet', 7, '#7cf7c6', '#1b8a6b', { ring: '#bff', band: 'rgba(0,80,60,.3)' }),
-      giantstar: st('giant star', 8, '#ff9f43', { tags: 'giantstar', s: 1.2 }), supergiant: st('supergiant star', 9, '#e8f4ff', { s: 1.3 }),
-      // no scale here (clarification 5): maximal playful chaos, original designs only
-      panel: ['solar panel', 1], hat: ['top hat', 1], spacecow: ['space cow', 2, { mv: 'w' }], flycar: ['flying car', 2, { mv: 'fly' }], wizard: ['space wizard', 3, { mv: 'w' }],
-      starfighter: ['starfighter', 3, { mv: 'fly' }], spaceduck: ['giant rubber duck', 4, { mv: 'w' }], spacewhale: ['space whale', 5, { mv: 'w', s: 1.3 }],
-      bigteapot: ['teapot planet', 6, { s: 1.2 }], serpent: ['star serpent', 7, { mv: 'w', s: 1.4 }],
-    },
-    zones: {
-      void: { d: .75, t: ['rock:3,ice:2,star:2,panel', 'comet,satellite,ufo,flycar:2,spacecow', 'planet,icemoon,redplanet,starfighter:2,wizard', 'giantmoon,spaceduck', 'redstar,spacewhale', 'bluestar:3,crystalmoon,bigteapot', 'serpent:.5'] },
-      nebula: { d: 1.15, t: ['sparkle:4,star:3', 'comet:2,ufo,alien,spacecow,flycar', 'planet:2,icemoon,wizard', 'giantplanet:2,giantmoon,spaceduck:2', 'yellowstar,station,spacewhale:2', 'bluestar,ringstation:.5,crystalmoon:.3,bigteapot', 'superplanet:.6,serpent'] },
-      cluster: { d: 1.2, coin: .4, t: ['star:5,sparkle:2', 'ufo:2,alien,flycar', 'redplanet,starfighter:2', 'giantplanet', 'yellowstar:2,redstar:2', 'bluestar:2', 'superplanet', 'giantstar:.3'] },
-      debris: { d: 1.8, coin: .3, t: ['panel:5,rock:2,sparkle', 'satellite:4,flycar', 'starfighter,ufo', 'station'] },
-      xvoid: { d: .3, deco: 1, t: ['star:3,rock', 'comet,ufo', 'planet,redplanet', 'giantplanet', 'yellowstar,redstar', 'bluestar', 'superplanet'] },
-    },
-    zoneAt, outside: () => 'xvoid',
-    build(add) {
-      [[16000, 16000], [48000, 15000], [15000, 49000], [47000, 47000]].forEach(([x, y], i) => add('giantstar', x, y, { keep: 1, id: 'gstar' + i, label: 'Giant star' }));
-      [[40000, 28000], [22000, 38000]].forEach(([x, y], i) => add('giantufo', x, y, { keep: 1, id: 'gufo' + i, label: 'Giant UFO' }));
-      add('ringstation', 35000, 33000, { label: 'Mega Ring Station' }); add('crystalmoon', 28000, 36000, { label: 'Crystal Moon' });
-      add('supergiant', 8000, 32000, { label: 'Supergiant star' }); add('supergiant', 56000, 32000, { label: 'Supergiant star' });
-      add('wizard', W / 2 + 300, H / 2 - 200, { keep: 1, id: 'wizard', label: 'The space wizard' });
-      add('spacewhale', 26000, 22000, { keep: 1, id: 'whale1', label: 'The great space whale', s: 1.6 });
-      add('serpent', 44000, 40000, { keep: 1, id: 'serpent1', label: 'The star serpent' });
-      add('bigteapot', 20000, 46000, { keep: 1, id: 'teapot1', label: 'The teapot planet' });
-    },
-    finish(first) {
-      G.cine = { k: 'finale', t0: G.now, first, objs: [] }; G.joy = null;
-    },
-    /* finale on the topple system: the two giant stars spiral in and tip over the rim, everything in
-       view follows, then the pit opens wide until its swirl fills the whole screen */
-    cineUpdate() {
-      const c = G.cine, e = (G.now - c.t0) / 1000, R = holeD() / 2;
-      if (!c.stars) {
-        c.stars = [0, Math.PI].map(k => ({ mk: 'giantstar', fw: R * 2.4, sv: 1, x: G.x, y: G.y, bx: 0, by: 0, yaw: 0, ph: k, k0: k, wob: -1e9 }));
-        c.objs = c.stars.slice();
-        G.vis.forEach((o, i) => { if (!o.dead && !o.tile && !o.fall) o.fall = { t0: G.now + 500 + (i % 50) * 50, x0: dx(o.x, G.x), y0: dy(o.y, G.y), dur: 2400, l0: o.lean || 0, spin: 7 }; });
-      }
-      const p = Math.min(1, e / 3.2);
-      for (const s2 of c.stars) {
-        if (s2.fall) continue;
-        const r = lerp(R * 6, R * 0.6, p * p), a = p * 9 + s2.k0;
-        s2.x = G.x + Math.cos(a) * r; s2.y = G.y + Math.sin(a) * r; s2.ldir = a + Math.PI; s2.lean = p * 0.5; s2.wobble = p;
-        if (p >= 0.85) s2.fall = { t0: G.now, x0: dx(s2.x, G.x), y0: dy(s2.y, G.y), dur: 700, l0: s2.lean, spin: 6 };
-      }
-      if (e > 3.2 && !c.boom) { c.boom = 1; SFX.fanfare(); }
-      if (e > 4.3) { V3.holeScale = lerp(1, 24, clamp((e - 4.3) / 1.4, 0, 1)); V3.swirl = 3; }
-      if (e > 9) {
-        const first = c.first; G.cine = null; V3.holeScale = 1; V3.swirl = 1;
-        if (first) { S.journey = 1; G.st.w += 5000; }
-        persist(); G.mode = 'menu'; UI.credits();
-      }
-    },
-    cineDraw() {
-      const e = (G.now - G.cine.t0) / 1000, cx = STAGE_W / 2, cy = STAGE_H / 2;
-      if (e < 3.5) txt('The two giant stars are pulled in…', cx, 110, 36, '#ffd23f', 'center', 900);
-      else if (e < 4.3) { g.fillStyle = `rgba(255,255,255,${1 - (e - 3.5) / 0.8})`; g.fillRect(0, 0, STAGE_W, STAGE_H); }
-      else if (e > 5) { txt('YOU ARE', cx, cy - 170, 54, '#fff', 'center', 900); txt('THE BLACK HOLE', cx, cy + 180, 78, '#ffd23f', 'center', 900); }
-    },
-    ispy: ['star', 'comet', 'ufo', 'alien', 'planet', 'icemoon', 'redplanet', 'giantplanet', 'giantmoon', 'yellowstar', 'redstar', 'bluestar', 'crystalmoon', 'ringstation', 'giantufo',
-      'superplanet', 'giantstar', 'spacewhale', 'flycar', 'starfighter', 'serpent', '#wizard', 'panel', 'spacecow', 'spaceduck', 'bigteapot', 'satellite', 'hat', 'sparkle', 'station'],
-    eduSubj: 'science',
-    edu: [
-      { n: 'Silly space zoo', s: ['f:spacecow,spaceduck', 'f:spacewhale', 'i:#serpent1|Find the star serpent'] },
-      { n: 'Star colours', s: ['f:yellowstar', 'f:redstar', 'f:bluestar'] },
-      { n: 'Space rides', s: ['f:flycar,ufo', 'f:starfighter', 'f:station'] },
-      { n: 'The wizard\'s tea party', s: ['i:#wizard|Find the space wizard', 'i:#teapot1|Find the teapot planet', 'f:icemoon,crystalmoon'] },
-      { n: 'Galaxy maths', s: ['m:add', 'm:sub', 'm:mul'] },
-    ],
-    doneTxt: 'YOU ARE THE BLACK HOLE.',
-    words: ['GALAXY', 'STAR', 'SPACE', 'LIGHT', 'GIANT', 'NOVA', 'ORBIT', 'COMET', 'ALIEN', 'ROCKET'],
-    check: ['c:giantstar:2', 'b:giantufo', 'q:GALAXY|s|Spell G-A-L-A-X-Y'],
-    quests: [
-      'c:star:10', 't:40', 'c:comet:3', 'x:6', 'c:ufo:3', 'a:ufo:20', 'c:planet:3', 'c:giantmoon:2', 'c:sparkle:5', 'c:station:1',
-      'c:crystalmoon:1', 'x:10', 'c:redstar:2|c', 'c:bluestar:2|c', 'c:giantplanet:2', 'b:ringstation', 't:200', 't:500',
-      'f:big', 'f:big', 'f:add', 'f:sub', 'f:mul', 'f:big', 'q:10,20,30,40,50,60,70,80,90,100|m|Count the stars by tens: 10 to 100', 'f:miss',
-      'q:STARS', 'q:COMET', 'l:G', 'l:S', 'f:word', 'q:ORBIT',
-      'p:star,comet,star,comet', 'p:ufo,alien,ufo,alien', 'p:redstar,yellowstar,redstar,yellowstar', 'p:planet,icemoon,planet,icemoon',
-      'r:4', 's:10000', 'r:8', 's:60000',
-    ],
-    bg(g, V) {
-      const pw = 1 / V.z;
-      for (const [x, y, r, c] of NEB.concat(NEBX)) {
-        if (x + r < V.x0 || x - r > V.x1 || y + r < V.y0 || y - r > V.y1) continue;
-        const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, c + '55'); gr.addColorStop(1, c + '00');
-        g.fillStyle = gr; g.fillRect(x - r, y - r, 2 * r, 2 * r);
-      }
-      g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = Math.max(10, 2 * pw);
-      for (const [x, y, r] of CLUSTERS) if (!(x + r < V.x0 || x - r > V.x1 || y + r < V.y0 || y - r > V.y1)) { g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke(); }
-      g.strokeStyle = 'rgba(200,200,200,.06)'; for (const [x, y, r] of DEBRIS) if (!(x + r < V.x0 || x - r > V.x1 || y + r < V.y0 || y - r > V.y1)) { g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke(); }
-    },
-  });
-})();
-
 
 /* =====================================================================
    3. ENGINE
    ===================================================================== */
 
 /* ---------- save (only ever touches SAVE_KEY) ---------- */
-const NQ = 40;
+const NQ = 40, NW = 5, WN = [1, 2, 3, 4, 5];
 function freshCh(n) {
   return { u: n === 1 ? 1 : 0, c: 0, x: null, y: null, lvl: 1, xp: 0, pts: 0, pc: 0, w: 0, cf: 0,
-    check: [0, 0, 0], board: Array(NQ).fill(0), act: [], qi: 0, up: Array(10).fill(0), eaten: {}, bm: 0, exitOk: 0 };
+    check: [0, 0, 0], board: Array(NQ).fill(0), act: [], qi: 0, up: Array(10).fill(0), eaten: {}, bm: 0, exitOk: 0, beat: 0 };
 }
 function freshSave() {
-  const ch = {}; for (let n = 1; n <= 7; n++) ch[n] = freshCh(n);
+  const ch = {}; for (let n = 1; n <= NW; n++) ch[n] = freshCh(n);
   return { v: 1, settings: { sound: 1, music: 1, learn: 'full', grade: 2 }, last: 1, journey: 0, ch,
-    learn: { math: 0, spelling: 0, science: 0, geography: 0 }, passport: {}, ispy: {}, edu: {} };
+    learn: { math: 0, spelling: 0, science: 0, geography: 0 }, passport: {}, ispy: {}, edu: {}, retired: {}, w5: 1 };
+}
+/* v5: the roster became five worlds. A save from v4 or earlier (seven chapters) is moved once: Home <- old 1,
+   Vancouver <- old 3, Stanley Park is new, Space <- old 6, Globe <- old 5. Retired Backyard (old 2), Wilderness (old 4)
+   and Chaos (old 7) are kept verbatim in S.retired and ignored; nothing else is lost (spec v5 H, ground rules). */
+const W5_FROM = { 1: 1, 2: 3, 4: 6, 5: 5 }, W5_RETIRED = [2, 4, 7], W5_REDONE = [1, 4, 5];
+function migrate5(d) {
+  if (!d || typeof d !== 'object' || d.w5 || !d.ch || typeof d.ch !== 'object') return d;
+  const o = Object.assign({}, d), och = d.ch || {}, ch = {}, ispy = {}, edu = {};
+  o.retired = Object.assign({}, d.retired || {});
+  for (const n of W5_RETIRED) if (och[n] && typeof och[n] === 'object') o.retired[n] = och[n];
+  for (let n = 1; n <= NW; n++) {
+    const f = W5_FROM[n], c = f && och[f] && typeof och[f] === 'object' ? Object.assign({}, och[f]) : null;
+    if (c && W5_REDONE.includes(n)) {   // the map is new: old landmark ids would not mean the same things
+      if (c.eaten && typeof c.eaten === 'object' && Object.keys(c.eaten).length) c.eaten4 = c.eaten;
+      c.eaten = {}; c.act = [];
+    }
+    if (c) ch[n] = c;
+    const a = f && d.ispy && d.ispy[f], e = f && d.edu && d.edu[f];
+    if (a && typeof a === 'object') ispy[n] = n === 2 ? a : { deck: [], pos: 0, wins: +a.wins || 0 };
+    if (e && typeof e === 'object') edu[n] = n === 2 ? e : { set: 0, done: +e.done || 0 };
+  }
+  if (ch[3] == null) ch[3] = {};
+  ch[3].u = och[3] && och[3].c ? 1 : 0;       // finishing Vancouver opened the next chapter; it now opens Stanley Park
+  o.ch = ch; o.ispy = ispy; o.edu = edu;
+  o.last = { 1: 1, 3: 2, 5: 5, 6: 4 }[d.last] || 1;
+  o.w5 = 1;
+  return o;
 }
 /* fill any missing fields (additive) and coerce types; idempotent */
 function normalize(d) {
   const f = freshSave();
   if (!d || typeof d !== 'object') return f;
+  d = migrate5(d);
   const o = Object.assign({}, f, d);
   o.settings = Object.assign({}, f.settings, d.settings || {}); delete o.settings.voice;   // v4.1: the voice is gone
   o.learn = Object.assign({}, f.learn, d.learn || {});
   o.passport = Object.assign({}, d.passport || {});
-  o.ispy = {}; o.edu = {};                                    // v4 modes: I Spy decks + Educational set progress, per chapter
-  for (let n = 1; n <= 7; n++) {
+  o.retired = d.retired && typeof d.retired === 'object' ? d.retired : {};
+  o.ispy = {}; o.edu = {};                                    // v4 modes: I Spy decks + Educational set progress, per world
+  for (let n = 1; n <= NW; n++) {
     const a = d.ispy && d.ispy[n], e = d.edu && d.edu[n];
     if (a && Array.isArray(a.deck)) o.ispy[n] = { deck: a.deck.map(Number).filter(v => v >= 0 && v < 30), pos: +a.pos || 0, wins: +a.wins || 0 };
     if (e && typeof e === 'object') o.edu[n] = { set: +e.set || 0, done: +e.done || 0 };
   }
   o.ch = {};
-  for (let n = 1; n <= 7; n++) {
+  for (let n = 1; n <= NW; n++) {
     const c = Object.assign(freshCh(n), (d.ch && d.ch[n]) || {});
-    c.board = Array.from({ length: NQ }, (_, i) => c.board[i] ? 1 : 0);
-    c.up = Array.from({ length: 10 }, (_, i) => clamp(c.up[i] | 0, 0, 10));
-    c.check = [0, 1, 2].map(i => +c.check[i] || 0);
+    c.board = Array.from({ length: NQ }, (_, i) => c.board && c.board[i] ? 1 : 0);
+    c.up = Array.from({ length: 10 }, (_, i) => clamp((c.up && c.up[i]) | 0, 0, 10));
+    c.check = [0, 1, 2].map(i => +(c.check && c.check[i]) || 0);
     if (!Array.isArray(c.act)) c.act = [];
     if (!c.eaten || typeof c.eaten !== 'object') c.eaten = {};
-    for (const k of ['lvl', 'xp', 'pts', 'pc', 'w', 'cf', 'bm', 'qi']) c[k] = +c[k] || 0;
+    for (const k of ['lvl', 'xp', 'pts', 'pc', 'w', 'cf', 'bm', 'qi', 'beat']) c[k] = +c[k] || 0;
     c.lvl = Math.max(1, c.lvl); c.w = Math.max(0, Math.floor(c.w));
     o.ch[n] = c;
   }
-  o.ch[1].u = 1;
+  o.ch[1].u = 1; o.w5 = 1;
+  if (!(o.last >= 1 && o.last <= NW)) o.last = 1;
   return o;
 }
+/* accepts a v1-v4 (seven chapters) or a v5 (five worlds) save */
 function validSave(d) {
-  return d && typeof d === 'object' && d.v === 1 && d.ch && typeof d.ch === 'object' && d.settings &&
-    [1, 2, 3, 4, 5, 6, 7].every(n => d.ch[n] && typeof d.ch[n] === 'object' && Array.isArray(d.ch[n].board) && Array.isArray(d.ch[n].up));
+  if (!(d && typeof d === 'object' && d.v === 1 && d.ch && typeof d.ch === 'object' && d.settings)) return false;
+  const ok = c => c && typeof c === 'object' && Array.isArray(c.board) && Array.isArray(c.up);
+  return d.w5 ? WN.every(n => ok(d.ch[n])) : [1, 2, 3, 4, 5, 6, 7].every(n => ok(d.ch[n]));
 }
 function loadSave() {
   try { const raw = localStorage.getItem(SAVE_KEY); if (raw) return normalize(JSON.parse(raw)); } catch (e) { /* corrupt or blocked: start fresh, never touch other keys */ }
@@ -1949,7 +1665,7 @@ function musicOut() {
   }
   return MUSIC.gain;
 }
-function musicFor() { return G.mode === 'play' && G.C ? 'ch' + G.C.n + '.mp3' : 'menu.mp3'; }
+function musicFor() { return G.mode === 'play' && G.C ? G.C.mus : 'menu.mp3'; }
 function syncMusic() {
   if (!AU.ctx || !G.gestured) return;
   const g = musicOut(); g.gain.value = S.settings.music ? 0.55 : 0;      // the MUSIC toggle drives the gain
@@ -2115,8 +1831,8 @@ function loadChapter(n, kind) {
   if (story) {
     // v2/v3 saves: the v4 maps are new, so position + size restart once; wallets, upgrades, boards, checklists,
     // eaten landmarks and completed chapters are all kept (spec K27)
-    if (st.x == null || st.mv !== 4) { st.x = C.start[0]; st.y = C.start[1]; [st.lvl, st.xp] = startSize(st); }
-    st.mv = 4;
+    if (st.x == null || st.mv !== 5) { st.x = C.start[0]; st.y = C.start[1]; [st.lvl, st.xp] = startSize(st); }
+    st.mv = 5;
     C.CK.forEach((q, j) => { if (st.check[j] > q.n) st.check[j] = q.n; });
     G.x = st.x; G.y = st.y; G.lvl = clamp(st.lvl, 1, C.N); G.xp = st.xp;
   } else { G.x = C.start[0]; G.y = C.start[1]; [G.lvl, G.xp] = startSize(st); }
@@ -3222,11 +2938,11 @@ const MODEL = (() => {
     up_vacuum: ['ifunnel', {}], up_lucky: ['iclover', {}], up_payday: ['iclip', {}], up_wide: ['ieye', {}], up_head: ['iflag', {}],
   };
   const PER = { // per-chapter meanings of shared ids
-    '1:bottle': ['bottle', { a: '#e3f2fd', b: '#ffcc80' }], '1:can': ['can', { a: '#e0e0e0', b: '#c62828', h: 1.4 }], '3:lodge': ['bld', { a: '#8a5a32', h: .5, d: 1.4, fl: 2, roof: .35, b: '#4a3a2a' }], '3:bus': ['bus', { a: '#fafafa', b: '#1565c0' }], '3:newspaper': ['nbox', {}], '4:dino': ['dino', { a: '#ede3c8' }], '4:station': ['bld', { a: '#e65100', h: .3, d: 1.6, fl: 1, roof: .1, b: '#455a64' }], '4:bottle': ['bottle', { a: '#7fb88a', b: '#c9a06a' }], '4:island': ['island', {}], '5:island': ['island', {}], '5:car': ['car', { v: [{ a: '#e53935' }, { a: '#1e88e5' }] }],
-    '5:house': ['house', { v: [{ a: '#f4e1c1', b: '#c0392b' }, { a: '#e8e0d0', b: '#455a64' }] }], '5:tower': ['tower', { hh: 3.6 }], '5:hotel': ['hotel', { hh: 4.4 }], '5:stadium': ['stadium', {}], '5:camel': ['quad', { a: '#d4a35a', hump: 1, neck: .5, d: 2, lh: 1 }],
-    '5:guitar': ['guitar', { a: '#c0603a' }], '5:drum': ['drum', { a: '#8d6e63' }], '5:leaf': ['leaf', { a: '#d32f2f' }], '5:church': ['church', {}], '5:cruise': ['ship', { a: '#fafafa', b: '#0d47a1', decks: 3, d: 4.5 }],
-    '6:ice': ['rock', { a: '#cfe8ff', h: .7 }], '7:ice': ['rock', { a: '#bfe9ff', h: .7 }], '7:station': ['station', {}], '7:comet': ['comet', { a: '#f8bbd0', b: '#ff4fd8' }], '7:ufo': ['ufo', { a: '#b0b8c8', b: '#55efc4' }],
-    '7:satellite': ['sat', { a: '#a0a0a0' }], '7:alien': ['alien', { a: '#b388ff' }], '7:rock': ['rock', { a: '#6d5f7a' }], '6:rock': ['rock', {}],
+    'home:bottle': ['bottle', { a: '#e3f2fd', b: '#ffcc80' }], 'home:can': ['can', { a: '#e0e0e0', b: '#c62828', h: 1.4 }], 'van:lodge': ['bld', { a: '#8a5a32', h: .5, d: 1.4, fl: 2, roof: .35, b: '#4a3a2a' }], 'van:bus': ['bus', { a: '#fafafa', b: '#1565c0' }], 'van:newspaper': ['nbox', {}], 'globe:island': ['island', {}], 'globe:car': ['car', { v: [{ a: '#e53935' }, { a: '#1e88e5' }] }],
+    'globe:house': ['house', { v: [{ a: '#f4e1c1', b: '#c0392b' }, { a: '#e8e0d0', b: '#455a64' }] }], 'globe:tower': ['tower', { hh: 3.6 }], 'globe:hotel': ['hotel', { hh: 4.4 }], 'globe:stadium': ['stadium', {}], 'globe:camel': ['quad', { a: '#d4a35a', hump: 1, neck: .5, d: 2, lh: 1 }],
+    'globe:guitar': ['guitar', { a: '#c0603a' }], 'globe:drum': ['drum', { a: '#8d6e63' }], 'globe:leaf': ['leaf', { a: '#d32f2f' }], 'globe:church': ['church', {}], 'globe:cruise': ['ship', { a: '#fafafa', b: '#0d47a1', decks: 3, d: 4.5 }],
+    'space:ice': ['rock', { a: '#cfe8ff', h: .7 }],
+    'space:rock': ['rock', {}],
   };
   const NATURE = new Set(['tree', 'pine', 'palm', 'cactus', 'bush', 'forest', 'flower', 'sprout', 'mushroom', 'coral', 'stone', 'pebble', 'rock', 'iceberg', 'whiterock', 'mountain', 'hill', 'shell', 'leaf', 'feather', 'berry', 'grapes', 'sparkle', 'comet', 'planet', 'star', 'crystal', 'island']);
   /* ---- geometry factory ---- */
@@ -3284,7 +3000,7 @@ const MODEL = (() => {
     g.computeVertexNormals(); g.computeBoundingSphere();
     return g;
   }
-  function entry(C, k) { return PER[C.n + ':' + k] || T[k] || null; }
+  function entry(C, k) { return PER[C.key + ':' + k] || T[k] || null; }
   const built = new Map();
   /* the model for one type (and palette variant): geometry normalised to fit-width 1, plus its spec */
   function get(C, k, vi, pal) {
@@ -3707,7 +3423,7 @@ function drawMenu3D() {
     V3.tex.needsUpdate = true; V3.reg = null; V3.menuPaint = 1;
   }
   const M = V3.menu || (V3.menu = (() => {
-    const pick = [[1, 'lego'], [2, 'car'], [3, 'tower'], [4, 'whale'], [5, 'eiffel'], [6, 'saturn'], [7, 'giantufo'], [1, 'teddy']];
+    const pick = [[1, 'lego'], [2, 'car'], [2, 'tower'], [5, 'whale'], [5, 'eiffel'], [4, 'saturn'], [2, 'bus'], [1, 'teddy']];
     return { props: pick.map(([n, k], i) => ({ mc: prep(CH[n]), mk: k, fw: [26, 30, 34, 40, 38, 40, 40, 30][i], a: i * 0.785, ph: i })) };
   })());
   const z = 1, d = camPlace(z), R = 118 + Math.sin(G.t * 1.5) * 4, U = V3.gmat.uniforms;
@@ -3923,7 +3639,7 @@ const UI = {
     kind = kind || 'story'; UI.chKind = kind;
     $('chap-title').textContent = kind === 'ispy' ? 'I SPY · PICK A WORLD' : kind === 'edu' ? 'EDUCATIONAL · PICK A WORLD' : 'CHAPTERS';
     const box = $('chap-cards'); box.innerHTML = '';
-    for (let n = 1; n <= 7; n++) {
+    for (let n = 1; n <= NW; n++) {
       const C = CH[n], st = S.ch[n], prepd = prep(C), open = kind === 'edu' || st.u;
       const done = prepd.CK.filter((q, j) => st.check[j] >= q.n).length, bd = st.board.filter(Boolean).length;
       const el = document.createElement('div');
@@ -3959,7 +3675,7 @@ const UI = {
     if (n) UI.upCh = n;
     if (!S.ch[UI.upCh].u) UI.upCh = 1;
     const ch = UI.upCh, st = S.ch[ch];
-    $('up-tabs').innerHTML = [1, 2, 3, 4, 5, 6, 7].map(i => `<button class="tab${i === ch ? ' sel' : ''}" data-tab="${i}" ${S.ch[i].u ? '' : 'disabled'}>${i}. ${esc(CH[i].short)}</button>`).join('');
+    $('up-tabs').innerHTML = WN.map(i => `<button class="tab${i === ch ? ' sel' : ''}" data-tab="${i}" ${S.ch[i].u ? '' : 'disabled'}>${i}. ${esc(CH[i].short)}</button>`).join('');
     $('up-tabs').querySelectorAll('[data-tab]').forEach(b => b.onclick = () => UI.upgrades(+b.dataset.tab));
     $('up-grid').innerHTML = UPGRADES.map((u, i) => {
       const lv = st.up[i];
@@ -4002,7 +3718,7 @@ const UI = {
     const b = $('b-buy'); if (b) b.onclick = () => { if (buyUpgrade(ch, i)) { SFX.coin(); UI.upgrades(); } };
   },
   banker() {
-    const unl = [1, 2, 3, 4, 5, 6, 7].filter(n => S.ch[n].u);
+    const unl = WN.filter(n => S.ch[n].u);
     let from = UI.upCh, to = unl.find(n => n !== from) || from, amt = Math.min(100, S.ch[from].w);
     const draw = () => {
       amt = clamp(amt, 0, S.ch[from].w);
@@ -4038,7 +3754,7 @@ const UI = {
     const s = S.settings;
     const seg = (key, opts) => `<span class="seg">${opts.map(([v, l]) => `<button data-set="${key}" data-v="${v}" class="${String(s[key]) === String(v) ? 'sel' : ''}">${l}</button>`).join('')}</span>`;
     const L = S.learn, tot = Math.max(1, L.math + L.spelling + L.science + L.geography);
-    const tq = [1, 2, 3, 4, 5, 6, 7].reduce((a, n) => a + S.ch[n].board.filter(Boolean).length, 0);
+    const tq = WN.reduce((a, n) => a + S.ch[n].board.filter(Boolean).length, 0);
     $('set-left').innerHTML = `
       <div class="set-row">Music ${seg('music', [[1, 'ON'], [0, 'OFF']])}</div>
       <div class="set-row">Sound ${seg('sound', [[1, 'ON'], [0, 'OFF']])}</div>
@@ -4056,7 +3772,7 @@ const UI = {
       <textarea id="t-code" spellcheck="false"></textarea>
       <button class="btn sm" id="b-import" style="margin-top:8px">IMPORT CODE</button>
       <div style="font-size:22px;font-weight:900;margin:16px 0 6px">RESET</div>
-      <div class="set-row" style="font-size:18px">Chapter <span class="seg" id="rs-seg">${[1, 2, 3, 4, 5, 6, 7].map(n => `<button data-rs="${n}" class="${n === (UI.rsCh || 1) ? 'sel' : ''}">${n}</button>`).join('')}</span></div>
+      <div class="set-row" style="font-size:18px">Chapter <span class="seg" id="rs-seg">${WN.map(n => `<button data-rs="${n}" class="${n === (UI.rsCh || 1) ? 'sel' : ''}">${n}</button>`).join('')}</span></div>
       <button class="btn sm red" id="b-rch"></button> <button class="btn sm red" id="b-rall"></button>
       <div style="font-size:15px;opacity:.75;margin-top:16px">Credits: Metro Vancouver map data © OpenStreetMap contributors (ODbL), via Overture Maps. Music slots: see audio/manifest.js.</div>`;
     document.querySelectorAll('[data-set]').forEach(b => b.onclick = () => {
@@ -4078,7 +3794,7 @@ const UI = {
   tryImport(text) {
     const d = parseImport(text);
     if (!d) { UI.modal(`<div class="h2">That code didn't work</div><p style="font-size:20px">Check you copied the whole save code and try again. Your current save is safe.</p><button class="btn" id="m-ok">OK</button>`); $('m-ok').onclick = UI.closeModal; return; }
-    const tq = [1, 2, 3, 4, 5, 6, 7].reduce((a, n) => a + d.ch[n].board.filter(Boolean).length, 0), cc = [1, 2, 3, 4, 5, 6, 7].filter(n => d.ch[n].c).length;
+    const tq = WN.reduce((a, n) => a + d.ch[n].board.filter(Boolean).length, 0), cc = WN.filter(n => d.ch[n].c).length;
     UI.modal(`<div class="h2">Replace your save?</div><p style="font-size:20px">The imported save has ${cc} chapter${cc === 1 ? '' : 's'} complete and ${tq} Tiny Quests done.<br>This will overwrite the save on this device.</p>
       <button class="btn green" id="m-yes">YES, IMPORT</button><button class="btn grey" id="m-no">CANCEL</button>`);
     $('m-yes').onclick = () => { S = d; persist(); UI.closeModal(); UI.settings(UI.setBack); };
