@@ -273,6 +273,23 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     const ok = cl.length >= 195 && sov.every(cc => C.regionPos(cc)) && inPct === 1 && paris && tiny.tier === 0 && tiny.cap === 1 && tiny.cont === 0 && mid.cont === 0 && mid.cap > 0 && mid.ctry >= 0 && giant.cap === 0 && giant.cont > 0 && giant.ctry > 0 && giant.ctry <= 24 && !giant.overlap && !mid.overlap;
     return { ok, info: { countries: cl.length, sovereign: sov.length, noPolyTerritories: noPoly, namesInside: +inPct.toFixed(3), outside, paris, tiny: [tiny.tier, tiny.cap, tiny.ctry, tiny.cont], mid: [mid.tier, mid.cap, mid.ctry, mid.cont], giant: [giant.tier, giant.cap, giant.ctry, giant.cont, giant.overlap] } };`));
 
+  await T('fences are chains of sections (v5.2 Parts 10-11): the front yard fence and Second Beach Pool\'s picket fence go one section at a time; the front gate stands open; the pool has its seal slide and two water slides', new Function(STEP + `
+    const { G, S } = HH; S.ch[1].u = 1; HH.startChapter(1, 'explore'); step(1); const out = {};
+    const live = c => G.auth.filter(o => o.chain === c && !o.dead && !o.fall);
+    const F = live('frontfence'), n0 = F.length, sec = F.find(o => Math.abs(o.yaw - Math.PI / 2) < .01 && o.x > 5);
+    HH.setHoleD(sec.fw * 1.05); G.fl = 0; G.x = sec.x; G.y = sec.y + .4; G.vx = G.vy = 0; step(60);
+    out.front = { sections: n0, afterOne: live('frontfence').length, gate: !!G.auth.find(o => o.k === 'gate' && o.nosolid), trampoline: !!G.auth.find(o => o.k === 'trampoline'), tree: !!G.auth.find(o => o.k === 'fronttree') };
+    for (const o of live("frontfence")) { HH.setHoleD(o.fw * 1.1); G.x = o.x; G.y = o.y + (o.y > 40 ? .4 : 0); G.vx = G.vy = 0; step(40); }
+    out.front.allEaten = live("frontfence").length;
+    S.ch[2].u = 1; HH.startChapter(2, 'explore'); step(1);
+    const P = live('poolfence'), p0 = P.length, ps = P[Math.floor(P.length / 2)];
+    HH.setHoleD(ps.fw * 1.05); G.x = ps.x; G.y = ps.y; G.vx = G.vy = 0; step(60);
+    out.pool = { sections: p0, afterOne: live('poolfence').length, slides: G.auth.filter(o => /^(sealslide|poolslide2?)$/.test(o.k)).map(o => o.label) };
+    HH.startChapter(1); step(1);
+    const ok = n0 >= 15 && out.front.afterOne < n0 && out.front.afterOne >= n0 - 3 && out.front.gate && out.front.trampoline && out.front.tree && out.front.allEaten === 0
+      && p0 >= 40 && out.pool.afterOne < p0 && out.pool.afterOne >= p0 - 3 && out.pool.slides.length === 3 && out.pool.slides.includes('the seal slide');
+    return { ok, info: out };`));
+
   await T('upgrade buy spends the chapter wallet only', new Function(`
     const { S } = HH; S.ch[1].w = 100; S.ch[2].w = 77; S.ch[1].up[0] = 0;
     const c = HH.upCost(1, 1), ok = HH.buyUpgrade(1, 0);

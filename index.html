@@ -502,9 +502,10 @@ const CH = [null];
         const e = b + TW / 2; if (e > s) out.push(o === 'h' ? [s, c - TW / 2, e - s, TW] : [c - TW / 2, s, TW, e - s]);
       }
     }
-    // low walls (5th field = low): the back fence with its open gate, the deck railing, the deck stairs' sides
+    // low walls (5th field = low): the deck railing, the deck stairs' sides (v5.2 Part 11: the back fence is a chain of eatable
+    // fence sections now, placed in build(), its gate gap kept open)
     const t = TW / 2, d = RM.deck[3], s2 = RM.dstair[3];
-    if (fl === 0) out.push([0, OY - t, 0.4, TW, 1], [1.6, OY - t, W - 1.6, TW, 1], [s2[2] - t, s2[1], TW, s2[3] - s2[1], 1], [s2[0], s2[3] - t, s2[2] - s2[0], TW, 1], [s2[0] - t, s2[1], TW, d[1] + .8 - s2[1], 1]);
+    if (fl === 0) out.push([s2[2] - t, s2[1], TW, s2[3] - s2[1], 1], [s2[0], s2[3] - t, s2[2] - s2[0], TW, 1], [s2[0] - t, s2[1], TW, d[1] + .8 - s2[1], 1]);
     else out.push([d[0] - t, d[1] - t, d[2] - d[0] + TW, TW, 1], [d[0] - t, d[1], TW, d[3] - d[1], 1], [d[2] - t, d[1], TW, 10.8 + OY - d[1], 1], [d[2] - t, 11.8 + OY, TW, d[3] - 11.8 - OY, 1],
       [s2[2] - t, s2[1], TW, s2[3] - s2[1], 1], [s2[0], s2[3] - t, s2[2] - s2[0], TW, 1], [s2[0], s2[1] - t, s2[2] - s2[0], TW, 1], [s2[0] - t, s2[1], TW, d[1] - s2[1], 1]);
     return out;
@@ -578,7 +579,9 @@ const CH = [null];
     // the lot
     ['bike', 'alley', .12, .6, { yaw: Q, id: 'bike' }], ['bin', 'alley', .5, .2], ['bin', 'alley', .6, .2], ['recycle', 'alley', .7, .2],
     ['gardenbed', 'back', .9, .2, { yaw: 0 }], ['gardenbed', 'back', .9, .46, { yaw: 0 }], ['shrub', 'back', .04, .3], ['shrub', 'back', .04, .7], ['birdbath', 'back', .55, .3, { id: 'birdbath' }],   // v5.1: beds moved north, clear of the deck stairs' foot
-    ['planter', 'front', .2, .3], ['shrub', 'front', .05, .2], ['shrub', 'front', .95, .2], ['shrub', 'front', .95, .6], ['gnome', 'front', .7, .4, { id: 'gnome' }], ['mailbox', 'front', .9, .92, { id: 'mailbox' }],
+    ['planter', 'front', .1, .3], ['shrub', 'front', .05, .2], ['shrub', 'front', .95, .2], ['shrub', 'front', .95, .6], ['gnome', 'front', .52, .14, { id: 'gnome' }], ['mailbox', 'front', .9, .92, { id: 'mailbox' }],
+    // v5.2 Part 10: a trampoline, more bushes, a second tree out front (the apple tree out back stays as it is)
+    ['trampoline', 'front', .72, .5], ['shrub', 'front', .04, .52], ['shrub', 'front', .05, .9], ['shrub', 'front', .45, .9], ['shrub', 'front', .62, .9], ['fronttree', 'front', .1, .66],
     ['bin', 'sideW', .5, .4],
   ];
   // things that are alive (spec v5.5 4): movers on little paths, and the objective ladder's landmarks
@@ -598,6 +601,7 @@ const CH = [null];
     dumbbell: 'gym', bandw: 'gym', ball: 'gym,yard', bottlew: 'gym', battery: 'storage,util,living', screw: 'storage', toolbox: 'storage', bucket: 'storage,carport,yard,util',
     basket: 'util,bed', leaf: 'yard,deck,alley,path,street,carport', flower: 'yard', butterfly: 'yard,deck,path', ant: 'yard,path,deck,street,alley,carport', pebble: 'yard,path,alley,street,carport',
     fapple: 'yard', snail: 'yard,path', worm: 'yard', ladybug: 'yard,deck', sprout: 'yard', bin: 'alley,path,storage,carport,street', recycle: 'alley,storage,carport', bike: 'alley,carport',
+    fenceseg: 'yard', gate: 'yard', trampoline: 'yard', fronttree: 'yard',
     gnome: 'yard', mailbox: 'yard', planter: 'deck,yard', shrub: 'yard', birdbath: 'yard', gardenbed: 'yard', newspaper: 'street,yard', cone: 'alley', cup: 'street,alley',
   };
   const CAT = Object.fromEntries(ROOMS.map(r => [r[0], r[6]]));
@@ -651,6 +655,8 @@ const CH = [null];
     gardenbed: ['vegetable garden', 1], shrub: ['bush', 1, { pl: 'bushes', sway: 1 }], birdbath: ['birdbath', 1, { pl: 'birdbaths' }], gnome: ['garden gnome', 1], mailbox: ['mailbox', 1, { pl: 'mailboxes' }],
     appletree: ['apple tree', 1, { sway: 1 }], roomba: ['robot vacuum', 1], trainset: ['toy train set', 1], toytrain: ['toy train', 1], remote: ['TV remote', 1], ftoycar: ['racing toy car', 1, { tags: 'toycar' }],
     door: ['door', 1], frontdoor: ['front door', 1],
+    // v5.2 Part 10: the front yard's fence (a chain of sections, each eaten on its own), its open gate, a trampoline, a tree
+    fenceseg: ['fence', 1, { pl: 'fence sections', tags: 'fence' }], gate: ['garden gate', 1], trampoline: ['trampoline', 1], fronttree: ['tree', 1, { sway: 1, tags: 'tree' }],
     // outside (deco only)
     xtree: ['tree', 1, { m: [5, 9], sway: 1 }], xhouse: ['house', 1, { m: [9, 8] }], xgarage: ['garage', 1, { m: [6.5, 3.2] }], xfence: ['fence', 1, { m: [2.4, 1.8] }],
     xbush: ['bush', 1, { m: [1.4, 1], sway: 1 }], xflower: ['flower', 1, { m: [.2, .4], sway: 1 }], peak: ['mountain', 1, { m: [2200, 900] }], cloud: ['cloud', 1, { m: [14, 5], mv: 'fly' }],
@@ -663,7 +669,8 @@ const CH = [null];
     rocker: [.75, .65], toybox: [.7, .5], deckchair: [.7, .9], ptable: [1, .75], bbq: [1.2, 1.1], planter: [.5, .6], car: [4.6, 1.5], car2: [4.9, 1.8], toolbench: [1.8, .9], shelfunit: [1.8, 2],
     recycle: [.6, 1], treadmill: [1.9, 1.3], wbench: [1.3, .5], rack: [1.2, .9], yogamat: [1.8, .01], beanbag: [.9, .6], bike: [1.7, 1], bin: [.6, 1.05], gardenbed: [2.2, .4],
     shrub: [1.1, 1], birdbath: [.6, .8], gnome: [.25, .4], mailbox: [.4, 1.2], appletree: [3.6, 4.5], roomba: [.34, .09], trainset: [1.1, .25], toytrain: [.3, .1],
-    remote: [.18, .02], ftoycar: [.14, .06], door: [.85, 2.03], frontdoor: [.95, 2.03], hat: [.35, .12], ...{},
+    remote: [.18, .02], ftoycar: [.14, .06], door: [.85, 2.03], frontdoor: [.95, 2.03], hat: [.35, .12],
+    fenceseg: [1.2, 1.1], gate: [.95, 1.1], trampoline: [3, .9], fronttree: [2.2, 4.2],
   };
   for (const [k, v] of Object.entries(T0)) if (!v[2] || !v[2].m) { if (M[k]) v[2] = Object.assign({}, v[2] || {}, { m: M[k] }); }
   // the zones a loose thing can be rolled in: a room's list, filtered by the placement constitution
@@ -715,6 +722,16 @@ const CH = [null];
         return ob;
       };
       for (const [k, room, fx, fy, o] of FURN) put(k, room, fx, fy, o);
+      // v5.2 Part 10: the front yard's fence (a chain of 1.2 m sections) on the street side and both lot edges, with the
+      // gate standing open where the concrete path to the front door meets the sidewalk (flowers along both sides of it)
+      const fy = 36.5 + OY - .06, PX0 = 2.55, PX1 = 3.45;
+      const run = (x0, y0, x1, y1, room = 'front') => { const L = Math.hypot(x1 - x0, y1 - y0), m = Math.max(1, Math.round(L / 1.2));
+        for (let j = 0; j < m; j++) add('fenceseg', x0 + (x1 - x0) * (j + .5) / m, y0 + (y1 - y0) * (j + .5) / m, { fl: 0, room, out: 1, yaw: Math.atan2(x1 - x0, y1 - y0), s: L / m / 1.2, chain: room + 'fence' }); };
+      run(.06, fy, PX0, fy); run(PX1 + .02, fy, W - .06, fy);
+      run(1.6, OY + .02, W - .06, OY + .02, 'back'); add('fenceseg', .2, OY + .02, { fl: 0, room: 'back', out: 1, yaw: Q, s: .4 / 1.2, chain: 'backfence' });   // the back fence, its gate open between
+      run(.06, 28.4 + OY + .1, .06, fy - .1); run(W - .06, 28.4 + OY + .1, W - .06, fy - .1);
+      add('gate', PX1 + .06, fy - .5, { fl: 0, room: 'front', out: 1, yaw: 0, nosolid: 1, label: 'the garden gate', sub: 'standing open' });
+      for (let y = 28.4 + OY + .35; y < fy - .3; y += .55) for (const x of [PX0 - .12, PX1 + .14]) if (!(x > PX1 && y > fy - 1.2)) add('flower', x, y, { fl: 0, room: 'front', out: 1, yaw: y * 7 });
       // open doors beside their doorways (just objects you can eat when big enough)
       // (swung flat against the wall beside the opening, so a doorway is never blocked)
       for (const [x, y, w, o, fl, door] of OPEN) if (door) add(x === 3 && y === 28.4 + OY ? 'frontdoor' : 'door', o === 'h' ? x + w / 2 + .45 : x + .09, o === 'h' ? y + .09 : y + w / 2 + .45, { fl, yaw: o === 'h' ? Q : 0, door: 1, nosolid: 1 });
@@ -975,6 +992,8 @@ const CH = [null];
       kayak: ['kayak', 1, { mv: 'w' }], canoe: ['canoe', 1], sailboat: ['sailboat', 1, { mv: 'w' }], speedboat: ['speedboat', 1, { mv: 'w' }], yacht: ['motor yacht', 1, { mv: 'w' }], seaplane: ['float plane', 1],
       // the park's furniture
       bench: ['bench', 1, { pl: 'benches', m: [1.8, .9] }], lamp: ['lamppost', 1, { m: [.4, 4.5] }], stopsign: ['stop sign', 1, { m: [.75, 2.4] }], bin: ['garbage bin', 1], hydrant: ['fire hydrant', 1], fountain2: ['drinking fountain', 1, { m: [.6, 1] }],
+      picket: ['picket fence', 1, { m: [2.4, 1.1], pl: 'picket fence sections', tags: 'fence' }], poolslide: ['water slide', 1, { m: [4.6, 3.6] }], poolslide2: ['water slide', 1, { m: [4.6, 3.6] }],
+      sealslide: ['the seal slide', 1, { m: [4.6, 3.2] }],
       picnic: ['picnic table', 1, { m: [2, .8] }], slide: ['slide', 1, { m: [2.5, 2] }], swings: ['swing set', 1, { m: [4, 2.4] }], toilets: ['washroom', 1, { m: [8, 3.5] }], art: ['statue', 1, { m: [1.5, 2.5] }],
       log: ['driftwood log', 1], boulder: ['boulder', 1], bush: ['bush', 1, { pl: 'bushes' }], streettree: ['street tree', 1, { tags: 'tree', sway: 1, m: [5, 9] }],
       bigtree: ['western red cedar', 1, { tags: 'tree', m: [9, 40] }], pine: ['Douglas fir', 1, { tags: 'tree', m: [6, 30] }], oak: ['maple tree', 1, { tags: 'tree', sway: 1, m: [8, 14] }],
@@ -1102,6 +1121,21 @@ const CH = [null];
       let gi = 0; for (const p of D.golf) { const [x, y] = mid(p); if (inside(x, y)) add('flag', x, y, gi++ ? {} : { label: 'the pitch & putt', id: 'pitchputt' }); }
       const plays = D.play.map(mid).filter(([x, y]) => inside(x, y)).sort((a, b) => Math.hypot(a[0] - START[0], a[1] - START[1]) - Math.hypot(b[0] - START[0], b[1] - START[1]));
       plays.forEach(([x, y], pi) => add(pi % 2 ? 'swings' : 'slide', x, y, Object.assign({ yaw: rng() * 6 }, pi === 0 ? { keep: 1, id: 'ceperleyslide', label: 'the Ceperley playground slide' } : null)));
+      /* v5.2 Part 11: Second Beach Pool's white picket fence all round (with its way in) and its three slides: the seal
+         slide and two water slides, on the deck between the water and the fence. A fence is a chain of sections: each is
+         its own object, eaten at its own size, until the run is gone */
+      const pool = D.pools.map(q => q[0]).sort((a, b) => b.length - a.length)[0];
+      if (pool) {
+        let cx = 0, cy = 0; const n = pool.length / 2; for (let i = 0; i < pool.length; i += 2) { cx += pool[i]; cy += pool[i + 1]; } cx /= n; cy /= n;
+        const ring = []; for (let i = 0; i < pool.length; i += 2) { const vx = pool[i] - cx, vy = pool[i + 1] - cy, l = Math.hypot(vx, vy) || 1; ring.push([pool[i] + vx / l * 4, pool[i + 1] + vy / l * 4]); }
+        const secs = []; for (let i = 0; i < ring.length; i++) { const [ax, ay] = ring[i], [bx2, by2] = ring[(i + 1) % ring.length], L = Math.hypot(bx2 - ax, by2 - ay), m = Math.max(1, Math.ceil(L / 2.4));
+          for (let j = 0; j < m; j++) secs.push([ax + (bx2 - ax) * (j + .5) / m, ay + (by2 - ay) * (j + .5) / m, Math.atan2(bx2 - ax, by2 - ay), L / m]); }
+        const gate = secs.reduce((b, q, i) => Math.hypot(q[0] - START[0], q[1] - START[1]) < Math.hypot(secs[b][0] - START[0], secs[b][1] - START[1]) ? i : b, 0);
+        secs.forEach(([x, y, yaw, L], i) => { if (i !== gate && !isWater(x, y)) add('picket', x, y, { yaw, s: L / 2.4, chain: 'poolfence', label: i ? '' : 'the pool fence' }); });
+        const SL = [['sealslide', .12, { keep: 1, id: 'sealslide', label: 'the seal slide', sub: 'Second Beach Pool' }], ['poolslide', .45, { label: 'a water slide', sub: 'Second Beach Pool' }], ['poolslide2', .72, { label: 'a water slide', sub: 'Second Beach Pool' }]];
+        for (const [k, f, o] of SL) { const i = Math.floor(f * n) * 2, px = pool[i], py = pool[i + 1], vx = px - cx, vy = py - cy, l = Math.hypot(vx, vy) || 1;
+          add(k, px + vx / l * 1.8, py + vy / l * 1.8, Object.assign({ yaw: Math.atan2(-vx, -vy), quiet: 1 }, o)); }
+      }
       // the Aquarium: tanks with their animals inside the open-top hall
       aqHall = A('aquahall', -123.1310, 49.3003, { label: 'the Vancouver Aquarium', id: 'aquarium', nosolid: 1, fact: 'Sea otters, jellyfish, penguins and fish from all over the world live here.' });
       const tank = (dx, dy, kind, n) => { const x = AQX + dx, y = AQY + dy; add('aquatank', x, y, { quiet: 1, nosolid: 1 }); for (let i = 0; i < n; i++) add(kind, x + (rng() - .5) * 6, y + (rng() - .5) * 5, { quiet: 1, yaw: rng() * 6 }); };
@@ -4346,6 +4380,14 @@ const MODEL = (() => {
     totem: p => [...['#c0392b', '#2471a3', '#f1c40f', '#1e8449'].map((c, i) => bx(1, 1, 1, 0, .5 + i, 0, c)), bx(2.4, .2, .5, 0, 3.4, 0, '#c0392b'), ...[0, 1, 2, 3].flatMap(i => [-1, 1].map(s => bx(.2, .15, .05, s * .2, .7 + i, .51, '#111')))],
     fountain: p => [cy(1.6, .3, 1.6, 0, .15, 0, '#bfc6cc', { seg: 14 }), cy(1.4, .05, 1.4, 0, .31, 0, '#6ab7ff', { seg: 14 }), cy(.2, .8, .2, 0, .6, 0, '#bfc6cc'), cy(.6, .15, .6, 0, 1, 0, '#bfc6cc'), sp(.3, .6, .3, 0, 1.3, 0, '#bfe6ff')],
     carousel: p => [cy(1.6, .2, 1.6, 0, .1, 0, '#d4a017', { seg: 12 }), cy(.15, 1.6, .15, 0, .9, 0, GOLD), co(1.8, .7, 1.8, 0, 2, 0, '#e74c8c', { seg: 12 }), ...[0, 1, 2, 3, 4, 5].map(i => bx(.2, .4, .5, Math.cos(i) * .6, .6, Math.sin(i) * .6, '#fff', { ry: -i }))],
+    // v5.2 Part 11: a white picket fence section (pickets on two rails), the pool's water slides and its seal slide
+    picket: p => [bx(.06, .08, 3, 0, .62, 0, p.a || '#f4f4f0'), bx(.06, .08, 3, 0, .28, 0, p.a || '#f4f4f0'), ...[-1.38, -1.15, -.92, -.69, -.46, -.23, 0, .23, .46, .69, .92, 1.15, 1.38].map(z => bx(.07, .86, .14, .04, .43, z, p.a || '#fafafa')),
+      ...[-1.38, -1.15, -.92, -.69, -.46, -.23, 0, .23, .46, .69, .92, 1.15, 1.38].map(z => bx(.07, .1, .1, .04, .9, z, p.a || '#fafafa', { ry: .785 }))],
+    poolslide: p => [bx(.62, .08, 2.6, 0, 1.05, .35, p.a || '#29b6f6', { rx: -.7 }), bx(.08, .25, 2.6, -.3, 1.15, .35, p.b || '#0288d1', { rx: -.7 }), bx(.08, .25, 2.6, .3, 1.15, .35, p.b || '#0288d1', { rx: -.7 }),
+      ...[-.32, .32].map(x => bx(.09, 2, .09, x, 1, -.75, '#cfd8dc')), bx(.8, .08, .6, 0, 1.98, -.8, '#eceff1'), ...[.4, .8, 1.2, 1.6].map(y => bx(.6, .05, .06, 0, y, -1.05, '#b0bec5'))],
+    sealslide: p => [bx(.7, .08, 2.6, 0, .95, .35, '#4fc3f7', { rx: -.62 }), bx(.08, .22, 2.6, -.33, 1.05, .35, '#0277bd', { rx: -.62 }), bx(.08, .22, 2.6, .33, 1.05, .35, '#0277bd', { rx: -.62 }),
+      sp(.9, 1.5, 1, 0, .9, -.95, '#78909c'), sp(.62, .55, .62, 0, 1.85, -.75, '#8a9ba5'), sp(.1, .1, .1, -.16, 1.95, -.47, '#111'), sp(.1, .1, .1, .16, 1.95, -.47, '#111'),
+      sp(.16, .12, .14, 0, 1.82, -.45, '#37474f'), ...[-.5, .5].map(x => sp(.5, .12, .3, x, .35, -.6, '#607d8b'))],
     slide: p => [bx(.8, .1, 2.4, 0, .85, 0, '#e74c3c', { rx: -.6 }), bx(.1, 1.7, .1, -.35, .85, -.9, '#3498db'), bx(.1, 1.7, .1, .35, .85, -.9, '#3498db'), bx(.8, .1, .5, 0, 1.6, -.95, '#3498db')],
     bbq: p => [sp(1, .8, 1, 0, 1, 0, '#222'), bx(1.2, .08, .25, 0, 1, 0, '#555'), bx(.08, .9, .08, -.3, .45, -.3, '#333'), bx(.08, .9, .08, .3, .45, -.3, '#333'), bx(.08, .9, .08, 0, .45, .35, '#333')],
     mailbox: p => [bx(.12, 1, .12, 0, .5, 0, '#5a3a1a'), bx(.5, .45, .8, 0, 1.15, 0, p.a || '#3466af'), cy(.5, .8, .5, 0, 1.35, 0, p.a || '#3466af', { rx: 1.5708 }), bx(.05, .3, .1, .27, 1.45, -.2, '#d22')],
@@ -4692,6 +4734,8 @@ const MODEL = (() => {
     'space:haumea': ['planet', { a: '#f5f5f5', b: '#e0e0e0' }], 'space:makemake': ['planet', { a: '#d7a77a', b: '#b98a5e' }], 'space:gonggong': ['planet', { a: '#c75b4a', b: '#a1473a' }], 'space:quaoar': ['planet', { a: '#b5826a', b: '#94654f' }],
     'space:sedna': ['planet', { a: '#b33a2a', b: '#8c2a1e' }], 'space:planet9': ['planet', { a: '#3f51b5', b: '#283593' }],
     'park:sandwich': ['sandwich', {}], 'park:chip': ['chip', {}], 'park:juice': ['juice', {}], 'park:blanket': ['blanket', {}], 'park:napkin': ['napkin', {}], 'park:floatie': ['floatie', {}],
+    'park:picket': ['picket', {}], 'park:poolslide': ['poolslide', {}], 'park:poolslide2': ['poolslide', { a: '#ffca28', b: '#f57c00' }], 'park:sealslide': ['sealslide', {}],
+    'home:fenceseg': ['fence', { a: '#d9c7a0' }], 'home:gate': ['fence', { a: '#c9b48a' }], 'home:fronttree': ['tree', { trunk: 1.5 }],
     'park:net': ['net', {}], 'park:goose': ['bird', { a: '#6d5a48', head: '#222', neck: .6, lg: .5, beak: '#222' }], 'park:otter': ['quad', { a: '#5d4037', d: 2.6, lh: .2 }], 'park:cyclist': ['cyclist', { v: [{ a: '#1e88e5', b: '#ffca28' }, { a: '#e53935', b: '#43a047' }] }],
     'park:tourbus': ['bus', { a: '#c62828', b: '#fafafa', d: 3.8 }], 'park:horsecart': ['horsecart', {}], 'park:minitrain': ['train', { a: '#2e7d32', b: '#ffca28', d: 7 }], 'park:fountain2': ['blk', { a: '#90a4ae', h: 1.4, d: .6 }],
     'park:swings': ['swingset', {}], 'park:toilets': ['house', { a: '#d7ccc8', b: '#5d4037', hh: .8 }], 'park:art': ['statue', { a: '#4e5d4e' }], 'park:figurehead': ['figurehead', {}], 'park:hollowtree': ['hollowtree', {}],
