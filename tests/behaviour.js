@@ -290,6 +290,39 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
       && p0 >= 40 && out.pool.afterOne < p0 && out.pool.afterOne >= p0 - 3 && out.pool.slides.length === 3 && out.pool.slides.includes('the seal slide');
     return { ok, info: out };`));
 
+  await T('real height (v5.2 Parts 8-9): the Home stairs are a true climb with 12 visible steps and are never eaten; the lot stays flat; Stanley Park and Metro Vancouver have their real hills', new Function(STEP + `
+    const { G, S } = HH; S.ch[1].u = 1; HH.startChapter(1, 'explore'); step(1); const C = G.C, out = {};
+    const st = C.rooms.find(r => r[0] === 'stair')[3], ym = (st[1] + st[3]) / 2, h0 = [], grd = new Set();
+    for (let i = 0; i <= 20; i++) { const x = st[0] + .02 + (st[2] - st[0] - .04) * i / 20; h0.push(+C.h0At(x, ym).toFixed(2)); }
+    for (let i = 0; i <= 240; i++) grd.add(C.hAt(st[0] + (st[2] - st[0]) * i / 240, ym).toFixed(2));
+    out.climb = { bottom: h0[0], top: h0[20], rising: h0.every((v, i) => !i || v >= h0[i - 1]) };
+    out.treads = [...grd].filter(v => [...Array(13).keys()].some(k => Math.abs(v - C.floorH * k / 12) < .005)).length;
+    G.fl = 0; out.flat = [C.hAt(5, 40), C.hAt(5, 8), C.hAt(9, 30)].every(v => v === 0);
+    // the hole really rises: drive up the run and watch the ground under it
+    HH.setHoleD(.2); G.x = st[0] + .15; G.y = ym; G.vx = G.vy = 0; step(2); HH.render(); const a = HH.TER.h0;
+    G.x = st[2] - .15; G.y = ym; step(2); HH.render(); out.rode = [+a.toFixed(2), +HH.TER.h0.toFixed(2), G.fl];
+    // never eaten: a hole bigger than the house leaves the stair fixtures alone
+    const fx = G.auth.filter(o => o.fixture), n0 = fx.length; HH.setHoleD(9); for (const o of fx.slice(0, 4)) { G.fl = 0; G.x = o.x; G.y = o.y; step(30); }
+    out.fixtures = [n0, G.auth.filter(o => o.fixture && !o.dead && !o.fall).length];
+    // Stanley Park: the high ground is real (about 80 m), and a hill eaten flattens with everything on it, kept in the save
+    S.ch[2].u = 1; HH.startChapter(2, 'explore'); step(1); let P = G.C;
+    out.parkTop = Math.round(P.hAt(1760, 1880)); out.parkHills = P.HILLS.length;
+    const hl = P.HILLS.slice().sort((a, b) => a.fw - b.fw).find(o => o.fw > 8 && P.zoneAt(o.x, o.y)), [hx, hy, R, base, top] = hl.hill;
+    const before = +P.hAt(hx, hy).toFixed(1);
+    HH.setHoleD(hl.fw * .5); G.x = hx; G.y = hy; G.vx = G.vy = 0; step(40); out.tooSmall = !hl.dead && !hl.fall;
+    HH.setHoleD(hl.fw * 1.3); G.x = hx; G.y = hy; step(1); const onIt = G.vis.filter(q => !q.keep && !q.deco && !q.terr && !q.coin && q.fw < hl.fw && Math.hypot(q.x - hx, q.y - hy) < R * .6 && !q.dead);
+    step(120); HH.render();
+    out.hill = { label: hl.label, before, top: +top.toFixed(1), base, after: +P.hAt(hx, hy).toFixed(1), eaten: !!hl.dead, onIt: onIt.length, onItGone: onIt.filter(q => q.dead || q.fall).length };
+    // in a story run an eaten hill is kept in the world's eaten set, so it stays flat after a reload
+    HH.startChapter(2); step(1); P = G.C; const h2 = P.HILLS.find(o => o.id === hl.id); HH.eat(h2); out.hill.inSave = !!G.st.eaten[hl.id];
+    HH.persist(); HH.startChapter(1); step(1); HH.startChapter(2); step(2); HH.render(); out.hill.afterReload = +G.C.hAt(hx, hy).toFixed(1);
+    S.ch[3].u = 1; HH.startChapter(3, 'explore'); step(1); out.grouse = Math.round(G.C.hAt(...G.C.P(-123.0815, 49.3805))); out.vanHills = G.C.HILLS.length;
+    HH.startChapter(1); step(1);
+    const ok = out.climb.bottom < .05 && Math.abs(out.climb.top - C.floorH) < .1 && out.climb.rising && out.treads >= 12 && out.flat && out.rode[1] - out.rode[0] > 2 && out.rode[2] === 1
+      && out.fixtures[0] >= 4 && out.fixtures[1] === out.fixtures[0] && out.parkTop > 60 && out.parkHills >= 5 && out.tooSmall && out.hill.eaten && out.hill.inSave
+      && out.hill.after <= out.hill.base + 1 && out.hill.before > out.hill.base + 5 && out.hill.afterReload <= out.hill.base + 1 && out.hill.onItGone === out.hill.onIt && out.grouse > 600 && out.vanHills > 50;
+    return { ok, info: out };`));
+
   await T('upgrade buy spends the chapter wallet only', new Function(`
     const { S } = HH; S.ch[1].w = 100; S.ch[2].w = 77; S.ch[1].up[0] = 0;
     const c = HH.upCost(1, 1), ok = HH.buyUpgrade(1, 0);

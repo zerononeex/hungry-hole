@@ -208,6 +208,7 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
 <script src="data/globe-landmarks.js"></script>
 <script src="data/globe-animals.js"></script>
 <script src="data/globe-landmarks52.js"></script>
+<script src="data/elevation.js"></script>
 <script src="audio/manifest.js"></script>
 <!-- co-op only (v5.1): PeerJS, loaded as an OPTIONAL script; if it never arrives the game is untouched and co-op says it can't connect -->
 <script>
@@ -425,7 +426,7 @@ const CH = [null];
    the main floor and its deck are floor 1. Stairs are paths: you roll up or down the run and the floor changes as you
    pass its middle (spec v5.5). Walls are absolute; doors stand open; the house is an open-top dollhouse. ---------- */
 (() => {
-  const OY = 5.5, TW = 0.12, Q = Math.PI / 2;
+  const OY = 5.5, TW = 0.12, Q = Math.PI / 2, FH = 2.7;   // FH: storey height (v5.2 Part 9: the stairs climb it)
   const W = 10.6, H = 38.3 + OY;
   const S = (x0, y0, x1, y1) => [x0, y0 + OY, x1, y1 + OY];
   // id, name, floor (0 lower + yards, 1 main + deck, -1 a stair on both), rect, floor colour, style, category (placement rules)
@@ -601,7 +602,7 @@ const CH = [null];
     dumbbell: 'gym', bandw: 'gym', ball: 'gym,yard', bottlew: 'gym', battery: 'storage,util,living', screw: 'storage', toolbox: 'storage', bucket: 'storage,carport,yard,util',
     basket: 'util,bed', leaf: 'yard,deck,alley,path,street,carport', flower: 'yard', butterfly: 'yard,deck,path', ant: 'yard,path,deck,street,alley,carport', pebble: 'yard,path,alley,street,carport',
     fapple: 'yard', snail: 'yard,path', worm: 'yard', ladybug: 'yard,deck', sprout: 'yard', bin: 'alley,path,storage,carport,street', recycle: 'alley,storage,carport', bike: 'alley,carport',
-    fenceseg: 'yard', gate: 'yard', trampoline: 'yard', fronttree: 'yard',
+    fenceseg: 'yard', gate: 'yard', trampoline: 'yard', fronttree: 'yard', stairstep: '*',
     gnome: 'yard', mailbox: 'yard', planter: 'deck,yard', shrub: 'yard', birdbath: 'yard', gardenbed: 'yard', newspaper: 'street,yard', cone: 'alley', cup: 'street,alley',
   };
   const CAT = Object.fromEntries(ROOMS.map(r => [r[0], r[6]]));
@@ -656,6 +657,7 @@ const CH = [null];
     appletree: ['apple tree', 1, { sway: 1 }], roomba: ['robot vacuum', 1], trainset: ['toy train set', 1], toytrain: ['toy train', 1], remote: ['TV remote', 1], ftoycar: ['racing toy car', 1, { tags: 'toycar' }],
     door: ['door', 1], frontdoor: ['front door', 1],
     // v5.2 Part 10: the front yard's fence (a chain of sections, each eaten on its own), its open gate, a trampoline, a tree
+    stairstep: ['stair', 1, { m: [1, 1] }],   // v5.2 Part 9: the steps of the two stair runs (fixtures, never eaten)
     fenceseg: ['fence', 1, { pl: 'fence sections', tags: 'fence' }], gate: ['garden gate', 1], trampoline: ['trampoline', 1], fronttree: ['tree', 1, { sway: 1, tags: 'tree' }],
     // outside (deco only)
     xtree: ['tree', 1, { m: [5, 9], sway: 1 }], xhouse: ['house', 1, { m: [9, 8] }], xgarage: ['garage', 1, { m: [6.5, 3.2] }], xfence: ['fence', 1, { m: [2.4, 1.8] }],
@@ -679,6 +681,18 @@ const CH = [null];
     n: 1, key: 'home', respawnR: 6, mus: 'ch1.mp3', name: 'The Home', short: 'Home', c1: '#4f7fd6', c2: '#2a3f8f', bgc: '#6aa84f', rim: '#9b6bff', metric: 1, layered: 1,
     W, H, start: [5.3, 26.1 + OY], startFl: 1, edge: .15, cost: 1, need: 260, needP: 1.13, pv: 1.5, view: 13, xpk: 2, fill: .2, spd: 1.8,
     walls3d: { floors: [WALLS[0], WALLS[1]], h: 2.4, cut: 1 },
+    /* v5.2 Part 9: the stairs have real height. The main floor and the deck stand FH above the lower floor and the yards;
+       each stair run is a true climb between them (you watch the floor below fall away going up, and come up to meet
+       you going down). The house lot itself stays flat. */
+    floorH: FH,
+    hAt(x, y, smooth) {                 // the ground: 12 real steps (treads and risers) on each run
+      for (const s of STAIRS) { const [x0, y0, x1, y1] = s.r; if (x >= x0 && x <= x1 && y >= y0 && y <= y1) {
+        const t = clamp(s.ax === 'x' ? (x - x0) / (x1 - x0) : (y - y0) / (y1 - y0), 0, 1); if (smooth) return FH * t;
+        const q = t * 12, k = Math.min(11, Math.floor(q)); return FH * (k + smooth01((q - k - .86) / .14)) / 12; } }
+      if (G.fl === 1) for (const r of ROOMS) if (r[2] === 1 && inRect(x, y, r[3])) return FH;
+      return 0;
+    },
+    h0At(x, y) { return this.hAt(x, y, 1); },   // the hole (and the camera) glide up the run; the steps pass under it
     sizes: [0, 0.045, 0.08, 0.14, 0.24, 0.42, 0.7, 1.15, 1.9, 3, 5.2],
     types: T0,
     zones: Object.assign(Object.fromEntries(Object.entries(ROOM_T).map(([k, t]) => [k, { d: RM[k][7] ? .6 : 1, t, at: atRoom, out: RM[k][7] ? 1 : 0 }])), {
@@ -732,6 +746,16 @@ const CH = [null];
       run(.06, 28.4 + OY + .1, .06, fy - .1); run(W - .06, 28.4 + OY + .1, W - .06, fy - .1);
       add('gate', PX1 + .06, fy - .5, { fl: 0, room: 'front', out: 1, yaw: 0, nosolid: 1, label: 'the garden gate', sub: 'standing open' });
       for (let y = 28.4 + OY + .35; y < fy - .3; y += .55) for (const x of [PX0 - .12, PX1 + .14]) if (!(x > PX1 && y > fy - 1.2)) add('flower', x, y, { fl: 0, room: 'front', out: 1, yaw: y * 7 });
+      // v5.2 Part 9: the steps themselves are the ground (hAt: 12 treads and risers per run); each run gets solid side
+      // walls its full height (fixtures: never eaten, never in the way of rolling up and down)
+      for (const st of STAIRS) {
+        const [x0, y0, x1, y1] = st.r, alongX = st.ax === 'x', L = alongX ? x1 - x0 : y1 - y0;
+        for (const side of [0, 1]) {                                     // the run's sides: solid like walls
+          const sx = alongX ? x0 + L / 2 : (side ? x1 : x0), sy = alongX ? (side ? y1 : y0) : y0 + L / 2;
+          const o = add('stairstep', sx, sy, { deco: 1, nosolid: 1, quiet: 1, fixture: 1, absY: 0, yaw: alongX ? Q : 0, pal: { a: '#6d4a2c', b: '#7b5533', c: '#6d4a2c' } });
+          if (o) { o.fw = .1; o.sv = (FH + .9) / .1; o.dz = L / .1; o.r = .05; }
+        }
+      }
       // open doors beside their doorways (just objects you can eat when big enough)
       // (swung flat against the wall beside the opening, so a doorway is never blocked)
       for (const [x, y, w, o, fl, door] of OPEN) if (door) add(x === 3 && y === 28.4 + OY ? 'frontdoor' : 'door', o === 'h' ? x + w / 2 + .45 : x + .09, o === 'h' ? y + .09 : y + w / 2 + .45, { fl, yaw: o === 'h' ? Q : 0, door: 1, nosolid: 1 });
@@ -905,7 +929,14 @@ const CH = [null];
   const inAqua = (x, y) => Math.abs(x - AQX) < AQW / 2 && Math.abs(y - AQY) < AQD / 2;
   const zoneAt = (x, y) => x < 0 || y < 0 || x > W || y > H || !inPlay(x, y) ? null : inAqua(x, y) ? 'aqua' : zoneHere(x, y) === 'field' ? 'lawn' : zoneHere(x, y);
   // v5.1 Part 12: past the map's edge: English Bay and Burrard Inlet to the west and north, the city to the south and east (scenery)
-  const outside = (x, y) => { if (x < 0 || y < 0 || x > W || y > H) return x < 0 || y < 0 ? null : 'xcity'; const z = zoneHere(x, y); return z === 'water' || z === 'marina' || z === 'lake' || z === 'pool' ? null : z === 'forest' ? 'xforest' : z === 'res' || z === 'com' || z === 'road' ? 'xres' : 'xlawn'; };
+  /* v5.2 Part 18: past the map's edges the apron is the REAL surround, drawn from Metro Vancouver's own map (the same
+     OpenStreetMap bake): English Bay and Burrard Inlet water to the north and west, the West End, downtown and Coal Harbour
+     to the south and east. toVan maps this world's metres onto that world's */
+  const VP = (window.HH_CH3 || {}).proj, toVan = (x, y) => VP ? [((x / D.proj[2] + D.proj[0]) - VP[0]) * VP[2], (VP[1] - (D.proj[1] - y / D.proj[3])) * VP[3]] : [x, y];
+  const VAN = () => CH.find(c => c && c.key === 'van');
+  const apronZ = (x, y) => { const V3 = VAN(); if (!V3 || !VP) return x < 0 || y < 0 ? null : 'xcity'; const z = V3.zoneAt(...toVan(x, y));
+    return !z || z === 'water' ? null : z === 'park' || z === 'beach' ? 'xlawn' : z === 'forest' || z === 'alpine' ? 'xforest' : 'xcity'; };
+  const outside = (x, y) => { if (x < 0 || y < 0 || x > W || y > H) return apronZ(x, y); const z = zoneHere(x, y); return z === 'water' || z === 'marina' || z === 'lake' || z === 'pool' ? null : z === 'forest' ? 'xforest' : z === 'res' || z === 'com' || z === 'road' ? 'xres' : 'xlawn'; };
   /* ---- road segment hash (cars on roads, people on sidewalks, cyclists on the paths) ---- */
   const HC = 60; let RH2 = null;
   function roadHash() {
@@ -996,6 +1027,7 @@ const CH = [null];
       sealslide: ['the seal slide', 1, { m: [4.6, 3.2] }],
       picnic: ['picnic table', 1, { m: [2, .8] }], slide: ['slide', 1, { m: [2.5, 2] }], swings: ['swing set', 1, { m: [4, 2.4] }], toilets: ['washroom', 1, { m: [8, 3.5] }], art: ['statue', 1, { m: [1.5, 2.5] }],
       log: ['driftwood log', 1], boulder: ['boulder', 1], bush: ['bush', 1, { pl: 'bushes' }], streettree: ['street tree', 1, { tags: 'tree', sway: 1, m: [5, 9] }],
+      landhill: ['hill', 1, { m: [100, 4] }],    // v5.2 Part 8: the park's rises, eatable whole (drawn by the ground itself)
       bigtree: ['western red cedar', 1, { tags: 'tree', m: [9, 40] }], pine: ['Douglas fir', 1, { tags: 'tree', m: [6, 30] }], oak: ['maple tree', 1, { tags: 'tree', sway: 1, m: [8, 14] }],
       // the West End
       house: ['house', 1, { tags: 'house' }], townhouse: ['row of townhouses', 1, { pl: 'rows of townhouses' }], lowrise: ['apartment building', 1], midrise: ['mid-rise apartments', 1, { pl: 'mid-rise apartments' }],
@@ -1030,6 +1062,7 @@ const CH = [null];
       xres: { d: .4, deco: 1, coin: 0, at: atX, t: 'streettree:3,car:2,person:2' }, xcity: { d: .5, bd: 3, deco: 1, coin: 0, t: 'streettree:3,car:2,midrise:3,highrise:4,lowrise:3,townhouse' }, xforest: { d: .4, deco: 1, coin: 0, at: atX, t: 'bigtree:6,pine:4' }, xlawn: { d: .3, deco: 1, coin: 0, at: atX, t: 'oak:2,bush,person' },
     },
     zoneAt, outside,
+    hAt(x, y) { const C = this; if (C.dem === undefined) C.dem = demOf(window.HH_EL && window.HH_EL.sp); return C.dem ? hillH(C.dem, x, y) : 0; },   // v5.2 Part 8
     // four streetlights on every street crossing, a stop sign or a bin now and then (v5 A3); streamed with the nearby cells
     cellExtra(t, gx, gy, cs, out) {
       const C = this; if (t !== C.T.lamp.t) return;
@@ -1136,6 +1169,7 @@ const CH = [null];
         for (const [k, f, o] of SL) { const i = Math.floor(f * n) * 2, px = pool[i], py = pool[i + 1], vx = px - cx, vy = py - cy, l = Math.hypot(vx, vy) || 1;
           add(k, px + vx / l * 1.8, py + vy / l * 1.8, Object.assign({ yaw: Math.atan2(-vx, -vy), quiet: 1 }, o)); }
       }
+      addHills(G.C, add, window.HH_EL && window.HH_EL.sp);            // v5.2 Part 8: the park's real rises
       // the Aquarium: tanks with their animals inside the open-top hall
       aqHall = A('aquahall', -123.1310, 49.3003, { label: 'the Vancouver Aquarium', id: 'aquarium', nosolid: 1, fact: 'Sea otters, jellyfish, penguins and fish from all over the world live here.' });
       const tank = (dx, dy, kind, n) => { const x = AQX + dx, y = AQY + dy; add('aquatank', x, y, { quiet: 1, nosolid: 1 }); for (let i = 0; i < n; i++) add(kind, x + (rng() - .5) * 6, y + (rng() - .5) * 5, { quiet: 1, yaw: rng() * 6 }); };
@@ -1200,8 +1234,16 @@ const CH = [null];
       const vis = k => (D['_v' + k] || (D['_v' + k] = (D[k] || []).map(p => [box(p), p])));
       const F = (k, col) => { g.fillStyle = col; g.beginPath(); for (const [b, p] of vis(k)) if (!(b[0] > x1 || b[2] < x0 || b[1] > y1 || b[3] < y0)) ringPath(g, p); g.fill('evenodd'); };
       g.fillStyle = '#d9d6c8'; g.fillRect(x0, y0, x1 - x0, y1 - y0);
-      if (x0 < 0 || y0 < 0) { g.fillStyle = '#5aa9e6'; if (x0 < 0) g.fillRect(x0, y0, Math.min(x1, 0) - x0, y1 - y0); if (y0 < 0) g.fillRect(x0, y0, x1 - x0, Math.min(y1, 0) - y0); }   // v5.1: the sea past the west and north edges
-      if (x1 > W || y1 > H) { g.strokeStyle = '#b9b5ad'; g.lineWidth = 9; g.beginPath();                    // and city streets carrying on past the south and east edges
+      const V3 = !V.mini && VP && VAN();
+      if (V3 && (x0 < 0 || y0 < 0 || x1 > W || y1 > H)) {             // v5.2 Part 18: the real surround, from Metro Vancouver's map
+        const [ax, ay] = toVan(0, 0), [bx3, by3] = toVan(1, 1), kx = bx3 - ax, ky = by3 - ay;
+        g.save(); g.beginPath(); g.rect(x0, y0, x1 - x0, y1 - y0); g.rect(0, H, W, -H); g.clip('evenodd');   // everything in view except the map itself
+        g.transform(1 / kx, 0, 0, 1 / ky, -ax / kx, -ay / ky);
+        const [p0, q0] = toVan(x0, y0), [p1, q1] = toVan(x1, y1);
+        try { V3.bg(g, { z: V.z * kx, cx: (p0 + p1) / 2, cy: (q0 + q1) / 2, x0: p0, y0: q0, x1: p1, y1: q1, px: px * kx, past: V.past }); } catch (e) { /* never let the apron break the park */ }
+        g.restore();
+      } else if (x0 < 0 || y0 < 0) { g.fillStyle = '#5aa9e6'; if (x0 < 0) g.fillRect(x0, y0, Math.min(x1, 0) - x0, y1 - y0); if (y0 < 0) g.fillRect(x0, y0, x1 - x0, Math.min(y1, 0) - y0); }   // v5.1: the sea past the west and north edges
+      if (!V3 && (x1 > W || y1 > H)) { g.strokeStyle = '#b9b5ad'; g.lineWidth = 9; g.beginPath();                    // and city streets carrying on past the south and east edges
         for (let x = Math.ceil(x0 / 120) * 120; x < x1; x += 120) { if (y1 > H) { g.moveTo(x, Math.max(y0, H)); g.lineTo(x, y1); } if (x > W) { g.moveTo(x, Math.max(y0, 0)); g.lineTo(x, Math.min(y1, H)); } }
         for (let y = Math.ceil(y0 / 100) * 100; y < y1; y += 100) { if (y > H) { g.moveTo(Math.max(x0, 0), y); g.lineTo(x1, y); } else if (y > 0 && x1 > W) { g.moveTo(Math.max(x0, W), y); g.lineTo(x1, y); } }
         g.stroke(); }
@@ -1409,7 +1451,7 @@ const CH = [null];
       ikea: ['IKEA', 1], nightmarket: ['Richmond Night Market', 1], mall: ['shopping mall', 1], campus: ['university', 1, { pl: 'universities' }], terminal: ['airport terminal', 1], parkade: ['parkade', 1], hangar: ['airplane hangar', 1], ctower: ['control tower', 1],
       whiterock: ['THE White Rock', 1], peacearch: ['the Peace Arch', 1], pier: ['White Rock Pier', 1], lighthouse: ['lighthouse', 1], coaster: ['wooden roller coaster', 1],
       chalet: ['mountain chalet', 1], lodge: ['ski lodge', 1], rings: ['the Olympic Rings', 1, { pl: 'Olympic Rings' }], cannery: ['the cannery', 1], quay: ['Lonsdale Quay', 1],
-      bridge: ['bridge', 1], peak: ['mountain', 1], borderpost: ['border crossing', 1], obstower: ['observatory', 1], hospital: ['hospital', 1],
+      bridge: ['bridge', 1], peak: ['mountain', 1], landhill: ['hill', 1, { m: [100, 4] }], borderpost: ['border crossing', 1], obstower: ['observatory', 1], hospital: ['hospital', 1],
     },
     zones: {
       core: { d: 1.3, bd: 3.2, at, t: 'streettree:5,manhole:4,drain,cup:2,can,newspaper:2,cone,person:6,bike,bin,light,car:4,taxi:2,bus:.6,van,shop:3,midrise:3,highrise:4,office:4,glass:3,hotel:1' },
@@ -1431,6 +1473,7 @@ const CH = [null];
       xind: { d: .4, deco: 1, coin: 0, at: atX, t: 'warehouse:3,factory:2,truck' },
     },
     zoneAt, outside, hud: snowHud,
+    hAt(x, y) { const C = this; if (C.dem === undefined) C.dem = demOf(window.HH_EL && window.HH_EL.van); return C.dem ? hillH(C.dem, x, y) : 0; },   // v5.2 Part 8
     // four streetlights on every street crossing, a stop sign or a bin now and then (v5 A3); streamed with the nearby cells
     cellExtra(t, gx, gy, cs, out) {
       const C = this; if (t !== C.T.lamp.t) return;
@@ -1519,13 +1562,14 @@ const CH = [null];
       for (const [lo, la, h, r, nm] of [[-123.0815, 49.3805, 1231, 2600, 'Grouse Mountain'], [-123.21, 49.405, 1217, 2600, 'Cypress'], [-122.95, 49.37, 1449, 2800, 'Mount Seymour'],
         [-123.14, 49.457, 1646, 2400, 'The Lions'], [-123.137, 49.684, 702, 1500, 'the Stawamus Chief'], [-123.005, 49.85, 2678, 5200, 'Mount Garibaldi'],
         [-122.95, 50.06, 2182, 4200, 'Whistler Mountain'], [-122.89, 50.09, 2440, 4200, 'Blackcomb'], [-122.6, 49.40, 1700, 6000, 'Golden Ears']])
-        A('peak', lo, la, Object.assign({ deco: 1, fwx: r * 2, hm: h, label: nm, backdrop: 1 }, la > 49.8 ? { pal: { a: '#e9eef3', b: '#d3dbe2' } } : null));   // v5.1: Garibaldi, Whistler, Blackcomb under snow
+        if (!(window.HH_EL && window.HH_EL.van)) A('peak', lo, la, Object.assign({ deco: 1, fwx: r * 2, hm: h, label: nm, backdrop: 1 }, la > 49.8 ? { pal: { a: '#e9eef3', b: '#d3dbe2' } } : null));   // v5.1: Garibaldi, Whistler, Blackcomb under snow
       for (const [lo0, la0, lo1, la1, nm] of [[-123.1385, 49.3045, -123.1395, 49.3215, 'Lions Gate Bridge'], [-123.0262, 49.2935, -123.0255, 49.3005, 'Ironworkers Memorial Bridge'],
         [-122.8125, 49.214, -122.814, 49.2245, 'Port Mann Bridge'], [-122.6655, 49.1935, -122.6665, 49.2075, 'Golden Ears Bridge'], [-122.8935, 49.2035, -122.8885, 49.2105, 'Pattullo Bridge'],
         [-122.9505, 49.1555, -122.9405, 49.1655, 'Alex Fraser Bridge'], [-123.1235, 49.2675, -123.1265, 49.2745, 'Granville Street Bridge']]) {
         const [x0, y0] = P(lo0, la0), [x1, y1] = P(lo1, la1);
         add('bridge', (x0 + x1) / 2, (y0 + y1) / 2, { deco: 1, quiet: 1, label: nm, fwx: Math.hypot(x1 - x0, y1 - y0), hm: 70, yaw: Math.atan2(x1 - x0, y1 - y0) });
       }
+      addHills(G.C, add, window.HH_EL && window.HH_EL.van);           // v5.2 Part 8: the North Shore, Burnaby Mountain... as real ground
       // movers: SkyTrain, highway traffic, SeaBus, ferries, gondolas, float planes
       const sk = D3.paths;
       for (const [key, n, nm] of [['expo', 8, 'SkyTrain (Expo Line)'], ['mill', 6, 'SkyTrain (Millennium Line)'], ['canada', 5, 'SkyTrain (Canada Line)']])
@@ -3053,6 +3097,7 @@ function eat(o) {
   const story = G.run.kind === 'story';
   if (o.keep && story) st.eaten[o.id] = 1;
   if (o.tile) { tileEaten(o); return; }
+  if (o.terr) hillEaten(o);
   if (o.coin) { addCoins(o.val); SFX.coin(); addXP(o.t * 0.5 * XP_K * (C.xpk || 1)); return; }
   SFX.gulp(o.t); G.eats = (G.eats || 0) + 1; if (o.t >= G.lvl - 1) G.bigE = (G.bigE || 0) + 1;
   addXP(o.t * XP_K * (C.xpk || 1));
@@ -4380,6 +4425,8 @@ const MODEL = (() => {
     totem: p => [...['#c0392b', '#2471a3', '#f1c40f', '#1e8449'].map((c, i) => bx(1, 1, 1, 0, .5 + i, 0, c)), bx(2.4, .2, .5, 0, 3.4, 0, '#c0392b'), ...[0, 1, 2, 3].flatMap(i => [-1, 1].map(s => bx(.2, .15, .05, s * .2, .7 + i, .51, '#111')))],
     fountain: p => [cy(1.6, .3, 1.6, 0, .15, 0, '#bfc6cc', { seg: 14 }), cy(1.4, .05, 1.4, 0, .31, 0, '#6ab7ff', { seg: 14 }), cy(.2, .8, .2, 0, .6, 0, '#bfc6cc'), cy(.6, .15, .6, 0, 1, 0, '#bfc6cc'), sp(.3, .6, .3, 0, 1.3, 0, '#bfe6ff')],
     carousel: p => [cy(1.6, .2, 1.6, 0, .1, 0, '#d4a017', { seg: 12 }), cy(.15, 1.6, .15, 0, .9, 0, GOLD), co(1.8, .7, 1.8, 0, 2, 0, '#e74c8c', { seg: 12 }), ...[0, 1, 2, 3, 4, 5].map(i => bx(.2, .4, .5, Math.cos(i) * .6, .6, Math.sin(i) * .6, '#fff', { ry: -i }))],
+    // v5.2 Part 9: one stair step: a solid block (riser) with a lighter tread and a darker nosing (unit cube, scaled per step)
+    step: p => [bx(1, .94, 1, 0, .47, 0, p.a || '#8d6440'), bx(1, .06, 1, 0, .97, 0, p.b || '#c79b6a'), bx(1.002, .08, .08, 0, .96, .46, p.c || '#6d4a2c')],
     // v5.2 Part 11: a white picket fence section (pickets on two rails), the pool's water slides and its seal slide
     picket: p => [bx(.06, .08, 3, 0, .62, 0, p.a || '#f4f4f0'), bx(.06, .08, 3, 0, .28, 0, p.a || '#f4f4f0'), ...[-1.38, -1.15, -.92, -.69, -.46, -.23, 0, .23, .46, .69, .92, 1.15, 1.38].map(z => bx(.07, .86, .14, .04, .43, z, p.a || '#fafafa')),
       ...[-1.38, -1.15, -.92, -.69, -.46, -.23, 0, .23, .46, .69, .92, 1.15, 1.38].map(z => bx(.07, .1, .1, .04, .9, z, p.a || '#fafafa', { ry: .785 }))],
@@ -4734,8 +4781,9 @@ const MODEL = (() => {
     'space:haumea': ['planet', { a: '#f5f5f5', b: '#e0e0e0' }], 'space:makemake': ['planet', { a: '#d7a77a', b: '#b98a5e' }], 'space:gonggong': ['planet', { a: '#c75b4a', b: '#a1473a' }], 'space:quaoar': ['planet', { a: '#b5826a', b: '#94654f' }],
     'space:sedna': ['planet', { a: '#b33a2a', b: '#8c2a1e' }], 'space:planet9': ['planet', { a: '#3f51b5', b: '#283593' }],
     'park:sandwich': ['sandwich', {}], 'park:chip': ['chip', {}], 'park:juice': ['juice', {}], 'park:blanket': ['blanket', {}], 'park:napkin': ['napkin', {}], 'park:floatie': ['floatie', {}],
+    'park:landhill': ['blk', { a: '#7cb35a' }], 'van:landhill': ['blk', { a: '#7cb35a' }],
     'park:picket': ['picket', {}], 'park:poolslide': ['poolslide', {}], 'park:poolslide2': ['poolslide', { a: '#ffca28', b: '#f57c00' }], 'park:sealslide': ['sealslide', {}],
-    'home:fenceseg': ['fence', { a: '#d9c7a0' }], 'home:gate': ['fence', { a: '#c9b48a' }], 'home:fronttree': ['tree', { trunk: 1.5 }],
+    'home:stairstep': ['step', {}], 'home:fenceseg': ['fence', { a: '#d9c7a0' }], 'home:gate': ['fence', { a: '#c9b48a' }], 'home:fronttree': ['tree', { trunk: 1.5 }],
     'park:net': ['net', {}], 'park:goose': ['bird', { a: '#6d5a48', head: '#222', neck: .6, lg: .5, beak: '#222' }], 'park:otter': ['quad', { a: '#5d4037', d: 2.6, lh: .2 }], 'park:cyclist': ['cyclist', { v: [{ a: '#1e88e5', b: '#ffca28' }, { a: '#e53935', b: '#43a047' }] }],
     'park:tourbus': ['bus', { a: '#c62828', b: '#fafafa', d: 3.8 }], 'park:horsecart': ['horsecart', {}], 'park:minitrain': ['train', { a: '#2e7d32', b: '#ffca28', d: 7 }], 'park:fountain2': ['blk', { a: '#90a4ae', h: 1.4, d: .6 }],
     'park:swings': ['swingset', {}], 'park:toilets': ['house', { a: '#d7ccc8', b: '#5d4037', hh: .8 }], 'park:art': ['statue', { a: '#4e5d4e' }], 'park:figurehead': ['figurehead', {}], 'park:hollowtree': ['hollowtree', {}],
@@ -4877,6 +4925,45 @@ const UI_FONT = '"Trebuchet MS","Avenir Next",Avenir,"Segoe UI",system-ui,sans-s
 const CAM_FOV = 38, CAM_TILT = 55 * Math.PI / 180, GL_MAX_PR = 1.6;
 const JOY_R = 70, JOY_DEAD = 6;                    // joystick: full speed at 70 stage px of drag
 const REG_W = 2048, REG_H = 1536;                  // ground texture (re-painted as the camera travels)
+/* v5.2 Parts 8-9: REAL HEIGHT. A world with hAt(x, y) has ground height (its own units). Everything is drawn relative to
+   the ground under the hole (TER.h0), so the hole always sits at 0 and, as it climbs, the land below visibly falls away.
+   Gameplay stays on the map (height is never an obstacle); hills are eatable landforms (see hillEaten). */
+const TER = { on: 0, h0: 0, down: [] };
+function terRel(cx, cz) { return TER.on ? G.C.hAt(G.cam.x + cx, G.cam.y + cz) - TER.h0 : 0; }
+/* a baked height grid (decimetres, row-major) -> bilinear height in metres; outside the grid: sea level */
+function demOf(E) {
+  if (!E) return null;
+  const b = atob(E.z), u = new Uint16Array(E.w * E.h); for (let i = 0; i < u.length; i++) u[i] = b.charCodeAt(i * 2) | (b.charCodeAt(i * 2 + 1) << 8);
+  const W = E.w, Hh = E.h, c = E.cell;
+  return (x, y) => { const fx = x / c, fy = y / c; if (fx < 0 || fy < 0 || fx > W - 1 || fy > Hh - 1) return 0;
+    const i = Math.min(W - 2, Math.floor(fx)), j = Math.min(Hh - 2, Math.floor(fy)), a = fx - i, q = fy - j, k = j * W + i;
+    return ((u[k] * (1 - a) + u[k + 1] * a) * (1 - q) + (u[k + W] * (1 - a) + u[k + W + 1] * a) * q) / 10; };
+}
+/* the hills of a world as eatable landforms: one keep-object per summit, invisible (the ground itself is the hill),
+   rolled over until the hole is big enough (a fifth of the hill's full width: its summit dome), then eaten whole */
+function addHills(C, add, E) {
+  C.HILLS = [];
+  ((E && E.hills) || []).forEach(([x, y, R, base, top, name], i) => {
+    const big = top - base > 300, o = add('landhill', x, y, { keep: 1, id: 'hill' + i, quiet: 1, nosolid: 1, terr: 1, label: name || (big ? 'a mountain' : 'a hill'),
+      sub: Math.round(top) + ' m high', hill: [x, y, R, base, top] });
+    if (!o) { if (G.st && G.st.eaten && G.st.eaten['hill' + i]) C.HILLS.push({ id: 'hill' + i, dead: 1, terr: 1, hill: [x, y, R, base, top] }); return; }   // eaten in an earlier visit: stays flat
+    o.fw = R * .2; o.r = o.fw / 2; o.t = tierOf(C, o.fw); o.sv = 1; C.HILLS.push(o);
+  });
+}
+function smooth01(t) { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); }
+/* ground height with the eaten hills flattened down to their bases (sinking while they fall) */
+function hillH(dem, x, y) {
+  let h = dem(x, y); if (!h) return 0;
+  for (const o of TER.down) { const [hx, hy, R, base] = o.hill, d = Math.hypot(x - hx, y - hy); if (d >= R) continue;
+    const p = o.dead || !o.fall ? 1 : clamp((G.now - o.fall.t0) / o.fall.dur, 0, 1), w = d < R * .7 ? 1 : 1 - smooth01((d - R * .7) / (R * .3));
+    h -= Math.max(0, h - base) * w * p; }
+  return h;
+}
+/* eating a hill takes everything standing on it (its trees, its benches): the way a table's contents go */
+function hillEaten(o) {
+  const [hx, hy, R] = o.hill;
+  for (const q of G.vis) if (q !== o && !q.dead && !q.fall && !q.keep && !q.deco && !q.terr && !q.tile && q.fw < o.fw && Math.hypot(q.x - hx, q.y - hy) < R * .75) capture(q, dx(q.x, G.x), dy(q.y, G.y));
+}
 const V3 = {
   ren: null, scene: null, cam: null, ground: null, gmat: null, pit: null, wall: null, floor: null, ghost: null,
   frus: new THREE.Frustum(), merge: [], quad: null, tiles: new Map(), stat: null, reg: null, gcv: null, gctx: null, tex: null,
@@ -4905,20 +4992,29 @@ function viewRect(z) {
   return [x0, y0, x1, y1];
 }
 function toScreen(x, y, h, out) {               // camera-relative world point -> stage px; false if behind the camera
-  _v.set(x, h, y).project(V3.cam);
+  _v.set(x, h + (TER.on ? terRel(x, y) : 0), y).project(V3.cam);
   out[0] = (_v.x + 1) / 2 * STAGE_W; out[1] = (1 - _v.y) / 2 * STAGE_H; return _v.z < 1;
 }
 
 /* ---------- shaders ---------- */
-const GROUND_VS = `varying vec2 vW; void main(){ vec4 w = modelMatrix * vec4(position,1.0); vW = w.xz; gl_Position = projectionMatrix * viewMatrix * w; }`;
+const GROUND_VS = `uniform sampler2D hmap; uniform vec4 hreg; uniform float h0; uniform float hon; uniform float hN; varying vec2 vW; varying float vS;
+float HT(vec2 w){ vec2 p = clamp((w - hreg.xy) / hreg.zw, 0.0, 1.0) * hN - 0.5; vec2 i = floor(p), f = p - i;
+  float a = texture2D(hmap, (i + vec2(0.5, 0.5)) / hN).r, b = texture2D(hmap, (i + vec2(1.5, 0.5)) / hN).r, c = texture2D(hmap, (i + vec2(0.5, 1.5)) / hN).r, d = texture2D(hmap, (i + vec2(1.5, 1.5)) / hN).r;
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y); }
+void main(){ vec4 w = modelMatrix * vec4(position,1.0); vW = w.xz; vS = 1.0;
+  if (hon > 0.5) { w.y = HT(w.xz) - h0;                                  // v5.2 Parts 8-9: real height, relative to the hole
+    float e = hreg.z / hN, gx = (HT(w.xz + vec2(e, 0.0)) - HT(w.xz - vec2(e, 0.0))) / (2.0 * e), gz = (HT(w.xz + vec2(0.0, e)) - HT(w.xz - vec2(0.0, e))) / (2.0 * e);
+    vec3 L = normalize(vec3(-0.45, 1.0, 0.65)); float dt = dot(normalize(vec3(-gx, 1.0, -gz)), L) / L.y; vS = clamp(1.0 + 2.4 * (dt - 1.0), 0.5, 1.2); }
+  gl_Position = projectionMatrix * viewMatrix * w; }`;
 const GROUND_FS = `uniform sampler2D map; uniform vec4 reg; uniform vec3 base; uniform vec2 hole; uniform float R; uniform vec3 rim; uniform float pulse;
 uniform vec2 hole2; uniform float R2; uniform vec3 rim2;
-varying vec2 vW;
+varying vec2 vW; varying float vS;
 void main(){
   float d = length(vW - hole); if (d < R) discard;
   float d2 = length(vW - hole2); if (d2 < R2) discard;               // co-op: the partner's hole (R2 = 0 when playing alone)
   vec2 uv = (vW - reg.xy) / reg.zw;
   vec3 c = (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) ? texture2D(map, vec2(uv.x, 1.0 - uv.y)).rgb : base;
+  c *= vS;                                                            // v5.2: slopes facing the sun are lit, the far sides shaded
   float e = (d - R) / R;
   c *= mix(0.5, 1.0, smoothstep(0.0, 0.3, e));                       // soft shadow ring round the rim
   c = mix(c, rim, (1.0 - smoothstep(0.0, 0.05 + pulse * 0.06, e)) * (0.8 + pulse * 0.2));
@@ -4957,9 +5053,14 @@ function initGL() {
   V3.tex = new THREE.CanvasTexture(V3.gcv); V3.tex.minFilter = THREE.LinearFilter; V3.tex.generateMipmaps = false;   // the region is repainted at the current zoom, so mipmaps buy nothing
   V3.gmat = new THREE.ShaderMaterial({ vertexShader: GROUND_VS, fragmentShader: GROUND_FS, uniforms: {
     map: { value: V3.tex }, reg: { value: new THREE.Vector4(0, 0, 1, 1) }, base: { value: new THREE.Color() }, hole: { value: new THREE.Vector2() },
-    R: { value: 1 }, rim: { value: new THREE.Color() }, pulse: { value: 0 }, hole2: { value: new THREE.Vector2() }, R2: { value: 0 }, rim2: { value: new THREE.Color('#4ff0d8') } } });
-  const pg = new THREE.PlaneGeometry(1, 1); pg.rotateX(-Math.PI / 2);
-  V3.ground = new THREE.Mesh(pg, V3.gmat); V3.ground.renderOrder = -2; scene.add(V3.ground);
+    R: { value: 1 }, rim: { value: new THREE.Color() }, pulse: { value: 0 }, hole2: { value: new THREE.Vector2() }, R2: { value: 0 }, rim2: { value: new THREE.Color('#4ff0d8') },
+    hmap: { value: null }, hreg: { value: new THREE.Vector4(0, 0, 1, 1) }, h0: { value: 0 }, hon: { value: 0 }, hN: { value: 1 } } });
+  // v5.2 Part 8: the ground is a grid, dense round the hole and coarse toward the horizon, so it can carry real height
+  const GN = 88, pg = new THREE.PlaneGeometry(1, 1, GN, GN); pg.rotateX(-Math.PI / 2);
+  { const pa = pg.attributes.position, wm = u => { const a = Math.abs(u * 2); return Math.sign(u) * (.05 * a + .95 * a ** 4) / 2; };
+    for (let i = 0; i < pa.count; i++) pa.setXYZ(i, wm(pa.getX(i)), 0, wm(pa.getZ(i))); pa.needsUpdate = true; }
+  V3.gGrid = pg; V3.gFlatG = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);   // flat worlds keep the two-triangle plane
+  V3.ground = new THREE.Mesh(V3.gFlatG, V3.gmat); V3.ground.renderOrder = -2; V3.ground.frustumCulled = false; scene.add(V3.ground);
   // the hole: a shallow dark pit (inner wall + swirling floor) and a ghost rim that shows through tall things
   const wu = { rim: { value: new THREE.Color() }, t: { value: 0 }, pulse: { value: 0 }, spin: { value: 1 } };
   V3.wall = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 48, 1, true), new THREE.ShaderMaterial({ vertexShader: WALL_VS, fragmentShader: WALL_FS, uniforms: wu, side: THREE.BackSide }));
@@ -5041,8 +5142,10 @@ function modelOf(o) {
 const FALL_DEPTH = 0.9;                              // pit depth in hole radii
 /* fills _p3/_q/_s3 for object o (camera-relative). Returns false when it should not be drawn. */
 const SPIN = { carousel: .7, globe: .5, planet: .2 };
+const POSE = { tb: 0 };
 function poseOf(o, md, hx, hz, R) {
   let x = dx(o.x, G.cam.x), z = dy(o.y, G.cam.y), y = 0;
+  const tb = TER.on ? (o.absY !== undefined ? o.absY - TER.h0 : terRel(x, z)) : 0; POSE.tb = tb;   // v5.2: the ground under it
   const fw = o.fw * (o.vs || 1), sv = o.sv || 1, now = G.now;
   let sc = 1, yaw = o.yaw || 0;
   if (o.born && now - o.born < 400) sc = Math.max(0.05, (now - o.born) / 400);
@@ -5058,7 +5161,7 @@ function poseOf(o, md, hx, hz, R) {
     const p = clamp((now - f.t0) / f.dur, 0, 1), e = p * p, a = p * (f.spin || 3.5);
     const rx = f.x0 * (1 - e), rz = f.y0 * (1 - e);
     x = hx + rx * Math.cos(a) - rz * Math.sin(a); z = hz + rx * Math.sin(a) + rz * Math.cos(a);
-    y -= e * (md ? md.h * fw * sv : fw) * 1.1 + e * R * FALL_DEPTH * 1.2;
+    y -= e * (md ? md.h * fw * sv : fw) * 1.1 + e * R * FALL_DEPTH * 1.2; y += tb * (1 - e);
     lean = lerp(f.l0 || 0, 1.35, Math.min(1, p * 1.7)); ld = Math.atan2(hz - z, hx - x);
     yaw += p * 5; sc *= 1 - 0.6 * p;
     if (p >= 1 && !f.keepDrawn) return false;
@@ -5066,10 +5169,11 @@ function poseOf(o, md, hx, hz, R) {
     const sl = Math.sin(Math.min(lean, 1.2));
     x += Math.cos(ld) * sl * fw * 0.22; z += Math.sin(ld) * sl * fw * 0.22; y -= sl * fw * 0.18;   // dip toward the rim
   }
+  if (!f) y += tb;
   _p3.set(x, y, z);
   _qy.setFromAxisAngle(_up, yaw);
   if (lean) { _ax.set(Math.sin(ld), 0, -Math.cos(ld)); _q.setFromAxisAngle(_ax, lean).multiply(_qy); } else _q.copy(_qy);
-  const s = fw * sc; _s3.set(s, s * sv, s);
+  const s = fw * sc; _s3.set(s, s * sv, s * (o.dz || 1));
   return true;
 }
 
@@ -5171,6 +5275,20 @@ function tileMesh(o) {
   return m;
 }
 /* ---------- per-frame world draw ---------- */
+/* v5.2 Parts 8-9: the ground's height map: the world's hAt sampled over the painted region (redone with each repaint,
+   and every frame while a hill is sinking), read by the ground's vertex shader */
+function groundShape() {
+  const C = G.C, U = V3.gmat.uniforms, rg = V3.reg;
+  U.hon.value = TER.on && rg ? 1 : 0; V3.ground.geometry = U.hon.value ? V3.gGrid : V3.gFlatG; if (!U.hon.value) return;
+  const N = C.layered ? 512 : 256, sinking = TER.down.some(o => o.fall);
+  if (!V3.hmap || V3.hmap.image.width !== N) { V3.hmap = new THREE.DataTexture(new Float32Array(N * N), N, N, THREE.RedFormat, THREE.FloatType); V3.hmap.minFilter = V3.hmap.magFilter = THREE.NearestFilter; V3.hreg = null; }
+  if (V3.hreg !== rg || sinking || V3.hfl !== G.fl) {
+    const a = V3.hmap.image.data; for (let j = 0; j < N; j++) { const y = rg.y0 + (j + .5) / N * rg.h; for (let i = 0; i < N; i++) a[j * N + i] = C.hAt(rg.x0 + (i + .5) / N * rg.w, y); }
+    V3.hmap.needsUpdate = true; V3.hreg = rg; V3.hfl = G.fl; V3.hmaps = (V3.hmaps || 0) + 1;
+  }
+  U.hmap.value = V3.hmap; U.hN.value = N; U.h0.value = TER.h0; U.hreg.value.copy(U.reg.value);
+}
+
 const LABELS = [];
 function drawWorld3D() {
   const C = G.C, z = G.cam.z, D = holeD() * V3.holeScale, R = D / 2;
@@ -5181,19 +5299,23 @@ function drawWorld3D() {
   U.reg.value.set(dx(rg.x0, G.cam.x), dy(rg.y0, G.cam.y), rg.w, rg.h); U.base.value.set(C.bgc || '#000'); U.hole.value.set(hx, hz); U.R.value = R;
   U.rim.value.set(C.rim || '#9b6bff'); const pulse = Math.max(0, 1 - (G.now - V3.pulseT) / 320); U.pulse.value = pulse;
   V3.ground.scale.set(d * 40, 1, d * 40);
+  // v5.2 Parts 8-9: real height round the hole (or flat ground for worlds without it)
+  TER.on = C.hAt ? 1 : 0; TER.down = C.HILLS ? C.HILLS.filter(o => o.dead || o.fall) : [];
+  TER.h0 = TER.on ? (C.h0At ? C.h0At(G.x, G.y) : C.hAt(G.x, G.y)) : 0;
+  groundShape();
   const wu = V3.wall.material.uniforms; wu.rim.value.set(C.rim || '#9b6bff'); wu.t.value = G.t; wu.pulse.value = pulse; wu.spin.value = V3.swirl;
-  V3.pit.position.set(hx, 0, hz);
+  V3.pit.position.set(hx, terRel(hx, hz), hz);
   V3.wall.scale.set(R, R * FALL_DEPTH, R); V3.wall.position.y = -R * FALL_DEPTH / 2;
   V3.floor.scale.set(R, 1, R); V3.floor.position.y = -R * FALL_DEPTH; V3.floor.rotation.y = -G.t * 0.6 * V3.swirl;
   V3.ghost.scale.set(R, 1, R); V3.ghost.material.color.set(C.rim || '#9b6bff'); V3.ghost.visible = V3.holeScale < 2;
   V3.ground.visible = V3.pit.visible = true;
   const MH = mateHole(); U.R2.value = MH ? MH[2] : 0; if (MH) U.hole2.value.set(MH[0], MH[1]);
   if (V3.pit2) V3.pit2.visible = !!MH;
-  if (MH) { const P2 = pit2(), r2 = MH[2]; P2.position.set(MH[0], 0, MH[1]); P2.children[0].scale.set(r2, r2 * FALL_DEPTH, r2); P2.children[0].position.y = -r2 * FALL_DEPTH / 2;
+  if (MH) { const P2 = pit2(), r2 = MH[2]; P2.position.set(MH[0], terRel(MH[0], MH[1]), MH[1]); P2.children[0].scale.set(r2, r2 * FALL_DEPTH, r2); P2.children[0].position.y = -r2 * FALL_DEPTH / 2;
     P2.children[1].scale.set(r2, 1, r2); P2.children[1].position.y = -r2 * FALL_DEPTH; P2.children[1].rotation.y = G.t * 0.6; P2.children[0].material.uniforms.t.value = G.t; }
   if (V3.statF && V3.statF.length) {
     V3.statF.forEach((m, i) => m.visible = i === (C.layered ? G.fl : 0) && !(C.wallsGone && C.wallsGone()));
-    V3.stat = V3.statF[C.layered ? G.fl : 0]; V3.stat.position.set(-G.cam.x, 0, -G.cam.y);
+    V3.stat = V3.statF[C.layered ? G.fl : 0]; V3.stat.position.set(-G.cam.x, TER.on && C.floorH ? (G.fl || 0) * C.floorH - TER.h0 : 0, -G.cam.y);
     if (G.C.walls3d.cut) V3.stat.scale.y = clamp(holeD() * 1.2 / G.C.walls3d.h, 0.12, 1);     // dollhouse cutaway: walls rise as you grow
     V3.wallU.hole.value.set(hx, hz); V3.wallU.hR.value = R;
   }
@@ -5220,6 +5342,7 @@ function drawWorld3D() {
     }
     // a backdrop mountain you're standing on steps aside: you see its slopes (forest, snow, ski runs) instead of its cone
     if (o.backdrop && !G.cine && Math.hypot(dx(o.x, G.x), dy(o.y, G.y)) < o.fw * .55) continue;
+    if (o.terr) continue;                             // a hill is the ground itself (v5.2 Part 8)
     const md = modelOf(o); if (!md) continue;
     if (!poseOf(o, md, pm ? MH[0] : hx, pm ? MH[1] : hz, pm ? MH[2] : R)) continue;
     if (o.under && !o.fall && md.h) _s3.y = Math.min(_s3.y, R * 0.05 / md.h);   // a rug / the Moon's face lies flat, so the cut-out shows the pit right below
@@ -5231,10 +5354,10 @@ function drawWorld3D() {
     if (!o.fall && fw * z > 3 && fw * z < 700) {        // (a screen-filling building's soft shadow is invisible but costs a full-screen blend)
       const sx = md.w * fw * 1.35, sz = md.d * fw * 1.25;
       _qy.setFromAxisAngle(_up, o.coin ? 0 : (o.yaw || 0));
-      _m4.compose(_p3.set(_p3.x, 0, _p3.z), _qy, _s3.set(o.coin ? fw * .8 : sx, 1, o.coin ? fw * .8 : sz));
+      _m4.compose(_p3.set(_p3.x, POSE.tb, _p3.z), _qy, _s3.set(o.coin ? fw * .8 : sx, 1, o.coin ? fw * .8 : sz));
       pushMerge(V3.mS, V3.quad);
     }
-    if (o.helper) { _qy.identity(); _m4.compose(_p3.set(_p3.x, 0.5, _p3.z), _qy, _s3.set(fw * 2.2, 1, fw * 2.2)); pushMerge(V3.mH, V3.quad); }
+    if (o.helper) { _qy.identity(); _m4.compose(_p3.set(_p3.x, POSE.tb + 0.5, _p3.z), _qy, _s3.set(fw * 2.2, 1, fw * 2.2)); pushMerge(V3.mH, V3.quad); }
     if (labelOn(o) && fw * z > 18 && !o.fall) LABELS.push(o);
   }
   if (C.poleFold && !G.cine) poleImages(vr, z, hx, hz, R);
@@ -5557,7 +5680,7 @@ function drawMenu3D() {
   })());
   const z = 1, d = camPlace(z), R = 118 + Math.sin(G.t * 1.5) * 4, U = V3.gmat.uniforms;
   U.reg.value.set(-d * 1.2, -d * 0.95, d * 2.4, d * 1.8); U.base.value.set('#0b0620'); U.hole.value.set(0, 70); U.R.value = R; U.rim.value.set('#9b6bff'); U.pulse.value = 0;
-  V3.ground.scale.set(d * 40, 1, d * 40);
+  V3.ground.scale.set(d * 40, 1, d * 40); TER.on = 0; V3.gmat.uniforms.hon.value = 0; V3.ground.geometry = V3.gFlatG;   // (the menu's backdrop is flat)
   const wu = V3.wall.material.uniforms; wu.rim.value.set('#9b6bff'); wu.t.value = G.t; wu.pulse.value = 0; wu.spin.value = 1;
   V3.pit.position.set(0, 0, 70); V3.wall.scale.set(R, R * FALL_DEPTH, R); V3.wall.position.y = -R * FALL_DEPTH / 2; V3.floor.scale.set(R, 1, R); V3.floor.position.y = -R * FALL_DEPTH; V3.floor.rotation.y = -G.t * 0.6;
   V3.ghost.visible = false; V3.ground.visible = V3.pit.visible = true; if (V3.stat) V3.stat.visible = false;
@@ -6291,7 +6414,7 @@ initGL(); fit(); makeUpIcons(); syncSoundBtn(); UI.main();
 requestAnimationFrame(frame);
 
 /* test hook for automated checks (harmless in play) */
-window.HH = { BASE_X, get S() { return S; }, G, CH, UI, prep, loadChapter, startChapter, eat, holeD, need, addXP, bankerTransfer, bankerArrive, buyUpgrade, upCost,
+window.HH = { BASE_X, TER, terRel, get S() { return S; }, G, CH, UI, prep, loadChapter, startChapter, eat, holeD, need, addXP, bankerTransfer, bankerArrive, buyUpgrade, upCost,
   setHoleD, ringNow, goals, capD, miniRect, syncBeat, solidPush, solidBoxes,
   exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole, labelOn, poseOf, sandSet, NET, W8, asMate, objByNid, setHash, get net() { return G.net; }, MODES, genCell, tierOf, mkObj, toScreen, camPlace, dx, dy, mapTap, bigRect, debugAudio, syncMusic };
 </script>
