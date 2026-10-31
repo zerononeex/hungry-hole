@@ -2947,6 +2947,14 @@ function spawnTiles(list, owner, zone, get, local) {
     G.tiles.push(tl);
   }
 }
+function blockedAt(x, y, r) {
+  for (const [bx, by, hw, hd, yaw, fl] of solidBoxes(r)) {
+    if (G.C.layered && (fl || 0) !== (G.fl || 0)) continue;
+    const ox = dx(x, bx), oy = dy(y, by), c = Math.cos(yaw), sn = Math.sin(yaw), lx = ox * c - oy * sn, lz = ox * sn + oy * c;
+    if (Math.abs(lx) < hw + r * .6 && Math.abs(lz) < hd + r * .6) return true;
+  }
+  return !!(G.C.walkable && !G.C.walkable(x, y, G.fl || 0));
+}
 function placeTile(tl, j) {
   const C = G.C, D = holeD();
   if (tl.zone && C.areas && C.areas[tl.zone]) {
@@ -2962,6 +2970,7 @@ function placeTile(tl, j) {
     const z = C.zoneAt(x, y); if (!z || (C.Z[z] && C.Z[z].deco)) continue;
     if (C.sameArea && !C.sameArea(x, y, G.x, G.y)) continue;
     if (tl.local !== undefined && areaKey(x, y) !== tl.local) continue;     // math rule: answers stay in your district/biome
+    if (i < 36 && blockedAt(x, y, D / 2)) continue;   // v5.2: never under furniture the hole can't eat yet (a tile there could not be reached)
     tl.x = x; tl.y = y; return;
   }
   tl.x = G.x + D * 1.6; tl.y = G.y;
@@ -2970,15 +2979,12 @@ function placeTile(tl, j) {
 /* labels: quiet names (Ch3 POIs, Ch5 flags) stay hidden until the place is a target (I Spy, Educational, a quest) */
 const labelOn = o => !!o.label && (!!o.tgt || !!o.qlab);          // v5 A4: names show only on active targets
 function areaKey(x, y) { const C = G.C; return C.areaKey ? C.areaKey(x, y) : C.regionAt ? C.regionAt(x, y) : C.zoneAt(x, y); }
+/* v5.2 Part 4 (owner bug: the B-E-D tile he was going for vanished as he got near): a placed target persists until it is
+   eaten. Tiles used to be re-dealt every 3 s when the hole was in a different room (or 9 sizes away), which moved them
+   exactly while a child walked toward them. Now a tile only moves if it is somewhere it can never be reached (off the map). */
 function relocateTiles() {
-  const C = G.C, D = holeD(), owners = new Set(G.tiles.map(t => t.owner));
-  for (const ow of owners) {
-    const ts = G.tiles.filter(t => t.owner === ow && !t.dead);
-    if (!ts.length || ts[0].zone) continue;
-    const far = ts.every(t => Math.hypot(dx(t.x, G.x), dy(t.y, G.y)) > D * 9 || (C.sameArea && !C.sameArea(t.x, t.y, G.x, G.y))) ||
-      (ts[0].local !== undefined && ts[0].local !== areaKey(G.x, G.y));
-    if (far) { const lk = areaKey(G.x, G.y); for (const t of ts) { if (t.local !== undefined) t.local = lk; placeTile(t, t.j); } }
-  }
+  const C = G.C;
+  for (const t of G.tiles) if (!t.dead && !C.wrap && (t.x < 0 || t.y < 0 || t.x > C.W || t.y > C.H)) placeTile(t, t.j);
 }
 /* Quest helpers: when a quest wants something too small to show at the current size,
    a few glowing ones are placed near the hole so the quest stays doable. */
@@ -3135,14 +3141,14 @@ const MODES = {
       R.tg.sort((a, b) => (a.o ? a.o.fw : 0) - (b.o ? b.o.fw : 0));          // v5.0: the hand is a ladder, smallest first
     },
     /* v4.3: a target is never lost; a missing one is placed again (inside the current ring) */
-    heal() { const R = G.run, C = G.C, rng = mulberry((Math.random() * 1e9) | 0); for (const t of R.tg) if (!t.done && (!t.o || t.o.dead && !t.o.fall)) { t.o = findTarget(t.spec.split('|')[0], rng); if (t.o) { t.o.tgt = 1; if (!t.o.label) t.o.label = t.name; } } },
+    heal() { const R = G.run, C = G.C, rng = mulberry((Math.random() * 1e9) | 0); for (const t of R.tg) if (!t.done) healTgt(t, () => findTarget(t.spec.split('|')[0], rng), o => { if (!o.label) o.label = t.name; }); },
     eat(o) {
       const R = G.run, t = R.tg.find(t => t.o === o && !t.done); if (!t) return;
       t.done = 1; R.lastFind = G.now; o.tgt = 0; SFX2.found(); toast('Found: ' + t.name + '!', '#ffd23f');
       if (R.tg.every(t => t.done)) {
         const bonus = Math.round(ISPY_BONUS * G.C.cost); addCoins(bonus, true); S.ispy[G.C.n].wins++; persist();
         if (G.net && G.net.role === 'host') G.net.win('ispy', bonus);    // the win pays into BOTH players' world wallets
-        setTimeout(() => { SFX2.win(); UI.ispyWin(bonus); }, 900);
+        setTimeout(() => { if (G.run === R) { SFX2.win(); UI.ispyWin(bonus); } }, 900);   // (not if the child already left this run)
       }
     },
     /* the compass only helps after a while without a find (spotting things yourself is the game) */
@@ -3158,7 +3164,7 @@ const MODES = {
       if (G.mate && G.net) { const D = holeD(); asMate(() => setHoleD(D)); }    // co-op: the set's size applies to both holes
       G.cam.z = targetZoom();
     },
-    heal() { const R = G.run, st = R.steps && R.steps[R.si], rng = mulberry((Math.random() * 1e9) | 0); if (!st || !st.t) return; for (const t of st.t) if (!t.done && (!t.o || t.o.dead && !t.o.fall)) { t.o = findTarget(t.spec, rng, t.pal); if (t.o) { t.o.tgt = 1; t.o.label = t.o.label || t.name; } } },
+    heal() { const R = G.run, st = R.steps && R.steps[R.si], rng = mulberry((Math.random() * 1e9) | 0); if (!st || !st.t) return; for (const t of st.t) if (!t.done) healTgt(t, () => findTarget(t.spec, rng, t.pal), o => { o.label = o.label || t.name; }); },
     startStep() {
       const R = G.run, st = R.steps[R.si], C = G.C, rng = mulberry((Math.random() * 1e9) | 0);
       G.tiles = []; G.helpOn = null;
@@ -3180,7 +3186,7 @@ const MODES = {
       if (R.si < R.steps.length) { toast('Great! Next one…', '#8ef08e'); setTimeout(() => { if (G.run === R) MODES.edu.startStep(); }, 900); return; }
       const E = S.edu[C.n]; E.done++; E.set = (R.set + 1) % C.edu.length; const bonus = Math.round(EDU_BONUS * C.cost); addCoins(bonus, true); persist();
       if (G.net && G.net.role === 'host') G.net.win('edu', bonus);
-      setTimeout(() => { SFX2.win(); UI.eduWin(bonus); }, 700);
+      setTimeout(() => { if (G.run === R) { SFX2.win(); UI.eduWin(bonus); } }, 700);
     },
     compass() { return G.helpOn && !G.helpOn.dead ? G.helpOn : MODES.edu.target(); },   // v5: the arrow is on from the start
     target() {          // what "Help me find it" points at: the next uneaten target (for a sum: the nearest answer tile, never the right one)
@@ -3196,6 +3202,13 @@ const MODES = {
     resize(k) { setHoleD(holeD() * k); if (G.net && G.net.role === 'guest') G.net.send({ t: 'sz', k }); },
   },
 };
+/* v5.2 Part 4: a placed target that something removed (it is dead but was never eaten for the hunt) comes back where it
+   was; only a target that no longer exists at all is found again */
+function healTgt(t, find, lab) {
+  if (t.o && t.o.dead && !t.o.fall) { t.o.dead = 0; t.o.born = G.now; t.o.lean = t.o.wobble = 0; }
+  else if (!t.o) t.o = find();
+  if (t.o) { t.o.tgt = 1; lab(t.o); }
+}
 function nearestOf(list) { let b = null, bd = 1e30; for (const o of list) { const d = Math.hypot(dx(o.x, G.x), dy(o.y, G.y)); if (d < bd) { bd = d; b = o; } } return b; }
 /* Educational step strings: f:a,b,c fetch list · i:#id|text find one place/thing · c:type:colour recoloured fetch · m:op a sum */
 const COLOURS = { yellow: '#ffd60a', red: '#e53935', blue: '#1e88e5', green: '#43a047', purple: '#8e24aa', orange: '#fb8c00', pink: '#ff6fb5' };

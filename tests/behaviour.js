@@ -3,7 +3,7 @@ const { chromium } = require('playwright');
 const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
 (async () => {
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1180, height: 820 } }); const p = await ctx.newPage();
-  const errs = []; p.on('pageerror', e => errs.push('PAGEERR ' + e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
+  const errs = []; p.on('pageerror', e => errs.push('PAGEERR ' + e.message + (process.env.STACK ? e.stack : ''))); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
   await p.goto(URL); await p.evaluate(() => localStorage.setItem('family-other-app', 'keep-me')); await p.reload(); await p.waitForTimeout(300);
   const results = [];
   const T = async (name, fn) => { try { const r = await p.evaluate(fn); results.push([name, r.ok, r.info]); } catch (e) { results.push([name, false, e.message]); } };
@@ -139,7 +139,7 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     const R = G.run; G.helpOn = HH.MODES.edu.target(); const tgt = G.helpOn;
     for (let i = 0; i < 900; i++) { G.now += 33; G.t += 1 / 30; HH.update(1 / 30); }        // 30 s later the arrow is still there
     const stays = G.compass.length === 1 && G.compass[0].o === tgt; HH.eat(tgt); step(15); const gone = !G.compass.some(c => c.o === tgt);
-    const mi = G.C.edu.findIndex(E => E.s.some(x => x[0] === 'm')); S.edu[1] = { set: mi, done: 0 }; HH.startChapter(1, 'edu'); G.x = 22; G.y = 14; step(100);
+    const mi = G.C.edu.findIndex(E => E.s.some(x => x[0] === 'm')); S.edu[1] = { set: mi, done: 0 }; HH.startChapter(1, 'edu'); G.x = 22; G.y = 14; G.run.si = 0; HH.MODES.edu.startStep(); step(100);   // (v5.2: answers are dealt where the question is asked, then stay put)
     const C = G.C, ak = (x, y) => C.areaKey ? C.areaKey(x, y) : C.regionAt ? C.regionAt(x, y) : C.zoneAt(x, y);
     const here = ak(G.x, G.y), tiles = G.tiles.filter(t => !t.dead), local = tiles.every(t => ak(t.x, t.y) === here);
     const right = tiles.find(t => t.ok), lookSame = tiles.every(t => !t.look);
@@ -179,6 +179,40 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     const ok2 = HH.bankerTransfer(1, 2, 333); const b2 = [S.ch[1].w, S.ch[2].w];
     const no = HH.bankerTransfer(1, 2, 99999);
     return { ok: ok1 && a[0] === 900 && a[1] === 110 && ok2 && b2[0] === 567 && b2[1] === 309 && !no && HH.bankerArrive(100) === 60, info: { after100: a, after333: b2, overdraftRefused: !no } };`));
+
+  // v5.2 Part 4 (owner bug: the B-E-D tile vanished as he got near it): a placed target persists until it is eaten.
+  // Story letter tiles, Educational answer tiles and I Spy targets: walk toward each one from another room / far away,
+  // then right up to it, and every uneaten target is still there, in the same place, and can be eaten.
+  await T('placed targets never vanish on approach (v5.2 Part 4): B-E-D tiles, sum answer tiles, I Spy targets', new Function(STEP + `
+    const { G, S } = HH, out = {}; let ok = true; const pos = o => o.x.toFixed(3) + ',' + o.y.toFixed(3);
+    const still = (list, tag) => { for (const o of list) if (!o.dead && (o.tile ? !G.tiles.includes(o) : !G.vis.includes(o))) { ok = false; out[tag] = 'gone'; } };
+    // 1. Story quest B-E-D in the Home
+    S.ch[1].u = 1; HH.startChapter(1); const C1 = G.C, qi = C1.Q.findIndex(q => q.k === 'q' && q.items.join('') === 'BED');
+    S.ch[1].act = [{ i: qi, p: 0 }]; HH.startChapter(1); step(2); const fl0 = G.fl;
+    const bed = 'BED'.split('').map(c => G.tiles.find(t => t.txt === c && !t.dead)); out.bedTiles = bed.every(Boolean);
+    if (!out.bedTiles) return { ok: false, info: out };
+    const p0 = bed.map(pos), far = [G.C.start[0], G.C.start[1]];
+    let eaten = 0;
+    for (const t of bed) {
+      for (const [x, y] of [far, [t.x + HH.holeD() * 2.5, t.y], [t.x + HH.holeD() * 1.2, t.y]]) { G.x = x; G.y = y; G.fl = fl0; G.vx = G.vy = 0; step(100); }
+      if (bed.some((b, i) => !b.dead && pos(b) !== p0[i])) { ok = false; out.moved = bed.map(pos); }
+      still(bed, 'bed');
+      for (let i = 0; i < 60 && !t.dead; i++) { G.x = t.x; G.y = t.y; G.fl = fl0; G.vx = G.vy = 0; step(1); }
+      if (t.dead) eaten++; else out['notEaten' + t.txt] = { at: pos(t), hole: pos(G), fl: G.fl, inTiles: G.tiles.includes(t), act: S.ch[1].act.map(a => a.i + ':' + a.p).join() };
+    }
+    out.bedEaten = eaten; if (eaten !== 3) ok = false;
+    // 2. Educational sum in the Home: the answer tiles stay put while you roam the rooms
+    const set = C1.edu.findIndex(e => e.s.some(x => x[0] === 'm')); S.edu[1] = { set, done: 0 }; HH.startChapter(1, 'edu'); step(2);
+    const mt = G.tiles.filter(t => !t.dead); const m0 = mt.map(pos);
+    for (const t of mt) for (const [x, y] of [far, [t.x + HH.holeD() * 2.5, t.y + .1]]) { G.x = x; G.y = y; G.vx = G.vy = 0; step(100); }
+    out.sumTiles = mt.length; if (!mt.length || mt.some((t, i) => t.dead || pos(t) !== m0[i] || !G.tiles.includes(t))) { ok = false; out.sumMoved = mt.map(pos); }
+    // 3. I Spy in Metro Vancouver: every target stays put and alive as the hole comes up to it, and is then eaten
+    S.ch[3].u = 1; HH.startChapter(3, 'ispy'); step(2); const R = G.run, tg = R.tg.map(t => t.o).filter(Boolean), t0 = tg.map(pos);
+    for (const o of tg) { const D = HH.holeD(); for (const [x, y] of [[o.x + D * 12, o.y], [o.x + D * 3, o.y], [o.x + D * 1.1, o.y]]) { G.x = x; G.y = y; G.vx = G.vy = 0; step(100); } }
+    out.ispyAlive = tg.filter((o, i) => R.tg[i].o === o && (R.tg[i].done || (!o.dead && (pos(o) === t0[i] || o.path || (o.T && o.T.mv))))   /* (a ferry or an orca keeps moving: it must stay alive, the same one) */).length;   // (eaten for the hunt counts: the hole was big enough)
+    if (out.ispyAlive !== tg.length || tg.length !== 5) { ok = false; out.ispy = R.tg.map((t, i) => [t.o && t.o.k, t.o === tg[i], !!t.done, t.o && !!t.o.dead, t.o && pos(t.o) === t0[i], t.o && !!t.o.fall]); }
+    let got = 0; for (const t of R.tg) { if (!t.done) HH.eat(t.o); if (t.done) got++; } out.ispyEaten = got; if (got !== 5) ok = false;
+    return { ok, info: out };`));
 
   await T('upgrade buy spends the chapter wallet only', new Function(`
     const { S } = HH; S.ch[1].w = 100; S.ch[2].w = 77; S.ch[1].up[0] = 0;
