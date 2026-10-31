@@ -877,3 +877,5 @@ The world-redo sequence so far: World 1 The Home (floorplan), Metro Vancouver (s
 **v5.15 addendum 27 (owner): THE GLOBE — UFOs OUT (nearly)** — the Globe's sky is littered with UFOs. Remove them from the scatter: at the largest sizes the world should show **clouds and coins, and the mountain ranges — that's about it**. A maximum of **TWO UFOs** may exist somewhere on the Globe as rare finds, randomly placed. (Scope: the Globe, all modes. Space's own rare alien oddities under v5.9 are a separate ruling and stand unless he says otherwise.) (v5.2 batch.)
 
 **v5.15 addendum 28 (owner): THE GLOBE SAYS WHERE YOU ARE** — with every country's borders drawn, the game always knows what country the hole's centre is over: show that country's name in **yellow text at the bottom of the screen** ("you are in ___"). Over open ocean, no country name shows. Part of the Globe's education layer (addendum 26). (v5.2 batch.)
+
+**v5.15 addendum 28, owner's wording fix: JUST THE NAME.** The bottom readout shows only the country name itself — "Canada", "United States", "UK", "Japan" — no "you are here" prefix or framing words.
