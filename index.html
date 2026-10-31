@@ -112,6 +112,13 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
 #main-sub{position:absolute;left:0;right:0;bottom:158px;text-align:center;font-size:19px;font-weight:800;color:#fff;text-shadow:0 2px 4px #000}
 #sizebtns{position:absolute;right:20px;top:250px;display:none;flex-direction:column;align-items:center;gap:8px;z-index:5;font-weight:900;font-size:15px;color:#fff;text-shadow:0 2px 3px #000}
 #sizebtns.on{display:flex}
+.b-join{position:absolute;right:18px;top:18px;z-index:2}
+.ccard .coopb{position:absolute;left:12px;right:12px;bottom:58px;font-size:15px;padding:6px 6px}
+#note{position:absolute;left:50%;top:22px;transform:translateX(-50%);max-width:820px;padding:14px 26px;border-radius:18px;background:#fff8dc;color:#3a1d00;border:3px solid #ffcf4a;font-size:21px;font-weight:800;text-align:center;box-shadow:0 10px 26px rgba(0,0,0,.5);z-index:60;display:none}
+#note.on{display:block}
+.codebox{font:900 64px/1.1 ui-monospace,Menlo,monospace;letter-spacing:12px;color:#ffd96a;margin:10px 0}
+.mbox input{font:800 30px/1.2 ui-monospace,Menlo,monospace;text-align:center;letter-spacing:6px;width:340px;padding:8px;border-radius:12px;border:3px solid #ffcf4a;background:#110d2b;color:#fff;user-select:text;-webkit-user-select:text;text-transform:uppercase}
+.mbox input.nm{letter-spacing:1px;font-family:inherit}
 .ucard .steps{display:flex;align-items:center;justify-content:center;gap:10px;font-size:22px;color:#ffd96a}
 .ucard .stp{width:40px;height:34px;border-radius:10px;background:#ffcf4a;color:#3a1d00;font:900 24px/1 system-ui,sans-serif;padding:0}
 .ucard .stp:active{transform:translateY(2px)}
@@ -132,6 +139,7 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
       <button class="mbtn art" id="b-edu"><img src="art/btn-edu.webp" alt=""><span class="lbl">EDUCATIONAL</span></button>
       <button class="mbtn art" id="b-explore"><img src="art/btn-explore.webp" alt=""><span class="lbl">EXPLORATION</span></button>
     </div>
+    <button class="btn sm pink b-join" id="b-join">JOIN A FRIEND</button>
     <button class="art" id="b-settings" aria-label="Settings"><img src="art/btn-settings.webp" alt=""><span class="lbl">SETTINGS</span></button>
   </div>
 
@@ -139,6 +147,7 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
   <div class="scr" id="s-chapters">
     <button class="round top-back" data-back aria-label="Back"></button>
     <div class="h2" id="chap-title">WORLDS</div>
+    <button class="btn sm pink b-join" id="b-join-pick">JOIN A FRIEND</button>
     <div class="cards" id="chap-cards"></div>
   </div>
 
@@ -186,6 +195,7 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
   <div id="sizebtns"><button class="round" id="b-bigger" aria-label="Bigger">+</button><div>SIZE</div><button class="round" id="b-smaller" aria-label="Smaller">&minus;</button></div>
 
   <div class="modal" id="modal"><div class="mbox panel" id="mbox"></div></div>
+  <div id="note"></div>
 </div>
 <script src="three.min.js"></script>
 <script src="data/ch3-osm.js"></script>
@@ -193,6 +203,7 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
 <script src="data/globe.js"></script>
 <script src="data/globe-landmarks.js"></script>
 <script src="audio/manifest.js"></script>
+<!-- co-op only (v5.1): PeerJS, loaded as an OPTIONAL script; if it never arrives the game is untouched and co-op says it can't connect -->
 <script>
 'use strict';
 /* =====================================================================
@@ -1936,7 +1947,7 @@ const CH = [null];
       }
       // highway traffic: a pool of cars that drive the nearest real highway while you are small
       const pool = [];
-      for (let i = 0; i < 18; i++) { const o = add('car', sx, sy, { path: [sx, sy, sx + .001, sy], spd: 0, ph: rng(), face: 1, hw: 1, lane: (i % 2 ? 1 : -1) * ROAD * .25, quiet: 1 }); o.dead = 1; o.parked = 1; pool.push(o); }
+      for (let i = 0; i < 18; i++) { const o = add('car', sx, sy, { path: [sx, sy, sx + .001, sy], spd: 0, ph: rng(), face: 1, hw: 1, lane: (i % 2 ? 1 : -1) * ROAD * .25, quiet: 1, pool: 1 }); o.dead = 1; o.parked = 1; pool.push(o); }
       let hwT = 0;
       function traffic() {
         const r = 2.2, segs = [];
@@ -2431,26 +2442,34 @@ const akey = (cx, cy) => cx * 100003 + cy;
 function loadChapter(n, kind) {
   kind = kind || 'story';
   const C = prep(CH[n]); G.C = C; G.run = { kind };
+  const guest = !!(G.net && G.net.role === 'guest');
   // v5.1 Part 10: Exploration runs on a session copy of the world's state, so its upgrade sandbox (any level 0-10, free)
-  // and anything else it touches are never written to the save; leaving Exploration drops the copy
-  G.st = kind === 'explore' ? JSON.parse(JSON.stringify(S.ch[n])) : S.ch[n];
+  // and anything else it touches are never written to the save; leaving Exploration drops the copy.
+  // A co-op GUEST plays on a scratch copy built from the host's snapshot: its own world progression is never touched.
+  G.st = guest ? G.net.scratch(n) : kind === 'explore' ? JSON.parse(JSON.stringify(S.ch[n])) : S.ch[n];
   const st = G.st, story = kind === 'story';
-  if (story) S.last = n;
+  if (story && !guest) S.last = n;
+  G.mate = null; G.netPause = null;
+  if (G.net) { G.nidA = 0; G.byNid = new Map(); G.built = 0; }
   G.auth = []; G.agrid = new Map(); G.cells = new Map(); G.movers = []; G.tiles = []; G.help = []; G.toasts = []; G.combo = []; G.rollAt = 0;
   G.fl = C.layered ? (story && st.x != null && st.mv === 5 && st.fl != null ? st.fl : C.startFl || 0) : 0;
   G.flash = null; G.big = null; G.cine = null; G.joy = null; G.helpOn = null; V3.reg = null; V3.holeScale = 1; V3.swirl = 1;
   for (const m of V3.tiles.values()) V3.scene.remove(m); V3.tiles.clear(); buildStatic(C);
   const add = (k, x, y, o) => {
+    const nid = G.net ? (o && o.nid) || 'a' + (G.nidA++) : null;    // co-op: every authored/added thing has a wire id (counted even when skipped)
     if (o && o.keep && story && st.eaten[o.id]) return null;
     const ob = mkObj(C, k, x, y, o); ob.au = 1;
+    if (nid) { ob.nid = nid; G.byNid.set(nid, ob); if (G.built && G.net.role === 'host') G.net.added(ob, o); }
     G.auth.push(ob);
     if (ob.path) G.movers.push(ob); else gridAdd(ob);
     return ob;
   };
   G.add = add;
   C.build(add, mulberry(9000 + n));
+  if (G.net) G.built = 1;
   G.authR = 0; for (const o of G.auth) if (!o.deco) G.authR = Math.max(G.authR, o.fw * 0.6);
-  if (story) {
+  if (guest) { G.x = st.x; G.y = st.y; G.lvl = clamp(st.lvl, 1, C.N); G.xp = st.xp; G.fl = C.layered ? st.fl || 0 : 0; }
+  else if (story) {
     // v2/v3 saves: the v4 maps are new, so position + size restart once; wallets, upgrades, boards, checklists,
     // eaten landmarks and completed chapters are all kept (spec K27)
     if (st.x == null || st.mv !== 5) { st.x = C.start[0]; st.y = C.start[1]; [st.lvl, st.xp] = startSize(st); st.fl = C.startFl || 0; G.fl = C.layered ? st.fl : 0; }
@@ -2460,13 +2479,15 @@ function loadChapter(n, kind) {
   } else { G.x = C.start[0]; G.y = C.start[1]; [G.lvl, G.xp] = startSize(st); }
   G.goal = null; G.capT = 0; G.bigmap = null; G.ring0 = null; syncBeat();
   G.vx = G.vy = 0; G.cam.x = G.x; G.cam.y = G.y; G.cam.z = targetZoom();
-  if (story) {   // checklist sequences (tiles / ordered objects) and tiny quests: the optional bonus layer
+  if (guest) G.net.applyStart();   // the host's ladder, I Spy hand / lesson steps, eaten set and placed targets
+  else if (story) {   // checklist sequences (tiles / ordered objects) and tiny quests: the optional bonus layer
     st.act = st.act.filter(a => C.Q[a.i] && !(st.board[a.i] && !boardDone()));
     C.CK.forEach((q, j) => { if (q.k === 'q' && !qDone(q, st.check[j])) setupSeq(q, { ck: j }, () => st.check[j]); });
     for (const a of st.act) instSetup(a);
     rollQuests(true);
   } else MODES[kind].setup();
   G.mode = 'play'; G.paused = false; G.inRun = true;
+  if (G.net && G.net.role === 'host') G.net.hostLoaded();       // (re)start the shared stage for the guest
 }
 function gridAdd(o) {
   const C = G.C, cx = Math.floor(o.x / C.ags), cy = Math.floor(o.y / C.ags), k = akey(cx, cy);
@@ -2543,10 +2564,10 @@ function gather(x0, y0, x1, y1, z) {
         let key = (C.layered ? G.fl + ':' : '') + t + ',' + cx + ',' + cy;
         if (C.wrap) { const nx = Math.round(C.W / cs), ny = Math.round(C.H / cs); key = t + ',' + (((cx % nx) + nx) % nx) + ',' + (((cy % ny) + ny) % ny); }
         let a = G.cells.get(key);
-        if (!a) { a = genCell(t, cx, cy); G.cells.set(key, a); }
+        if (!a) { a = genCell(t, cx, cy); G.cells.set(key, a); if (G.net) G.net.cellMade(key, a); }
         for (const o of a) {
           // ordinary things respawn out of sight of the hole, so a chapter never runs empty
-          if (o.dead && G.now - o.dt > (o.coin ? 3 : 1) * RESPAWN_MS && Math.hypot(dx(o.x, G.x), dy(o.y, G.y)) > rD) { o.dead = 0; o.born = G.now; o.fall = null; o.lean = o.wobble = 0; }
+          if (o.dead && G.now - o.dt > (o.coin ? 3 : 1) * RESPAWN_MS && Math.hypot(dx(o.x, G.x), dy(o.y, G.y)) > rD && (!G.net || G.net.mayRespawn(o, rD))) { o.dead = 0; o.born = G.now; o.fall = null; o.lean = o.wobble = 0; if (G.net) G.net.respawned(o); }
           if (!o.dead) out.push(o);
         }
       }
@@ -2589,7 +2610,7 @@ function addXP(v) {
   }
   const cap = capD();                                 // v5.0: the cap is the next objective
   if (holeD() > cap * 1.000001) { setHoleD(Math.max(D0, cap)); if (v > 0) G.capT = G.now; }
-  if (G.lvl > L0) { SFX.up(); toast('SIZE UP!  Size ' + G.lvl, '#8ef08e'); }
+  if (G.lvl > L0 && !G.isMate) { SFX.up(); toast('SIZE UP!  Size ' + G.lvl, '#8ef08e'); }
   if (!C.beats && G.lvl >= C.N && R.kind === 'story' && !G.st.c && !G.cine) chapterDone();
   G.st.bm = Math.max(G.st.bm, realSize());
 }
@@ -2656,7 +2677,7 @@ function addCoins(n, quest) {
 function addPoints(p) {
   const st = G.st; st.pts += p; st.pc += p;
   const c = Math.floor(st.pc / 10); if (c) { st.pc -= c * 10; addCoins(c); }
-  questEvent('pts', null, p);
+  if (!G.isMate) questEvent('pts', null, p);
 }
 
 /* ---------- eating: topple physics decides what falls in ---------- */
@@ -2689,12 +2710,15 @@ function coverFrac(d, R, r) {
 }
 const leanMax = o => clamp(0.3 + 0.22 * (o.hh || o.fw) / (2 * o.fr), 0.3, 1.05);     // tall things lean more
 /* it fits (or wobbled in): tip over the rim; update() runs the eat pipeline when the fall ends */
-function capture(o, ox, oy) {
+function capture(o, ox, oy, mate) {
   o.fall = { t0: G.now, x0: ox, y0: oy, dur: o.slow ? 2600 : FALL_MS, l0: o.lean || 0, spin: 3.5 };
+  if (mate) o.fall.m = 1;                                   // co-op: it falls into the partner's hole
+  if (G.net && G.net.role === 'host') G.net.capt(o, mate ? 'g' : 'h');
 }
 function eat(o) {
   const C = G.C, st = G.st;
   o.dead = 1; o.dt = G.now; o.fall = null; o.lean = o.wobble = 0;
+  if (G.net && G.net.role === 'host') G.net.died(o, 'h');
   V3.pulseT = G.now;
   const story = G.run.kind === 'story';
   if (o.keep && story) st.eaten[o.id] = 1;
@@ -2715,11 +2739,11 @@ function eat(o) {
 }
 /* too big (or not its turn yet): it leans on the rim and thuds. WOBBLE RULE: at >= 85% of the size it
    needs, every solid bump on a leaning thing adds wobble and enough wobble tips it in; below 85% never. */
-function bump(o, sup, D, speed) {
+function bump(o, sup, D, speed, mate) {
   o.wob = G.now;
-  if (G.now - G.bumpT > 380) { G.bumpT = G.now; SFX.thud(); }
+  if (!mate && G.now - G.bumpT > 380) { G.bumpT = G.now; SFX.thud(); }
   if (isInactive(o)) {
-    if (G.now - (o.said || 0) > 1300) {
+    if (!mate && G.now - (o.said || 0) > 1300) {
       o.said = G.now;
       if (o.needs) toast('First: ' + o.needTxt + '!', '#ffd96a');
     }
@@ -2727,7 +2751,7 @@ function bump(o, sup, D, speed) {
   }
   if (sup < 0.995 && D >= WOBBLE_MIN * o.fw && speed > D * 0.25 && G.now - (o.wbT || 0) > 300) {
     o.wbT = G.now; o.wobble = (o.wobble || 0) + WOBBLE_STEP;
-    if (o.wobble >= 1) capture(o, dx(o.x, G.x), dy(o.y, G.y));
+    if (o.wobble >= 1) capture(o, dx(o.x, G.x), dy(o.y, G.y), mate);
   }
 }
 
@@ -2916,7 +2940,11 @@ function questEvent(ev, o, v) {
   }
   if (ev === 'eat') G.combo.push(G.now);
 }
-function credit(q) { if (q.subj) S.learn[q.subj]++; }
+function credit(q) {
+  if (!q.subj) return;
+  if (G.eatBy === 'g' && G.net) G.net.learn(q.subj);       // co-op: the guest answered it, so it counts on the guest's save
+  else S.learn[q.subj]++;
+}
 function completeTiny(a) {
   const C = G.C, st = G.st, q = C.Q[a.i];
   st.act = st.act.filter(x => x !== a);
@@ -2943,6 +2971,7 @@ function chapterDone() {
   const C = G.C, st = G.st, first = !st.c;
   st.c = 1; if (S.ch[C.n + 1]) S.ch[C.n + 1].u = 1;
   persist(); SFX2.sized();
+  if (G.net && G.net.role === 'host') G.net.send({ t: 'done' });
   if (C.finish) C.finish(first);           // chapter-specific ending (the Moon, the finale)
   else setTimeout(() => UI.complete(), 900);
 }
@@ -2975,6 +3004,7 @@ const MODES = {
   ispy: {
     /* shuffle-bag: the 30-item pool is dealt 5 per run without replacement; reshuffle only when the deck runs out */
     deal(n) {
+      if (G.net && G.net.role === 'host') return G.net.deal();     // co-op: a session deck seeded by the host; neither player's saved deck moves
       const D = S.ispy[n] || (S.ispy[n] = { deck: [], pos: 0, wins: 0 });
       if (D.deck.length !== 30 || D.pos + 5 > D.deck.length) { D.deck = shuffle(Array.from({ length: 30 }, (_, i) => i), Math.random); D.pos = 0; }
       const hand = D.deck.slice(D.pos, D.pos + 5); D.pos += 5; persist(); return hand;
@@ -2992,6 +3022,7 @@ const MODES = {
       t.done = 1; R.lastFind = G.now; o.tgt = 0; SFX2.found(); toast('Found: ' + t.name + '!', '#ffd23f');
       if (R.tg.every(t => t.done)) {
         const bonus = Math.round(ISPY_BONUS * G.C.cost); addCoins(bonus, true); S.ispy[G.C.n].wins++; persist();
+        if (G.net && G.net.role === 'host') G.net.win('ispy', bonus);    // the win pays into BOTH players' world wallets
         setTimeout(() => { SFX2.win(); UI.ispyWin(bonus); }, 900);
       }
     },
@@ -3005,6 +3036,7 @@ const MODES = {
       toast(C.edu[R.set].n, '#ffd23f'); MODES.edu.startStep();
       // v4.9 pre-sizing survives as the ladder's start: big enough for step 1 (the cap then follows each step)
       const fw = Math.max(C.eduMin || 0, ...goals().map(o => o.fw * 1.04)); if (fw) setHoleD(Math.max(holeD(), fw));   // (the Globe starts lessons city-sized: the planet is big)
+      if (G.mate && G.net) { const D = holeD(); asMate(() => setHoleD(D)); }    // co-op: the set's size applies to both holes
       G.cam.z = targetZoom();
     },
     heal() { const R = G.run, st = R.steps && R.steps[R.si], rng = mulberry((Math.random() * 1e9) | 0); if (!st || !st.t) return; for (const t of st.t) if (!t.done && (!t.o || t.o.dead && !t.o.fall)) { t.o = findTarget(t.spec, rng, t.pal); if (t.o) { t.o.tgt = 1; t.o.label = t.o.label || t.name; } } },
@@ -3028,6 +3060,7 @@ const MODES = {
       const R = G.run, C = G.C; R.si++; credit({ subj: C.eduSubj || 'science' });
       if (R.si < R.steps.length) { toast('Great! Next one…', '#8ef08e'); setTimeout(() => { if (G.run === R) MODES.edu.startStep(); }, 900); return; }
       const E = S.edu[C.n]; E.done++; E.set = (R.set + 1) % C.edu.length; const bonus = Math.round(EDU_BONUS * C.cost); addCoins(bonus, true); persist();
+      if (G.net && G.net.role === 'host') G.net.win('edu', bonus);
       setTimeout(() => { SFX2.win(); UI.eduWin(bonus); }, 700);
     },
     compass() { return G.helpOn && !G.helpOn.dead ? G.helpOn : MODES.edu.target(); },   // v5: the arrow is on from the start
@@ -3041,7 +3074,7 @@ const MODES = {
   explore: {
     setup() { toast('Exploration: use + and - to change size', '#8ef08e'); },
     eat() {}, compass() { return null; }, heal() {},
-    resize(k) { setHoleD(holeD() * k); },
+    resize(k) { setHoleD(holeD() * k); if (G.net && G.net.role === 'guest') G.net.send({ t: 'sz', k }); },
   },
 };
 function nearestOf(list) { let b = null, bd = 1e30; for (const o of list) { const d = Math.hypot(dx(o.x, G.x), dy(o.y, G.y)); if (d < bd) { bd = d; b = o; } } return b; }
@@ -3058,6 +3091,444 @@ function parseStep(s) {
   st.txt = 'Get ' + (ns.length > 1 ? ns.slice(0, -1).join(', ') + ' and ' + ns[ns.length - 1] : ns[0]);
   return st;
 }
+
+/* =====================================================================
+   CO-OP (spec v5.15, the v5.1 prompt): two iPads, each with its own screen, camera and hole, on ONE shared stage, in
+   all four modes. The Battle Monsters link-play pattern, adapted:
+   - Transport: HH.Net (NET below) is the only code that knows how bytes travel. In play it is WebRTC through PeerJS,
+     whose free public broker only introduces the two iPads (then traffic is iPad-to-iPad). PeerJS is an optional
+     <script>: without it the game is untouched and the co-op buttons say "can't connect". A test transport
+     (?nettest=bc: BroadcastChannel between two pages of one browser profile) runs the same game code above it.
+   - Joining: a 6-letter room code (no I or O, no digits). Exactly two players. No accounts, lobbies or chat.
+   - NOT lockstep (the engine is not deterministic): HOST-AUTHORITATIVE. The host's save is the world truth and the
+     host simulates both holes; the guest streams its hole (~10 Hz) and renders the host's world from the host's
+     events (eats, respawns, placed targets), a 10 Hz state message (both holes, sizes, coins, ladder, clock) and
+     snapshots (full on join; every 5 s a checksum, and the full set again whenever the guest finds it has drifted).
+   - The wire is never trusted: every field is checked against local game data; anything odd is dropped.
+   With no session, G.net is null and none of this runs.
+   ===================================================================== */
+const GAME_V = '5.1';
+const NET = (() => {
+  const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ', PREFIX = 'hungryhole-v51-';
+  let test = null; try { test = new URLSearchParams(location.search).get('nettest'); } catch (e) { /* no query */ }
+  const code = () => { const a = new Uint32Array(6); try { crypto.getRandomValues(a); } catch (e) { for (let i = 0; i < 6; i++) a[i] = Math.random() * 4e9; } let s = ''; for (const v of a) s += ALPHA[v % ALPHA.length]; return s; };
+  const okCode = c => typeof c === 'string' && c.length === 6 && [...c].every(ch => ALPHA.includes(ch));
+  const available = () => test === 'bc' ? typeof BroadcastChannel === 'function' : typeof window.Peer === 'function';
+  /* the optional PeerJS script is fetched only when a co-op button is tapped, so a blocked CDN never touches solo play */
+  const PEER_SRC = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
+  let loading = null;
+  const load = cb => {
+    if (available()) return cb(true);
+    if (test === 'bc') return cb(false);
+    if (!loading) {
+      loading = [];
+      const el = document.createElement('script'); let fin = false;
+      const done = ok => { if (fin) return; fin = true; const q = loading; loading = null; if (!ok) el.remove(); for (const f of q) f(ok && available()); };
+      el.src = PEER_SRC; el.async = true; el.onload = () => done(true); el.onerror = () => done(false);
+      setTimeout(() => done(false), 9000);
+      document.head.appendChild(el);
+    }
+    loading.push(cb);
+  };
+  /* a link: send(msg), close(); the session sets onmsg / onclose */
+  function peerLink(conn, peer) {
+    const L = { open: true, onmsg: null, onclose: null,
+      send(m) { if (L.open) { try { conn.send(m); } catch (e) { /* the close handler follows */ } } },
+      close() { if (!L.open) return; L.open = false; try { conn.close(); } catch (e) { /* gone */ } setTimeout(() => { try { peer.destroy(); } catch (e) { /* gone */ } }, 400); } };
+    conn.on('data', d => { if (L.open && L.onmsg) L.onmsg(d); });
+    conn.on('close', () => { if (!L.open) return; L.open = false; try { peer.destroy(); } catch (e) { /* gone */ } if (L.onclose) L.onclose(); });
+    conn.on('error', () => { try { conn.close(); } catch (e) { /* gone */ } });
+    return L;
+  }
+  function bcLink(ch, me, other) {
+    const L = { open: true, onmsg: null, onclose: null,
+      send(m) { if (L.open) ch.postMessage({ k: 'm', from: me, to: other, d: m }); },
+      close() { if (!L.open) return; L.open = false; try { ch.postMessage({ k: 'bye', from: me, to: other }); ch.close(); } catch (e) { /* gone */ } } };
+    ch.onmessage = e => { const v = e.data; if (!L.open || !v || v.to !== me || v.from !== other) return;
+      if (v.k === 'm') { if (L.onmsg) L.onmsg(v.d); } else if (v.k === 'bye') { L.open = false; ch.close(); if (L.onclose) L.onclose(); } };
+    window.addEventListener('pagehide', () => L.close());
+    return L;
+  }
+  /* host a room. cb.ready(code): the code is live; cb.link(link): the friend is here; cb.fail(why) */
+  function host(cb) {
+    const c = code(), H = { done: false, cancel() { H.done = true; } };
+    if (test === 'bc') {
+      const ch = new BroadcastChannel('hh-room-' + c), me = 'h' + Math.random().toString(36).slice(2);
+      ch.onmessage = e => { const v = e.data; if (H.done || !v || v.k !== 'join' || typeof v.from !== 'string') return; H.done = true; ch.postMessage({ k: 'ok', to: v.from, from: me }); cb.link(bcLink(ch, me, v.from)); };
+      H.cancel = () => { if (!H.done) { H.done = true; ch.close(); } };
+      setTimeout(() => cb.ready(c), 0); return H;
+    }
+    let peer = null, opened = false;
+    try { peer = new window.Peer(PREFIX + c, { debug: 0 }); } catch (e) { setTimeout(() => cb.fail('net'), 0); return H; }
+    const t = setTimeout(() => { if (!opened && !H.done) { H.cancel(); cb.fail('net'); } }, 15000);
+    H.cancel = () => { if (!H.done) { H.done = true; clearTimeout(t); try { peer.destroy(); } catch (e) { /* gone */ } } };
+    peer.on('open', () => { opened = true; clearTimeout(t); if (!H.done) cb.ready(c); });
+    peer.on('connection', conn => { if (H.done) { try { conn.close(); } catch (e) { /* gone */ } return; }
+      conn.on('open', () => { if (H.done) { try { conn.close(); } catch (e) { /* gone */ } return; } H.done = true; cb.link(peerLink(conn, peer)); }); });
+    peer.on('error', e => { if (H.done) return; const why = e && e.type === 'unavailable-id' ? 'retry' : 'net'; H.cancel(); cb.fail(why); });
+    return H;
+  }
+  function join(c, cb) {
+    const J = { done: false, cancel() { J.done = true; } };
+    if (test === 'bc') {
+      const ch = new BroadcastChannel('hh-room-' + c), me = 'g' + Math.random().toString(36).slice(2);
+      const t = setTimeout(() => { if (!J.done) { J.done = true; ch.close(); cb.fail('noroom'); } }, 3000);
+      ch.onmessage = e => { const v = e.data; if (J.done || !v || v.k !== 'ok' || v.to !== me) return; J.done = true; clearTimeout(t); cb.link(bcLink(ch, me, v.from)); };
+      J.cancel = () => { if (!J.done) { J.done = true; clearTimeout(t); ch.close(); } };
+      ch.postMessage({ k: 'join', from: me }); return J;
+    }
+    let peer = null;
+    try { peer = new window.Peer({ debug: 0 }); } catch (e) { setTimeout(() => cb.fail('net'), 0); return J; }
+    const t = setTimeout(() => { if (!J.done) { J.cancel(); cb.fail('net'); } }, 15000);
+    J.cancel = () => { if (!J.done) { J.done = true; clearTimeout(t); try { peer.destroy(); } catch (e) { /* gone */ } } };
+    peer.on('open', () => { if (J.done) return; const conn = peer.connect(PREFIX + c, { reliable: true, serialization: 'json' });
+      conn.on('open', () => { if (J.done) return; J.done = true; clearTimeout(t); cb.link(peerLink(conn, peer)); }); });
+    peer.on('error', e => { if (J.done) return; const why = e && e.type === 'peer-unavailable' ? 'noroom' : 'net'; J.cancel(); cb.fail(why); });
+    return J;
+  }
+  return { host, join, available, load, okCode, ALPHA, get test() { return test; } };
+})();
+
+/* ---------- wire checks: nothing from the other iPad is used until it passes these ---------- */
+const W8 = {
+  num: (v, lo, hi) => typeof v === 'number' && isFinite(v) && v >= lo && v <= hi,
+  int: (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi,
+  str: (v, max) => typeof v === 'string' && v.length <= max,
+  id: v => typeof v === 'string' && v.length <= 48 && /^[act][\w.,:-]+$/.test(v),
+  name: v => (typeof v === 'string' ? v : '').replace(/[^A-Za-z0-9À-ɏ '-]/g, '').trim().split(/\s+/)[0].slice(0, 12) || 'P2',
+  ups: v => Array.isArray(v) && v.length === 10 && v.every(x => Number.isInteger(x) && x >= 0 && x <= 10) ? v.slice() : null,
+  kind: v => v === 'story' || v === 'ispy' || v === 'edu' || v === 'explore',
+  col: v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v),
+};
+function setHash(set) {                               // order-free checksum of the shared eaten set
+  let h = 0, n = 0;
+  for (const id of set) { let x = 2166136261; for (let i = 0; i < id.length; i++) x = Math.imul(x ^ id.charCodeAt(i), 16777619); h = (h + (x >>> 0)) >>> 0; n++; }
+  return n + ':' + h;
+}
+function objByNid(id) {
+  if (!G.byNid || typeof id !== 'string') return null;
+  if (id[0] === 'c') { const j = id.lastIndexOf('.'), a = G.cells.get(id.slice(1, j)); return a ? a[+id.slice(j + 1)] || null : null; }
+  return G.byNid.get(id) || null;
+}
+/* the guest's hole, simulated on the host: swap it into the engine's single-hole state for the length of fn */
+const MATE_F = ['x', 'y', 'vx', 'vy', 'lvl', 'xp', 'fl', 'st', 'capT'];
+function asMate(fn) {
+  const M = G.mate; if (!M || G.isMate) return undefined;
+  for (const f of MATE_F) { const v = G[f]; G[f] = M[f]; M[f] = v; }
+  G.isMate = true;
+  try { return fn(); } finally { G.isMate = false; for (const f of MATE_F) { const v = G[f]; G[f] = M[f]; M[f] = v; } }
+}
+/* host, every frame: follow the guest's streamed position and run its hole over the things around it */
+function mateStep(dt) {
+  const M = G.mate, C = G.C, k = Math.min(1, dt * 12);
+  M.x += dx(M.tx, M.x) * k; M.y += dy(M.ty, M.y) * k; M.vx = M.tvx; M.vy = M.tvy; M.fl = M.tfl;
+  if (C.wrap) { M.x = (M.x % C.W + C.W) % C.W; M.y = (M.y % C.H + C.H) % C.H; }
+  asMate(() => {
+    const D = holeD(), pad = D * Math.max(1, UPF.magnet(UPL('magnet'))) + D;
+    holeLoop(gather(G.x - pad, G.y - pad, G.x + pad, G.y + pad, targetZoom()), dt, 1);
+  });
+  M.D = asMate(holeD);
+}
+/* host: the guest's hole finished swallowing o. Same rules as eat(); the coins, points and growth are the guest's,
+   the world (eaten landmarks, the ladder) is the host's */
+function mateEat(o) {
+  const C = G.C, story = G.run.kind === 'story';
+  if (!G.mate) { o.fall = null; return eat(o); }
+  o.dead = 1; o.dt = G.now; o.fall = null; o.lean = o.wobble = 0;
+  if (G.net) G.net.died(o, 'g');
+  if (o.keep && story) G.st.eaten[o.id] = 1;
+  G.eatBy = 'g';
+  try {
+    if (o.tile) { if (o.owner && o.owner.edu) tileEaten(o); return; }
+    asMate(() => {
+      if (o.coin) { addCoins(o.val); addXP(o.t * 0.5 * XP_K * (C.xpk || 1)); return; }
+      addXP(o.t * XP_K * (C.xpk || 1));
+      addPoints(Math.max(1, Math.round(PTS[o.t] * C.pv * MULT[UPL('points')] * clamp((o.t - Math.min(G.lvl, C.topT) + 3) / 3, 0.15, 1))));
+      if (Math.random() < UPF.lucky(UPL('lucky'))) addCoins(Math.max(1, Math.round(PTS[o.t] * C.cost / 4)));
+    });
+    if (o.coin) return;
+    if (story) { if (C.beats && o === G.goal) beatDone(o); } else MODES[G.run.kind].eat(o);
+  } finally { G.eatBy = null; }
+  if (C.onEat) C.onEat(o);
+}
+/* guest: a fall the host started has ended (presentation only; the host already did the eating) */
+function netFallDone(o) {
+  const f = o.fall || {};
+  o.dead = 1; o.dt = G.now; o.fall = null; o.lean = o.wobble = 0;
+  if (!f.mine) return;
+  V3.pulseT = G.now;
+  if (o.tile) { G.big = { t0: G.now, txt: o.txt }; SFX.pop(); return; }
+  if (o.coin) { SFX.coin(); return; }
+  SFX.gulp(o.t);
+  if (S.settings.learn !== 'off' || o.label) { const nm = o.label || o.T.n; G.flash = { t0: G.now, a: nm[0].toUpperCase() + nm.slice(1), b: o.sub || '', c: S.settings.learn !== 'off' ? (o.fact || '') : '' }; }
+}
+
+/* ---------- the session (G.net while two iPads are linked) ---------- */
+function myName() { return W8.name(S.settings.name || ''); }
+function netSession(role, opts) {
+  const N = Object.assign({ role, on: false, phase: 'link', link: null, mate: 'P2', heard: performance.now(), sentAt: 0, dead: new Set(), adds: [], tilesN: 0,
+    banked: 0, wBase: 0, stT: 0, snapT: 0, runT: 0, needT: 0, pauseSent: null, last: performance.now(), errs: 0 }, opts || {});
+  const now = () => performance.now();
+  N.send = m => { if (N.link && N.link.open) { N.link.send(m); N.sentAt = now(); } };
+  N.attach = L => { N.link = L; N.heard = now(); L.onmsg = m => N.recv(m); L.onclose = () => N.end('lost'); N.phase = 'hello'; };
+  N.recv = m => {
+    if (!m || typeof m !== 'object' || typeof m.t !== 'string') return;
+    N.heard = now();
+    const h = (role === 'host' ? HOSTRX : GUESTRX)[m.t];
+    if (h) { try { h(N, m); } catch (e) { N.errs++; } }      // a message that breaks a rule is dropped, never applied halfway
+  };
+  N.end = (why) => netEnd(N, why);
+  /* ---- host side hooks (called by the engine) ---- */
+  N.added = (ob, o) => {
+    const d = { id: ob.nid, k: ob.k, x: ob.x, y: ob.y }; if (ob.label) d.label = ob.label; if (o && o.pal && W8.col(o.pal.a)) d.pal = o.pal.a;
+    N.adds.push(d); if (N.on) N.send(Object.assign({ t: 'add' }, d));
+  };
+  N.capt = (o, by) => { if (!o.nid || o.pool) return; o.capSent = 1; N.send({ t: 'cap', id: o.nid, by }); };
+  N.died = (o, by) => { if (!o.nid || o.pool) return; N.dead.add(o.nid); if (!o.capSent) N.send({ t: 'cap', id: o.nid, by, now: 1 }); o.capSent = 0; };
+  N.respawned = o => { if (!o.nid) return; if (role === 'host') { N.dead.delete(o.nid); N.send({ t: 're', id: o.nid }); } };
+  N.mayRespawn = (o, rD) => role === 'host' && (!G.mate || G.mate.gone || Math.hypot(dx(o.x, G.mate.x), dy(o.y, G.mate.y)) > rD);
+  N.cellMade = (key, a) => { for (let i = 0; i < a.length; i++) { const o = a[i]; o.nid = 'c' + key + '.' + i; if (N.dead.has(o.nid)) { o.dead = 1; o.dt = G.now; } } };
+  N.learn = subj => N.send({ t: 'learn', s: subj });
+  N.deal = () => {                                    // I Spy: a session deck seeded by the host
+    if (!N.deck || N.dpos + 5 > 30) { N.deck = shuffle(Array.from({ length: 30 }, (_, i) => i), mulberry((Math.random() * 1e9) | 0)); N.dpos = 0; }
+    const hand = N.deck.slice(N.dpos, N.dpos + 5); N.dpos += 5; return hand;
+  };
+  N.win = (k, bonus) => { let got = 0; asMate(() => { const w0 = G.st.w; addCoins(bonus, true); got = G.st.w - w0; }); N.send({ t: 'win', k, bonus: got }); };
+  N.mateCoins = () => N.wBase + (G.mate && G.mate.st ? Math.floor(G.mate.st.w) : 0);
+  N.runState = () => {
+    const R = G.run, ids = o => o && o.nid ? o.nid : null;
+    if (R.kind === 'ispy' && R.tg) return { k: 'ispy', tg: R.tg.map(t => ({ id: ids(t.o), name: t.name, done: t.done ? 1 : 0 })) };
+    if (R.kind === 'edu' && R.steps) {
+      const cur = R.steps[R.si];
+      const tiles = G.tiles.filter(t => t.owner && t.owner.edu && !t.dead).map(t => { if (!t.nid) { t.nid = 't' + (N.tilesN++); G.byNid.set(t.nid, t); } return { id: t.nid, txt: String(t.txt), ok: t.ok ? 1 : 0, x: t.x, y: t.y }; });
+      return { k: 'edu', set: R.set, si: R.si, tiles, steps: R.steps.map(st => ({ k: st.k, txt: st.txt || '', t: st === cur && st.t ? st.t.map(t => ({ id: ids(t.o), name: t.name, done: t.done ? 1 : 0 })) : null })) };
+    }
+    return null;
+  };
+  N.snapshot = () => ({ dead: [...N.dead], beat: G.st.beat | 0, c: G.st.c ? 1 : 0, eaten: Object.keys(G.st.eaten || {}), adds: N.adds, run: N.runState(), T: G.t,
+    h: { x: G.x, y: G.y, fl: G.fl || 0, D: holeD() }, g: G.mate ? { L: G.mate.lvl, xp: G.mate.xp } : null });
+  N.hostLoaded = () => {
+    const mst = Object.create(G.st); Object.assign(mst, { up: (N.mateUps || Array(10).fill(0)).slice(), w: 0, cf: 0, pts: 0, pc: 0, bm: 0 });
+    if (G.mate && G.mate.st) N.wBase += Math.floor(G.mate.st.w);            // coins from an earlier run of this session stay counted
+    const M = G.mate = { x: G.x, y: G.y, vx: 0, vy: 0, fl: G.fl || 0, st: mst, lvl: G.lvl, xp: G.xp, capT: 0, tx: G.x, ty: G.y, tvx: 0, tvy: 0, tfl: G.fl || 0, name: N.mate };
+    if (G.run.kind !== 'edu') asMate(() => { [G.lvl, G.xp] = startSize(G.st); });   // the guest starts small (with its own Head Start); in Educational both share the set's size
+    M.D = asMate(holeD);
+    N.on = true; N.phase = 'play';
+    N.send(Object.assign({ t: 'start', n: G.C.n, kind: G.run.kind }, N.snapshot()));
+  };
+  /* ---- guest side hooks ---- */
+  N.scratch = n => {
+    const sn = N.snap, own = S.ch[n];
+    return Object.assign(freshCh(n), { u: 1, eaten: Object.fromEntries(sn.eaten.map(id => [id, 1])), beat: sn.beat, c: sn.c, up: own.up.slice(), w: own.w,
+      x: sn.h.x, y: sn.h.y, fl: sn.h.fl, lvl: sn.g ? sn.g.L : 1, xp: sn.g ? sn.g.xp : 0, mv: 5, act: [] });
+  };
+  N.applyStart = () => {
+    const sn = N.snap;
+    N.dead = new Set(sn.dead);
+    for (const o of G.auth) if (o.nid && N.dead.has(o.nid)) { o.dead = 1; o.dt = G.now; }
+    for (const d of sn.adds) N.addFrom(d);
+    syncBeat(); N.applyRun(sn.run);
+    G.t = sn.T; G.vx = G.vy = 0;
+    G.mate = { x: sn.h.x, y: sn.h.y, tx: sn.h.x, ty: sn.h.y, vx: 0, vy: 0, fl: sn.h.fl, tfl: sn.h.fl, D: sn.h.D, name: N.mate };
+    N.on = true; N.phase = 'play';
+  };
+  N.addFrom = d => {
+    if (!d || !W8.id(d.id) || d.id[0] !== 'a' || G.byNid.has(d.id) || !G.C.T[d.k] || !W8.num(d.x, -1e9, 1e9) || !W8.num(d.y, -1e9, 1e9)) return null;
+    const o = { nid: d.id, special: 1 }; if (W8.str(d.label, 80)) o.label = d.label; if (W8.col(d.pal)) o.pal = { a: d.pal };
+    const ob = G.add(d.k, d.x, d.y, o); if (ob && N.dead.has(d.id)) { ob.dead = 1; ob.dt = G.now; } return ob;
+  };
+  N.applyRun = rs => {
+    const R = G.run; if (!rs || typeof rs !== 'object') return;
+    const tgs = list => Array.isArray(list) ? list.slice(0, 10).map(t => ({ name: t && W8.str(t.name, 80) ? t.name : '?', done: t && t.done ? 1 : 0, o: t && W8.id(t.id) ? objByNid(t.id) : null })) : [];
+    const mark = list => { for (const t of list) if (t.o) { t.o.tgt = t.done ? 0 : 1; if (!t.o.label) t.o.label = t.name; } };
+    if (rs.k === 'ispy' && R.kind === 'ispy') { R.tg = tgs(rs.tg); mark(R.tg); return; }
+    if (rs.k === 'edu' && R.kind === 'edu' && Array.isArray(rs.steps) && rs.steps.length <= 20 && W8.int(rs.si, 0, rs.steps.length) && W8.int(rs.set, 0, G.C.edu.length - 1)) {
+      R.set = rs.set; R.si = rs.si; R.owner = R.owner || { edu: 1 };
+      R.steps = rs.steps.map(s => { const st = { k: s && s.k === 'm' ? 'm' : 'f', txt: s && W8.str(s.txt, 160) ? s.txt : '', owner: R.owner }; if (st.k !== 'm') { st.t = tgs(s && s.t); mark(st.t); } return st; });
+      if (Array.isArray(rs.tiles)) {
+        const keep = [];
+        for (const t of rs.tiles.slice(0, 12)) {
+          if (!t || !W8.id(t.id) || t.id[0] !== 't' || !W8.str(t.txt, 8) || !W8.num(t.x, -1e9, 1e9) || !W8.num(t.y, -1e9, 1e9)) continue;
+          let tl = G.byNid.get(t.id);
+          if (!tl) { tl = { tile: 1, nid: t.id, txt: t.txt, ok: !!t.ok, j: 0, owner: R.owner, T: { n: t.txt }, t: 0, k: 'tile', x: t.x, y: t.y, r: 10, fw: 20, fr: 12, sv: 1, wob: -1e9, on: false }; G.byNid.set(t.id, tl); }
+          if (!tl.fall) { tl.x = t.x; tl.y = t.y; }
+          if (N.dead.has(t.id)) tl.dead = 1;
+          keep.push(tl);
+        }
+        G.tiles = keep;
+      }
+    }
+  };
+  N.ups = () => { if (role === 'guest') N.send({ t: 'ups', ups: G.st.up.slice() }); };
+  /* ---- every frame ---- */
+  N.tick = () => {
+    const t = now(), dt = Math.min(0.1, (t - N.last) / 1000); N.last = t;
+    if (N.link && N.link.open && t - N.sentAt > 1000) N.send({ t: 'hb' });
+    if (N.link && t - N.heard > 6000) return N.end('lost');
+    if (!N.on) return;
+    const paused = G.mode !== 'play' || !!G.paused;
+    if (paused !== N.pauseSent) { N.pauseSent = paused; N.send({ t: 'pause', on: paused ? 1 : 0 }); }
+    const M = G.mate;
+    if (role === 'guest' && M && !M.gone) { const k = Math.min(1, dt * 12); M.x += dx(M.tx, M.x) * k; M.y += dy(M.ty, M.y) * k; M.fl = M.tfl; if (G.C.wrap) { M.x = (M.x % G.C.W + G.C.W) % G.C.W; M.y = (M.y % G.C.H + G.C.H) % G.C.H; } }
+    if (t - N.stT < 100) return;
+    N.stT = t;
+    if (role === 'guest') { N.send({ t: 'pos', x: G.x, y: G.y, vx: G.vx, vy: G.vy, fl: G.fl || 0 }); return; }
+    if (!M || M.gone) return;
+    const m = { t: 'st', T: G.t, beat: G.st.beat | 0, c: G.st.c ? 1 : 0, h: { x: G.x, y: G.y, vx: G.vx, vy: G.vy, fl: G.fl || 0, D: holeD() },
+      g: { L: M.lvl, xp: M.xp, cap: M.capT > (N.capSent || 0) ? 1 : 0, w: N.mateCoins(), pts: Math.floor(M.st.pts) } };
+    N.capSent = M.capT;
+    if (G.run.kind === 'ispy' || G.run.kind === 'edu') { if (t - N.runT > 400) { N.runT = t; m.run = N.runState(); } }
+    N.send(m);
+    if (t - N.snapT > 5000) { N.snapT = t; N.send({ t: 'snap', dh: setHash(N.dead), beat: G.st.beat | 0, c: G.st.c ? 1 : 0 }); }
+  };
+  return N;
+}
+function netEnd(N, why) {
+  if (N.ended) return; N.ended = true;
+  if (N.hostH) N.hostH.cancel(); if (N.joinH) N.joinH.cancel();
+  if (why !== 'lost' && N.link && N.link.open) N.link.send({ t: 'bye' });
+  if (N.link) N.link.close();
+  if (G.net === N) G.net = null;
+  G.netPause = null;
+  const playing = N.phase === 'play';
+  if (N.role === 'host') {
+    if (G.mate) G.mate.gone = performance.now();       // the guest's hole fades out; the host's run carries on solo
+    if (playing && why !== 'left') toast(N.mate + ' left the game. Keep going!', '#9fdcff');
+    if (!playing && why !== 'left' && why !== 'cancel') { UI.closeModal(); UI.note(why === 'version' ? 'Your friend has a different version of Hungry Hole. Update both iPads, then try again!' : "Your friend couldn't join. Try again!"); }
+    return;
+  }
+  G.mate = null;
+  const coins = N.banked;
+  if (why === 'left' || why === 'cancel') return;
+  if (G.inRun || playing) { UI.closeModal(); G.paused = false; UI.main(); }
+  else UI.closeModal();
+  UI.note(why === 'version' ? 'Your friend has a different version of Hungry Hole. Update both iPads, then try again!'
+    : why === 'mode' ? N.why : playing ? `The game with ${N.mate} ended.${coins ? ` You kept your ${fmt(coins)} coins!` : ''}` : "Can't connect right now. Check the Wi-Fi and try again!");
+}
+/* ---------- what each side accepts ---------- */
+const HOSTRX = {
+  hb() {},
+  hello(N, m) {
+    if (N.phase !== 'hello') return;
+    N.mate = W8.name(m.name);
+    if (m.v !== GAME_V) { N.send({ t: 'nope', why: 'version' }); return N.end('version'); }
+    N.send({ t: 'hello', v: GAME_V, name: myName(), mode: N.kind, world: N.n }); N.phase = 'ready';
+    UI.coopMsg(`${N.mate} is joining…`);
+  },
+  ready(N, m) {
+    if (N.phase !== 'ready') return;
+    N.mateUps = W8.ups(m.ups) || Array(10).fill(0); N.phase = 'starting';
+    startChapter(N.n, N.kind);                            // loadChapter() sends the stage to the guest when it is built
+  },
+  pos(N, m) {
+    const M = G.mate, C = G.C; if (!M || M.gone || !N.on || !W8.num(m.x, -1e9, 1e9) || !W8.num(m.y, -1e9, 1e9)) return;
+    let x = m.x, y = m.y;
+    if (!C.wrap) { x = clamp(x, 0, C.W); y = clamp(y, 0, C.H); }
+    else { x = (x % C.W + C.W) % C.W; y = (y % C.H + C.H) % C.H; }
+    const rg = ringNow(); if (rg) { if (!C.wrap) x = clamp(x, rg[0], rg[2]); y = clamp(y, rg[1], rg[3]); }
+    M.tx = x; M.ty = y; M.tvx = W8.num(m.vx, -1e9, 1e9) ? m.vx : 0; M.tvy = W8.num(m.vy, -1e9, 1e9) ? m.vy : 0;
+    M.tfl = C.layered && (m.fl === 0 || m.fl === 1) ? m.fl : 0;
+  },
+  ups(N, m) { const u = W8.ups(m.ups); if (u && G.mate) { G.mate.st.up = u; N.mateUps = u; } },
+  sz(N, m) { if (G.mate && G.run.kind === 'explore' && W8.num(m.k, 0.1, 10)) asMate(() => setHoleD(holeD() * m.k)); },
+  need(N) { const t = performance.now(); if (!N.on || t - N.needT < 1500) return; N.needT = t; N.send(Object.assign({ t: 'full' }, N.snapshot())); },
+  pause(N, m) { G.netPause = m.on ? N.mate : null; },
+  bye(N) { N.end('lost'); },
+};
+const GUESTRX = {
+  hb() {},
+  nope(N, m) { N.end(m.why === 'version' ? 'version' : 'lost'); },
+  hello(N, m) {
+    if (N.phase !== 'hello') return;
+    N.mate = W8.name(m.name);
+    if (m.v !== GAME_V) return N.end('version');
+    if (!W8.kind(m.mode) || !W8.int(m.world, 1, NW)) return N.end('lost');
+    if (N.fromKind && N.fromKind !== m.mode) {
+      const nm = { story: 'STORY', ispy: 'I SPY', edu: 'EDUCATIONAL', explore: 'EXPLORATION' };
+      N.why = `${N.mate} is playing ${nm[m.mode]}, not ${nm[N.fromKind]}. Pick ${nm[m.mode]}, then JOIN A FRIEND again!`; return N.end('mode');
+    }
+    N.n = m.world; N.kind = m.mode; N.phase = 'ready';
+    N.send({ t: 'ready', ups: S.ch[N.n].up.slice() });
+    UI.coopMsg(`Joining ${N.mate}'s world…`);
+  },
+  start(N, m) {
+    if (N.phase !== 'ready' && N.phase !== 'play') return;
+    if (m.n !== N.n || m.kind !== N.kind || !Array.isArray(m.dead) || m.dead.length > 50000 || !m.dead.every(W8.id) || !Array.isArray(m.eaten) || m.eaten.length > 5000 || !m.eaten.every(e => W8.str(e, 80))
+      || !Array.isArray(m.adds) || m.adds.length > 5000 || !W8.int(m.beat, 0, 99) || !W8.num(m.T, 0, 1e9) || !m.h || !W8.num(m.h.x, -1e9, 1e9) || !W8.num(m.h.y, -1e9, 1e9) || !W8.num(m.h.D, 0, 1e12)) return;
+    const C = prep(CH[m.n]);
+    const g = m.g && W8.int(m.g.L, 1, C.N) && W8.num(m.g.xp, 0, 1e12) ? m.g : { L: 1, xp: 0 };
+    N.snap = { dead: m.dead, eaten: m.eaten, adds: m.adds, beat: m.beat, c: m.c ? 1 : 0, run: m.run, T: m.T, h: { x: m.h.x, y: m.h.y, fl: m.h.fl === 1 ? 1 : 0, D: m.h.D }, g };
+    audioInit(); UI.closeModal(); loadChapter(m.n, m.kind); UI.show('game'); G.mode = 'play'; G.paused = false;
+    toast(`Playing with ${N.mate}!`, '#4ff0d8');
+  },
+  st(N, m) {
+    const M = G.mate, C = G.C; if (!N.on || !M || !m.h || !m.g) return;
+    if (W8.num(m.h.x, -1e9, 1e9) && W8.num(m.h.y, -1e9, 1e9)) { M.tx = m.h.x; M.ty = m.h.y; }
+    if (W8.num(m.h.D, 0, 1e12)) M.D = m.h.D;
+    M.tfl = C.layered && m.h.fl === 1 ? 1 : 0;
+    if (W8.num(m.T, 0, 1e9)) { const want = m.T + 0.05; if (Math.abs(G.t - want) > 0.5) G.t = want; else G.t += (want - G.t) * 0.1; }
+    if (W8.int(m.g.L, 1, C.N) && W8.num(m.g.xp, 0, need(m.g.L) + 1e-6)) {
+      if (m.g.L > G.lvl && G.run.kind !== 'explore') { SFX.up(); toast('SIZE UP!  Size ' + m.g.L, '#8ef08e'); }
+      G.lvl = m.g.L; G.xp = m.g.xp;
+    }
+    if (m.g.cap) G.capT = G.now;
+    if (W8.int(m.g.pts, 0, 1e12)) G.st.pts = m.g.pts;
+    if (W8.int(m.g.w, 0, 1e12) && m.g.w > N.banked) {      // the guest keeps the coins it earned: banked once each, into its own world wallet
+      const add = Math.min(m.g.w - N.banked, 50000 * (C.cost || 1));
+      N.banked += add; S.ch[C.n].w += add; G.st.w = S.ch[C.n].w; persist();
+    }
+    if (G.run.kind === 'story' && W8.int(m.beat, 0, 99) && m.beat !== G.st.beat) {
+      const up = m.beat > G.st.beat; G.st.beat = m.beat; G.st.c = m.c ? 1 : 0; syncBeat();
+      if (up && G.goal) { SFX2.found(); toast('Objective done! Next: ' + goalName(G.goal), '#ffd23f'); }
+    }
+    if (m.run) N.applyRun(m.run);
+  },
+  cap(N, m) {
+    if (!N.on || !W8.id(m.id) || (m.by !== 'g' && m.by !== 'h')) return;
+    N.dead.add(m.id);
+    const o = objByNid(m.id);
+    if (!o) { if (m.id[0] !== 'c') GUESTRX.resync(N); return; }   // an id we have never heard of: we missed something, ask for the full state
+    if (o.dead || o.fall) return;
+    if (!G.vis.includes(o) && !o.tile) { o.dead = 1; o.dt = G.now; return; }
+    const E = m.by === 'g' || !G.mate ? G : G.mate, hx = E.x, hy = E.y;
+    o.fall = { t0: G.now, x0: dx(o.x, hx), y0: dy(o.y, hy), dur: m.now ? 1 : o.slow ? 2600 : FALL_MS, l0: o.lean || 0, spin: 3.5, net: 1, m: m.by === 'h' ? 1 : 0, mine: m.by === 'g' };
+  },
+  re(N, m) {
+    if (!N.on || !W8.id(m.id)) return;
+    N.dead.delete(m.id); const o = objByNid(m.id);
+    if (o && o.dead) { o.dead = 0; o.born = G.now; o.fall = null; o.lean = o.wobble = 0; }
+  },
+  add(N, m) { if (N.on) N.addFrom(m); },
+  learn(N, m) {
+    const t = performance.now(); if (!N.on || !Object.values(SUBJ).includes(m.s) || t - (N.learnT || 0) < 250) return;
+    N.learnT = t; S.learn[m.s]++; persist();
+  },
+  win(N, m) {
+    if (!N.on || (m.k !== 'ispy' && m.k !== 'edu')) return;
+    const b = W8.int(m.bonus, 0, 1e9) ? m.bonus : 0;
+    setTimeout(() => { if (G.net !== N) return; SFX2.win(); UI.coopWin(m.k, b); }, 900);
+  },
+  done(N) { if (N.on) setTimeout(() => { if (G.net === N) UI.coopWin('done', 0); }, 900); },
+  snap(N, m) {
+    if (!N.on) return;
+    if (m.dh !== setHash(N.dead) || (G.run.kind === 'story' && m.beat !== G.st.beat)) GUESTRX.resync(N);
+  },
+  resync(N) { const t = performance.now(); if (t - (N.needT || 0) < 1500) return; N.needT = t; N.resyncs = (N.resyncs || 0) + 1; N.send({ t: 'need' }); },
+  full(N, m) {
+    if (!N.on || !Array.isArray(m.dead) || m.dead.length > 50000 || !m.dead.every(W8.id) || !Array.isArray(m.adds) || m.adds.length > 5000) return;
+    N.dead = new Set(m.dead);
+    for (const d of m.adds) N.addFrom(d);
+    const fix = o => { if (!o.nid || o.fall) return; const want = N.dead.has(o.nid); if (want && !o.dead) { o.dead = 1; o.dt = G.now; } else if (!want && o.dead) { o.dead = 0; o.born = G.now; o.lean = o.wobble = 0; } };
+    for (const o of G.auth) fix(o);
+    for (const a of G.cells.values()) for (const o of a) fix(o);
+    for (const o of G.tiles) fix(o);
+    if (G.run.kind === 'story' && W8.int(m.beat, 0, 99)) { G.st.beat = m.beat; G.st.c = m.c ? 1 : 0; syncBeat(); }
+    if (m.run) N.applyRun(m.run);
+    N.fixed = (N.fixed || 0) + 1;
+  },
+  pause(N, m) { G.netPause = m.on ? N.mate : null; if (!m.on && UI.coopWinOpen) { UI.coopWinOpen = false; UI.closeModal(); G.paused = false; } },
+  bye(N) { N.end('lost'); },
+};
 
 /* ---------- per-frame update ---------- */
 function toast(txt, col) { G.toasts.push({ txt, col, t0: G.now }); if (G.toasts.length > 4) G.toasts.shift(); }
@@ -3099,47 +3570,59 @@ function update(dt) {
   const z = G.cam.z, vr = viewRect(z), mg = D + (vr[2] - vr[0]) * 0.06;
   G.vr = vr;
   G.vis = gather(G.cam.x + vr[0] - mg, G.cam.y + vr[1] - mg, G.cam.x + vr[2] + mg, G.cam.y + vr[3] + mg + (vr[3] - vr[1]) * 0.35, z);
-  const reach = r * UPF.vacuum(UPL('vacuum')), mag = UPL('magnet'), pullR = r * UPF.magnet(mag);
-  const T = G.t, speed = Math.hypot(G.vx, G.vy), kL = Math.min(1, dt * 9);
-  for (const o of G.vis) {
-    if (o.fall) { if (G.now - o.fall.t0 >= o.fall.dur) eat(o); continue; }
-    if (o.path) moveOnPath(o, T);
-    else if (o.T.mv) { const A = o.r * (o.T.mv === 'fly' ? 4 : 1.4), w = o.T.mv === 'fly' ? 0.5 : 0.35; o.x = o.bx + Math.sin(T * w + o.ph) * A; o.y = o.by + Math.cos(T * w * 0.77 + o.ph * 1.3) * A; }
-    if (o.tile) { o.r = r * 0.42; o.fw = o.r * 2; o.fr = o.r * 1.1; o.hh = o.r * 0.84; o.on = o.ok !== undefined ? o.ok : o.j === o.get(); o.look = o.ok === undefined && o.on; }
-    if (C.layered && !onMyFloor(o)) continue;
-    const ox = dx(o.x, G.x), oy = dy(o.y, G.y), d = Math.hypot(ox, oy), fr = footR(o);
-    if (o.wobble) o.wobble = Math.max(0, o.wobble - dt * 0.35);
-    if (d > Math.max(pullR, r) + fr || o.exit || o.deco || (o.door && D <= (C.gap || 0))) {   // on solid ground (or anchored scenery)
-      if (o.lean) { o.lean -= o.lean * kL; if (o.lean < 1e-3) o.lean = 0; }
-      continue;
-    }
-    const sup = 1 - coverFrac(d, r, fr);
-    let tl;
-    o.ldir = Math.atan2(-oy, -ox);
-    if (canEat(o)) {
-      if (d < reach) { capture(o, ox, oy); continue; }
-      if (mag && d < pullR && !o.path) { const m = Math.min(d, r * (1.5 + 0.35 * mag) * dt) / (d || 1); o.bx -= ox * m; o.by -= oy * m; if (!o.T.mv) { o.x = o.bx; o.y = o.by; } }
-      tl = Math.min(1.2, (1 - sup) * leanMax(o) * 1.25);
-    } else {
-      tl = 0;                                        // v5.1: no idle teeter. Too big (or not its turn) = it sits still; only a qualifying bump topples it, once
-      if (d < r + fr * 0.5) bump(o, sup, D, speed);
-    }
-    o.lean = (o.lean || 0) + (tl - (o.lean || 0)) * kL;
-  }
+  const net = G.net && G.net.on ? G.net : null;
+  holeLoop(G.vis, dt, net && net.role === 'guest' ? 2 : 0);
+  if (net && net.role === 'host' && G.mate && !G.mate.gone) mateStep(dt);
   if (C.tick) C.tick(dt);
-  const story = G.run.kind === 'story';
-  if (story) questEvent('tick');
+  const story = G.run.kind === 'story', guestRun = !!(net && net.role === 'guest');
+  if (story && !guestRun) questEvent('tick');
   G.toasts = G.toasts.filter(t => G.now - t.t0 < 2600);
-  if (G.rollAt && G.now > G.rollAt) { G.rollAt = 0; rollQuests(); }
-  if ((G.relocT += dt) > 3) { G.relocT = 0; relocateTiles(); if (story) refreshHelpers(); else MODES[G.run.kind].heal(); }
+  if (G.rollAt && G.now > G.rollAt && !guestRun) { G.rollAt = 0; rollQuests(); }
+  if ((G.relocT += dt) > 3) { G.relocT = 0; if (!guestRun) { relocateTiles(); if (story) refreshHelpers(); else MODES[G.run.kind].heal(); } }
   if ((G.compT += dt) > 0.4) {
     G.compT = 0;
-    if (story) G.compass = compassTargets();
+    if (story && guestRun) G.compass = G.goal && !G.goal.dead ? [{ o: G.goal, col: '#ffcf4a' }] : [];
+    else if (story) G.compass = compassTargets();
     else { const o = MODES[G.run.kind].compass(); G.compass = o ? [{ o, col: '#ffcf4a' }] : []; }
     for (const o of G.qlab || []) o.qlab = 0;                       // an active quest target shows its (otherwise quiet) name
     G.qlab = G.compass.map(c => c.o); for (const o of G.qlab) o.qlab = 1;
   }
   if ((G.saveT += dt) > 2.5) { G.saveT = 0; persist(); }
+}
+/* the hole's pass over the things around it: topple, lean, capture. role 0 = this device's own hole (solo, or the
+   co-op host); 1 = the co-op guest's hole simulated on the host (inside asMate); 2 = a co-op guest's own hole, which
+   only previews leans: the host decides every eat and sends it (host-authoritative, spec v5.15) */
+function holeLoop(list, dt, role) {
+  const C = G.C, D = holeD(), r = D / 2;
+  const reach = r * UPF.vacuum(UPL('vacuum')), mag = UPL('magnet'), pullR = r * UPF.magnet(mag);
+  const T = G.t, speed = Math.hypot(G.vx, G.vy), kL = Math.min(1, dt * 9);
+  for (const o of list) {
+    if (role && o.dead) continue;
+    if (o.fall) { if (G.now - o.fall.t0 >= o.fall.dur) { if (role === 2 || o.fall.net) netFallDone(o); else if (o.fall.m) mateEat(o); else eat(o); } continue; }
+    if (o.path) moveOnPath(o, T);
+    else if (o.T.mv) { const A = o.r * (o.T.mv === 'fly' ? 4 : 1.4), w = o.T.mv === 'fly' ? 0.5 : 0.35; o.x = o.bx + Math.sin(T * w + o.ph) * A; o.y = o.by + Math.cos(T * w * 0.77 + o.ph * 1.3) * A; }
+    if (role === 1 && (o.helper || o.pool || (o.tile && !(o.owner && o.owner.edu)))) continue;   // the host's own quest pieces and local traffic are not shared
+    if (o.tile && role !== 1) { o.r = r * 0.42; o.fw = o.r * 2; o.fr = o.r * 1.1; o.hh = o.r * 0.84; o.on = o.ok !== undefined ? o.ok : o.j === o.get(); o.look = o.ok === undefined && o.on; }
+    if (C.layered && !onMyFloor(o)) continue;
+    const ox = dx(o.x, G.x), oy = dy(o.y, G.y), d = Math.hypot(ox, oy), fr = footR(o);
+    if (o.wobble) o.wobble = Math.max(0, o.wobble - dt * 0.35);
+    if (d > Math.max(pullR, r) + fr || o.exit || o.deco || (o.door && D <= (C.gap || 0))) {   // on solid ground (or anchored scenery)
+      if (o.lean && role !== 1) { o.lean -= o.lean * kL; if (o.lean < 1e-3) o.lean = 0; }
+      continue;
+    }
+    const sup = 1 - coverFrac(d, r, fr);
+    let tl;
+    o.ldir = Math.atan2(-oy, -ox);
+    if (canEat(o) && !(role === 2 && o.pool)) {
+      if (d < reach && role !== 2) { capture(o, ox, oy, role === 1); continue; }
+      if (mag && d < pullR && !o.path && role !== 2) { const m = Math.min(d, r * (1.5 + 0.35 * mag) * dt) / (d || 1); o.bx -= ox * m; o.by -= oy * m; if (!o.T.mv) { o.x = o.bx; o.y = o.by; } }
+      tl = Math.min(1.2, (1 - sup) * leanMax(o) * 1.25);
+    } else {
+      tl = 0;                                        // v5.1: no idle teeter. Too big (or not its turn) = it sits still; only a qualifying bump topples it, once
+      if (d < r + fr * 0.5) { if (role === 2) o.wob = G.now; else bump(o, sup, D, speed, role === 1); }
+    }
+    o.lean = (o.lean || 0) + (tl - (o.lean || 0)) * kL;
+  }
 }
 /* v4.2/v5.5 collision: what the hole can't eat yet is solid where its body meets the ground (an oriented box from
    its model, inset a little so the rim can tuck under the edge and tip it). Open-legged things (tables, chairs,
@@ -3997,14 +4480,17 @@ function toScreen(x, y, h, out) {               // camera-relative world point -
 /* ---------- shaders ---------- */
 const GROUND_VS = `varying vec2 vW; void main(){ vec4 w = modelMatrix * vec4(position,1.0); vW = w.xz; gl_Position = projectionMatrix * viewMatrix * w; }`;
 const GROUND_FS = `uniform sampler2D map; uniform vec4 reg; uniform vec3 base; uniform vec2 hole; uniform float R; uniform vec3 rim; uniform float pulse;
+uniform vec2 hole2; uniform float R2; uniform vec3 rim2;
 varying vec2 vW;
 void main(){
   float d = length(vW - hole); if (d < R) discard;
+  float d2 = length(vW - hole2); if (d2 < R2) discard;               // co-op: the partner's hole (R2 = 0 when playing alone)
   vec2 uv = (vW - reg.xy) / reg.zw;
   vec3 c = (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) ? texture2D(map, vec2(uv.x, 1.0 - uv.y)).rgb : base;
   float e = (d - R) / R;
   c *= mix(0.5, 1.0, smoothstep(0.0, 0.3, e));                       // soft shadow ring round the rim
   c = mix(c, rim, (1.0 - smoothstep(0.0, 0.05 + pulse * 0.06, e)) * (0.8 + pulse * 0.2));
+  if (R2 > 0.0) { float e2 = (d2 - R2) / R2; c *= mix(0.5, 1.0, smoothstep(0.0, 0.3, e2)); c = mix(c, rim2, (1.0 - smoothstep(0.0, 0.05, e2)) * 0.85); }
   gl_FragColor = vec4(c, 1.0);
 }`;
 const WALL_VS = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`;
@@ -4017,11 +4503,11 @@ void main(){ vec2 p = vUv * 2.0 - 1.0; float r = length(p), a = atan(p.y, p.x);
   float f = (1.0 - r) * (0.18 + 0.32 * s) + pulse * 0.25 * (1.0 - r);
   gl_FragColor = vec4(rim * f * 0.9 + vec3(0.02, 0.0, 0.05), 1.0); }`;
 const QUAD_VS = `varying vec2 vUv; varying vec2 vW; void main(){ vUv = uv; vW = position.xz; gl_Position = projectionMatrix * viewMatrix * vec4(position,1.0); }`;
-const SHADOW_FS = `uniform vec2 hole; uniform float R; varying vec2 vUv; varying vec2 vW;
-void main(){ if (length(vW - hole) < R) discard; float r = length(vUv - 0.5) * 2.0; gl_FragColor = vec4(0.0, 0.0, 0.0, (1.0 - smoothstep(0.35, 1.0, r)) * 0.32); }`;
+const SHADOW_FS = `uniform vec2 hole; uniform float R; uniform vec2 hole2; uniform float R2; varying vec2 vUv; varying vec2 vW;
+void main(){ if (length(vW - hole) < R || length(vW - hole2) < R2) discard; float r = length(vUv - 0.5) * 2.0; gl_FragColor = vec4(0.0, 0.0, 0.0, (1.0 - smoothstep(0.35, 1.0, r)) * 0.32); }`;
 /* flat things you sit on (a rug, the picnic blanket): solid colour, but cut away over the open hole so they never cover it */
 const UNDER_VS = `varying vec3 vC; varying vec2 vW; void main(){ vC = color; vW = position.xz; gl_Position = projectionMatrix * viewMatrix * vec4(position,1.0); }`;
-const UNDER_FS = `uniform vec2 hole; uniform float R; varying vec3 vC; varying vec2 vW; void main(){ if (length(vW - hole) < R) discard; gl_FragColor = vec4(vC, 1.0); }`;
+const UNDER_FS = `uniform vec2 hole; uniform float R; uniform vec2 hole2; uniform float R2; varying vec3 vC; varying vec2 vW; void main(){ if (length(vW - hole) < R || length(vW - hole2) < R2) discard; gl_FragColor = vec4(vC, 1.0); }`;
 const GLOW_FS = `uniform float t; varying vec2 vUv; varying vec2 vW;
 void main(){ float r = length(vUv - 0.5) * 2.0; float a = smoothstep(1.0, 0.7, r) * smoothstep(0.35, 0.7, r) * (0.55 + 0.25 * sin(t * 6.0)); gl_FragColor = vec4(1.0, 0.88, 0.4, a); }`;
 
@@ -4039,7 +4525,7 @@ function initGL() {
   V3.tex = new THREE.CanvasTexture(V3.gcv); V3.tex.minFilter = THREE.LinearFilter; V3.tex.generateMipmaps = false;   // the region is repainted at the current zoom, so mipmaps buy nothing
   V3.gmat = new THREE.ShaderMaterial({ vertexShader: GROUND_VS, fragmentShader: GROUND_FS, uniforms: {
     map: { value: V3.tex }, reg: { value: new THREE.Vector4(0, 0, 1, 1) }, base: { value: new THREE.Color() }, hole: { value: new THREE.Vector2() },
-    R: { value: 1 }, rim: { value: new THREE.Color() }, pulse: { value: 0 } } });
+    R: { value: 1 }, rim: { value: new THREE.Color() }, pulse: { value: 0 }, hole2: { value: new THREE.Vector2() }, R2: { value: 0 }, rim2: { value: new THREE.Color('#4ff0d8') } } });
   const pg = new THREE.PlaneGeometry(1, 1); pg.rotateX(-Math.PI / 2);
   V3.ground = new THREE.Mesh(pg, V3.gmat); V3.ground.renderOrder = -2; scene.add(V3.ground);
   // the hole: a shallow dark pit (inner wall + swirling floor) and a ghost rim that shows through tall things
@@ -4053,7 +4539,7 @@ function initGL() {
   V3.pit = new THREE.Group(); V3.pit.add(V3.wall, V3.floor, V3.ghost); scene.add(V3.pit);
   // merged batches: solid models, see-through models, emissive parts, blob shadows, quest-helper glows
   V3.ren = ren; V3.scene = scene; V3.cam = cam;
-  const su = { hole: V3.gmat.uniforms.hole, R: V3.gmat.uniforms.R, t: wu.t };
+  const su = { hole: V3.gmat.uniforms.hole, R: V3.gmat.uniforms.R, hole2: V3.gmat.uniforms.hole2, R2: V3.gmat.uniforms.R2, t: wu.t };
   V3.quad = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2).toNonIndexed();
   V3.mO = mkMerge(LAMBERT.m, ['position', 'color'], 0, true);
   V3.mX = mkMerge(LAMBERT.x, ['position', 'color'], 5, true);
@@ -4258,6 +4744,10 @@ function drawWorld3D() {
   V3.floor.scale.set(R, 1, R); V3.floor.position.y = -R * FALL_DEPTH; V3.floor.rotation.y = -G.t * 0.6 * V3.swirl;
   V3.ghost.scale.set(R, 1, R); V3.ghost.material.color.set(C.rim || '#9b6bff'); V3.ghost.visible = V3.holeScale < 2;
   V3.ground.visible = V3.pit.visible = true;
+  const MH = mateHole(); U.R2.value = MH ? MH[2] : 0; if (MH) U.hole2.value.set(MH[0], MH[1]);
+  if (V3.pit2) V3.pit2.visible = !!MH;
+  if (MH) { const P2 = pit2(), r2 = MH[2]; P2.position.set(MH[0], 0, MH[1]); P2.children[0].scale.set(r2, r2 * FALL_DEPTH, r2); P2.children[0].position.y = -r2 * FALL_DEPTH / 2;
+    P2.children[1].scale.set(r2, 1, r2); P2.children[1].position.y = -r2 * FALL_DEPTH; P2.children[1].rotation.y = G.t * 0.6; P2.children[0].material.uniforms.t.value = G.t; }
   if (V3.statF && V3.statF.length) {
     V3.statF.forEach((m, i) => m.visible = i === (C.layered ? G.fl : 0) && !(C.wallsGone && C.wallsGone()));
     V3.stat = V3.statF[C.layered ? G.fl : 0]; V3.stat.position.set(-G.cam.x, 0, -G.cam.y);
@@ -4277,8 +4767,9 @@ function drawWorld3D() {
       if (!V3.frus.intersectsSphere(_sph)) continue;
     }
     if (o.path || (o.T && o.T.mv)) { const mx = dx(o.x, o.lx ?? o.x), my = dy(o.y, o.ly ?? o.y); if (mx * mx + my * my > 1e-6 * o.fw * o.fw) o.yaw = Math.atan2(mx, my); o.lx = o.x; o.ly = o.y; }
+    const pm = o.fall && o.fall.m && MH;            // falling into the partner's hole
     if (o.tile) {
-      if (!poseOf(o, null, hx, hz, R)) continue;
+      if (!poseOf(o, null, pm ? MH[0] : hx, pm ? MH[1] : hz, pm ? MH[2] : R)) continue;
       const pul = o.look && !o.fall ? 1 + Math.sin(G.t * 6) * 0.08 : 1;
       const m = tileMesh(o); usedTiles.add(o); m.position.copy(_p3); m.quaternion.copy(_q); m.scale.set(_s3.x * pul, _s3.x * pul, _s3.x * pul); m.visible = true;
       if (o.look && !o.fall) { _m4.compose(_p3.setY(0.5), _qy.identity(), _s3.set(o.fw * 1.9, 1, o.fw * 1.9)); pushMerge(V3.mH, V3.quad); }
@@ -4287,7 +4778,7 @@ function drawWorld3D() {
     // a backdrop mountain you're standing on steps aside: you see its slopes (forest, snow, ski runs) instead of its cone
     if (o.backdrop && !G.cine && Math.hypot(dx(o.x, G.x), dy(o.y, G.y)) < o.fw * .55) continue;
     const md = modelOf(o); if (!md) continue;
-    if (!poseOf(o, md, hx, hz, R)) continue;
+    if (!poseOf(o, md, pm ? MH[0] : hx, pm ? MH[1] : hz, pm ? MH[2] : R)) continue;
     if (o.under && !o.fall && md.h) _s3.y = Math.min(_s3.y, R * 0.05 / md.h);   // a rug / the Moon's face lies flat, so the cut-out shows the pit right below
     _m4.compose(_p3, _q, _s3);
     const xr = !o.fall && hidesHole(o, md, hx, hz, R);
@@ -4306,6 +4797,22 @@ function drawWorld3D() {
   flushAll();
   for (const [o, m] of V3.tiles) if (!usedTiles.has(o)) { m.visible = false; if (o.dead || !G.tiles.includes(o)) { V3.scene.remove(m); V3.tiles.delete(o); } }
   V3.ren.render(V3.scene, V3.cam);
+}
+/* co-op: where the partner's hole is drawn ([camera-relative x, z, radius]), fading out after a disconnect; null when alone */
+function mateHole() {
+  const M = G.mate; if (!M || !G.C || (G.C.layered && M.fl !== G.fl)) return null;
+  const f = M.gone ? 1 - (performance.now() - M.gone) / 900 : 1;
+  if (f <= 0) { G.mate = null; return null; }
+  return [dx(M.x, G.cam.x), dy(M.y, G.cam.y), Math.max(0, (M.D || 0) / 2 * f)];
+}
+function pit2() {
+  if (V3.pit2) return V3.pit2;
+  const wu = { rim: { value: new THREE.Color('#4ff0d8') }, t: { value: 0 }, pulse: { value: 0 }, spin: { value: 1 } };
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 48, 1, true), new THREE.ShaderMaterial({ vertexShader: WALL_VS, fragmentShader: WALL_FS, uniforms: wu, side: THREE.BackSide }));
+  const fg = new THREE.CircleGeometry(1, 48); fg.rotateX(-Math.PI / 2);
+  const floor = new THREE.Mesh(fg, new THREE.ShaderMaterial({ vertexShader: WALL_VS, fragmentShader: FLOOR_FS, uniforms: wu }));
+  V3.pit2 = new THREE.Group(); V3.pit2.add(wall, floor); V3.scene.add(V3.pit2);
+  return V3.pit2;
 }
 /* far-away / tiny things: a single box in the model's main colour (same footprint and height) */
 const LOD_PX = 16;
@@ -4669,6 +5176,15 @@ function drawHUD() {
   drawRing(); drawMiniMap(); if (G.bigmap) drawBigMap();
   // compass arrows
   for (const c of G.compass) compassArrow(c.o, c.col);
+  if (G.mate && !G.mate.gone) {                       // co-op: the partner's name over their hole, or an arrow that points at them
+    const M = G.mate, p = [0, 0], X = dx(M.x, G.cam.x), Y = dy(M.y, G.cam.y), same = !C.layered || M.fl === G.fl;
+    if (same && toScreen(X, Y, 0, p) && p[0] > 40 && p[0] < STAGE_W - 40 && p[1] > 40 && p[1] < STAGE_H - 40) plate(M.name || 'P2', '', clamp(p[0], 90, STAGE_W - 90), clamp(p[1] - 46, 60, STAGE_H - 60), 17);
+    else compassArrow({ x: M.x, y: M.y, fl: C.layered ? M.fl : undefined }, '#4ff0d8', M.name || 'P2');
+  }
+  if (G.netPause) {
+    g.fillStyle = 'rgba(10,6,30,.72)'; rr(g, STAGE_W / 2 - 260, STAGE_H / 2 - 44, 520, 88, 22); g.fill();
+    txt('Paused by ' + G.netPause, STAGE_W / 2, STAGE_H / 2 - 10, 30, '#fff', 'center', 900); txt('The game goes on when they come back', STAGE_W / 2, STAGE_H / 2 + 22, 16, '#cfe', 'center');
+  }
   if (G.joy) {                                       // the floating joystick under the finger
     const j = G.joy, jx = j.x - j.x0, jy = j.y - j.y0, l = Math.hypot(jx, jy), k = l > JOY_R ? JOY_R / l : 1;
     g.fillStyle = 'rgba(255,255,255,.14)'; g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 3;
@@ -4730,7 +5246,7 @@ function drawModeHUD() {
   }
   txt('Tap ? for help', 398, h + 2, 12, '#9fdcff', 'right');
 }
-function compassArrow(o, col) {
+function compassArrow(o, col, label) {
   if (G.C.layered && G.C.routeTo && o.fl !== undefined && o.fl !== G.fl) o = G.C.routeTo(o);
   const p = [0, 0], X = dx(o.x, G.cam.x), Y = dy(o.y, G.cam.y);
   if (toScreen(X, Y, 0, p) && p[0] > 40 && p[0] < STAGE_W - 40 && p[1] > 40 && p[1] < STAGE_H - 40) return;
@@ -4741,6 +5257,7 @@ function compassArrow(o, col) {
   g.fillStyle = col; g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 3;
   g.beginPath(); g.moveTo(26, 0); g.lineTo(-12, -18); g.lineTo(-4, 0); g.lineTo(-12, 18); g.closePath(); g.stroke(); g.fill();
   g.restore();
+  if (label) txt(label, clamp(ex - Math.cos(a) * 44, 60, STAGE_W - 60), clamp(ey - Math.sin(a) * 34 + 6, 30, STAGE_H - 20), 17, col, 'center', 900);   // co-op: whose arrow
 }
 
 /* idle life (v5 A4): sunlight glints twinkle on open water. Points sit on a world grid sized to the view, so they stay
@@ -4807,7 +5324,10 @@ const UI = {
     $('hudbtns').classList.toggle('mode', name === 'game' && G.run.kind === 'edu');
     $('sizebtns').classList.toggle('on', name === 'game' && G.run.kind === 'explore');
     if (name !== 'game') { G.mode = 'menu'; G.joy = null; }
-    if (name === 'main' || name === 'chapters' || name === 'settings' || name === 'credits') G.inRun = false;   // left the run (overlays keep it)
+    if (name === 'main' || name === 'chapters' || name === 'settings' || name === 'credits') {
+      G.inRun = false;                                 // left the run (overlays keep it)
+      if (G.net && G.net.phase === 'play') G.net.end('left');   // co-op: leaving the stage ends the session (the other side carries on / goes home)
+    }
   },
   main() {
     const n = S.last, C = CH[n];
@@ -4831,12 +5351,13 @@ const UI = {
       el.innerHTML = `<div class="num">WORLD ${n}${st.c ? ' · COMPLETE' : ''}</div><div class="nm">${esc(C.name)}</div>${rows}
         <div class="row"><span>Coins</span><b>${fmt(st.w)}</b></div>
         ${!open ? `<div class="lock">${svg('lock')}</div><div class="acts" style="font-size:15px;opacity:.9">Finish World ${n - 1} in Story to unlock</div>`
-        : kind === 'story' ? `<div class="acts"><button class="btn sm green" data-play="${n}">${svg('play')} ${st.x == null ? 'PLAY' : 'RESUME'}</button><button class="btn sm blue" data-board="${n}">${svg('board')} BOARD</button></div>`
-        : `<div class="acts"><button class="btn sm green" data-play="${n}">${svg('play')} PLAY</button></div>`}`;
+        : (kind === 'story' ? `<div class="acts"><button class="btn sm green" data-play="${n}">${svg('play')} ${st.x == null ? 'PLAY' : 'RESUME'}</button><button class="btn sm blue" data-board="${n}">${svg('board')} BOARD</button></div>`
+        : `<div class="acts"><button class="btn sm green" data-play="${n}">${svg('play')} PLAY</button></div>`) + `<button class="btn sm pink coopb" data-coop="${n}">PLAY TOGETHER</button>`}`;
       box.appendChild(el);
     }
     box.querySelectorAll('[data-play]').forEach(b => b.onclick = () => startChapter(+b.dataset.play, kind));
     box.querySelectorAll('[data-board]').forEach(b => b.onclick = () => UI.board(+b.dataset.board, 'chapters'));
+    box.querySelectorAll('[data-coop]').forEach(b => b.onclick = () => UI.coopHost(+b.dataset.coop, kind));
     UI.show('chapters');
   },
   board(n, back) {
@@ -5008,7 +5529,17 @@ const UI = {
   pause() {
     if (G.mode !== 'play') return;
     G.paused = true; G.joy = null; persist();
-    const story = G.run.kind === 'story';
+    const story = G.run.kind === 'story', co = !!G.net;
+    if (co) {                                         // co-op: the pause is shared; restarting would pull the stage from under the other player
+      UI.modal(`<div class="h2">PAUSED</div><div style="font-size:18px;margin-bottom:8px">Playing with <b>${esc(G.net.mate)}</b>. They are paused too.</div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:center"><button class="btn green" id="p-res" style="width:380px">RESUME</button>
+        <button class="btn pink" id="p-menu" style="width:380px">LEAVE &amp; MAIN MENU</button>
+        <button class="btn grey" id="p-snd" style="width:380px">SOUND: ${S.settings.sound ? 'ON' : 'OFF'}</button></div>`);
+      $('p-res').onclick = UI.resume;
+      $('p-menu').onclick = () => { persist(); UI.closeModal(); G.paused = false; G.mode = 'menu'; UI.main(); };
+      $('p-snd').onclick = () => { S.settings.sound = S.settings.sound ? 0 : 1; persist(); syncSoundBtn(); $('p-snd').textContent = 'SOUND: ' + (S.settings.sound ? 'ON' : 'OFF'); };
+      return;
+    }
     UI.modal(`<div class="h2">PAUSED</div>
       <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
       <button class="btn green" id="p-res" style="width:380px">RESUME</button>
@@ -5061,6 +5592,79 @@ const UI = {
     $('q-help').onclick = () => { G.helpOn = MODES.edu.target(); if (G.helpOn) SFX2.ping(); UI.resume(); };
     $('q-close').onclick = UI.resume;
   },
+  /* ----- co-op (v5.1): PLAY TOGETHER (host) / JOIN A FRIEND (guest) ----- */
+  note(msg, ms) {
+    const el = $('note'); el.textContent = msg; el.classList.add('on'); clearTimeout(UI.noteT);
+    UI.noteT = setTimeout(() => el.classList.remove('on'), ms || 4200);
+  },
+  noNet() { UI.note("Can't connect right now. Check the Wi-Fi with a grown-up, then try again!"); },
+  /* the display name is typed once and kept in the save settings */
+  needName(next) {
+    if (S.settings.name) return next();
+    UI.modal(`<div class="h2">WHAT'S YOUR NAME?</div><p style="font-size:19px">Your friend will see it over your hole.</p>
+      <input class="nm" id="nm-in" maxlength="12" autocomplete="off" spellcheck="false" placeholder="Your name"><br>
+      <button class="btn green" id="nm-ok">OK</button><button class="btn grey" id="nm-no">CANCEL</button>`);
+    const inp = $('nm-in'); setTimeout(() => inp.focus(), 50);
+    $('nm-ok').onclick = () => { const v = W8.name(inp.value); if (!inp.value.trim()) { inp.focus(); return; } S.settings.name = v; persist(); UI.closeModal(); next(); };
+    $('nm-no').onclick = UI.closeModal;
+  },
+  coopMsg(t) { const el = $('coop-msg'); if (el) el.textContent = t; },
+  coopHost(n, kind) {
+    audioInit();
+    if (G.net) G.net.end('cancel');
+    UI.needName(() => NET.load(ok => {
+      if (!ok) return UI.noNet();
+      const nm = { story: 'STORY', ispy: 'I SPY', edu: 'EDUCATIONAL', explore: 'EXPLORATION' }[kind];
+      UI.modal(`<div class="h2">PLAY TOGETHER</div><div style="font-size:20px">${nm} · World ${n}: <b>${esc(CH[n].name)}</b></div>
+        <div style="font-size:19px;margin-top:14px">Tell your friend this code:</div><div class="codebox" id="coop-code">······</div>
+        <div style="font-size:19px" id="coop-msg">Getting a room ready…</div><button class="btn grey" id="coop-x">CANCEL</button>`);
+      const N = G.net = netSession('host', { n, kind });
+      $('coop-x').onclick = () => { N.end('cancel'); UI.closeModal(); };
+      const go = tries => {
+        N.hostH = NET.host({
+          ready(code) { if (G.net !== N) return; N.code = code; $('coop-code') && ($('coop-code').textContent = code); UI.coopMsg('Waiting for your friend to type it in…'); },
+          link(L) { if (G.net !== N) return L.close(); N.attach(L); UI.coopMsg('Your friend is here!'); },
+          fail(why) { if (G.net !== N) return; if (why === 'retry' && tries < 3) return go(tries + 1); N.end('cancel'); UI.closeModal(); UI.noNet(); },
+        });
+      };
+      go(0);
+    }));
+  },
+  /* fromKind: the mode picker it was tapped on (the host must be in that mode); null from the title screen */
+  coopJoin(fromKind) {
+    audioInit();
+    if (G.net) G.net.end('cancel');
+    UI.needName(() => NET.load(ok => {
+      if (!ok) return UI.noNet();
+      UI.modal(`<div class="h2">JOIN A FRIEND</div><div style="font-size:19px;margin-bottom:10px">Type the 6 letters from your friend's iPad:</div>
+        <input id="j-code" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text"><br>
+        <div style="font-size:18px;min-height:26px;margin:6px 0" id="coop-msg"></div>
+        <button class="btn green" id="j-go">JOIN</button><button class="btn grey" id="j-x">CANCEL</button>`);
+      const inp = $('j-code'); setTimeout(() => inp.focus(), 50);
+      inp.oninput = () => { inp.value = inp.value.toUpperCase().replace(/0/g, 'O').replace(/[^A-Z]/g, '').replace(/[IO]/g, '').slice(0, 6); };
+      $('j-x').onclick = () => { if (G.net) G.net.end('cancel'); UI.closeModal(); };
+      $('j-go').onclick = () => {
+        const code = inp.value.toUpperCase();
+        if (!NET.okCode(code)) return UI.coopMsg('A room code has 6 letters.');
+        if (G.net) G.net.end('cancel');
+        const N = G.net = netSession('guest', { fromKind: fromKind || null, code });
+        UI.coopMsg('Looking for your friend…');
+        N.joinH = NET.join(code, {
+          link(L) { if (G.net !== N) return L.close(); N.attach(L); N.send({ t: 'hello', v: GAME_V, name: myName() }); UI.coopMsg('Found them! Saying hello…'); },
+          fail(why) { if (G.net !== N) return; N.ended = true; G.net = null; UI.coopMsg(why === 'noroom' ? 'No game with that code. Check the letters with your friend!' : "Can't connect right now. Check the Wi-Fi and try again!"); },
+        });
+      };
+    }));
+  },
+  /* the guest's end-of-run card: the host chooses what happens next (their pause/resume closes this) */
+  coopWin(kind, bonus) {
+    UI.coopWinOpen = true; G.joy = null;
+    const C = G.C, who = G.net ? esc(G.net.mate) : 'your friend';
+    UI.modal(`<div class="h2">${kind === 'ispy' ? 'I SPY · YOU FOUND THEM ALL!' : kind === 'edu' ? 'LESSON SET COMPLETE!' : 'WORLD COMPLETE!'}</div>
+      ${bonus ? `<p style="font-size:22px;color:#ffd96a">+${fmt(bonus)} coins for ${esc(C.short)}</p>` : `<p style="font-size:21px">You and ${who} did it together!</p>`}
+      <p style="font-size:18px">Waiting for ${who} to pick what's next…</p><button class="btn grey" id="cw-menu">MAIN MENU</button>`);
+    $('cw-menu').onclick = () => { UI.coopWinOpen = false; UI.closeModal(); G.paused = false; UI.main(); };
+  },
   credits() {
     UI.show('credits'); G.mode = 'menu';
     $('credits-roll').innerHTML = `<div style="font-size:64px;font-weight:900;color:#ffd23f">YOU ARE THE BLACK HOLE</div><br>
@@ -5081,7 +5685,9 @@ function buyUpgrade(ch, i) {
   const st = S.ch[ch], lv = st.up[i];
   if (lv >= 10) return false;
   const c = upCost(ch, lv + 1); if (st.w < c) return false;
-  st.w -= c; st.up[i]++; persist(); return true;
+  st.w -= c; st.up[i]++; persist();
+  if (G.net && G.net.role === 'guest' && G.C && G.C.n === ch && G.st !== st) { G.st.up = st.up.slice(); G.st.w = st.w; G.net.ups(); }
+  return true;
 }
 /* v5.1 Exploration sandbox: set an upgrade level on the run's session copy (never the save); it applies live */
 function sandSet(i, lv) { if (G.run.kind !== 'explore' || G.st === S.ch[G.C.n]) return false; G.st.up[i] = clamp(Math.round(lv) || 0, 0, 10); if (G.net) G.net.ups(); return true; }
@@ -5147,6 +5753,8 @@ $('b-explore').onclick = () => { audioInit(); UI.chapters('explore'); };
 $('b-bigger').onclick = () => { if (G.run.kind === 'explore') MODES.explore.resize(1.6); };
 $('b-smaller').onclick = () => { if (G.run.kind === 'explore') MODES.explore.resize(1 / 1.6); };
 $('b-ispy').onclick = () => { audioInit(); UI.chapters('ispy'); };
+$('b-join').onclick = () => UI.coopJoin(null);
+$('b-join-pick').onclick = () => UI.coopJoin(UI.chKind || null);
 $('b-edu').onclick = () => { audioInit(); UI.chapters('edu'); };
 $('b-quest-hud').innerHTML = svg('help');
 $('b-up-hud').onclick = () => { if (G.mode !== 'play') return; G.paused = true; G.joy = null; persist(); UI.upgrades(G.C.n, true); };
@@ -5165,8 +5773,9 @@ let last = performance.now();
 function frame(now) {
   const raw = (now - last) / 1000, dt = Math.min(0.05, raw); last = now;
   G.now = now; G.t += dt; adaptRes(Math.min(0.2, raw));
-  if (G.mode === 'play' && !G.paused) update(dt);
+  if (G.mode === 'play' && !G.paused && !G.netPause) update(dt);
   render(); syncMusic();
+  if (G.net) G.net.tick();
   requestAnimationFrame(frame);
 }
 initGL(); fit(); makeUpIcons(); syncSoundBtn(); UI.main();
@@ -5175,7 +5784,7 @@ requestAnimationFrame(frame);
 /* test hook for automated checks (harmless in play) */
 window.HH = { get S() { return S; }, G, CH, UI, prep, loadChapter, startChapter, eat, holeD, need, addXP, bankerTransfer, bankerArrive, buyUpgrade, upCost,
   setHoleD, ringNow, goals, capD, miniRect, syncBeat, solidPush, solidBoxes,
-  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole, labelOn, poseOf, sandSet, MODES, genCell, tierOf, mkObj, debugAudio, syncMusic };
+  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole, labelOn, poseOf, sandSet, NET, W8, asMate, objByNid, setHash, get net() { return G.net; }, MODES, genCell, tierOf, mkObj, debugAudio, syncMusic };
 </script>
 </body>
 </html>
