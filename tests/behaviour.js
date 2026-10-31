@@ -6,7 +6,8 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
   const errs = []; p.on('pageerror', e => errs.push('PAGEERR ' + e.message + (process.env.STACK ? e.stack : ''))); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
   await p.goto(URL); await p.evaluate(() => localStorage.setItem('family-other-app', 'keep-me')); await p.reload(); await p.waitForTimeout(300);
   const results = [];
-  const T = async (name, fn) => { try { const r = await p.evaluate(fn); results.push([name, r.ok, r.info]); } catch (e) { results.push([name, false, e.message]); } };
+  const ONLY = process.env.ONLY && new RegExp(process.env.ONLY);   // (ONLY=regex runs just the matching named tests)
+  const T = async (name, fn) => { if (ONLY && !ONLY.test(name)) return; try { const r = await p.evaluate(fn); results.push([name, r.ok, r.info]); } catch (e) { results.push([name, false, e.message]); } };
   const STEP = `const step = n => { for (let i = 0; i < n; i++) { HH.G.now += 33; HH.G.t += 1 / 30; HH.update(1 / 30); } };`;
 
   await T('fits: tips in, falls, then is eaten', new Function(STEP + `
@@ -236,6 +237,19 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     G.exSpd = 1; document.getElementById('spdval').textContent = '100%'; HH.startChapter(1); step(1);
     const ok = HH.BASE_X === 2 && lab0 === '100%' && lab === '35%' && Math.abs(vSlow / v100 - 0.35) < 0.08 && floor === '10%' && !leaked && vStory > v100 * 0.5 && storyLab === '10%';
     return { ok, info: { BASE_X: HH.BASE_X, lab0, lab, ratio: +(vSlow / v100).toFixed(2), floor, vStory: +vStory.toFixed(2), v100: +v100.toFixed(2), leaked } };`));
+
+  await T('Globe sky (v5.2 Part 15): no UFO filler and no saucer-like storms; exactly two hidden UFOs in fixed seeded spots; clouds and coins at high altitude', new Function(STEP + `
+    const { G, S, CH } = HH; S.ch[4].u = 1; HH.startChapter(4, 'explore'); step(1); const C = G.C;
+    const ufos = G.auth.filter(o => o.k === 'ufo'), spots = ufos.map(o => Math.round(o.x) + ',' + Math.round(o.y)).join(' ');
+    HH.startChapter(4, 'explore'); step(1); const spots2 = G.auth.filter(o => o.k === 'ufo').map(o => Math.round(o.x) + ',' + Math.round(o.y)).join(' ');
+    const kinds = {}; let coinsHi = 0, cellsHi = 0;
+    for (let t = 1; t <= C.N; t++) { const cs = C.LC[t], nx = Math.round(C.W / cs), ny = Math.round(C.H / cs);
+      for (let i = 0; i < 400; i++) { const a = HH.genCell(t, Math.floor(Math.random() * nx), Math.floor(Math.random() * ny)); if (t >= 8) cellsHi++;
+        for (const o of a) { if (o.coin || o.k === 'coin') { if (t >= 8) coinsHi++; continue; } if (t >= 8) kinds[o.k] = (kinds[o.k] || 0) + 1; if (o.k === 'ufo') kinds.UFO_FILLER = 1; } } }
+    const noStorm = !Object.keys(C.T).some(k => /storm|hurricane|supercell/.test(k));
+    const hiOk = Object.keys(kinds).every(k => /^cloud|range|mountain|iceberg|icecap/.test(k));
+    HH.startChapter(1); step(1);
+    return { ok: ufos.length === 2 && spots === spots2 && !kinds.UFO_FILLER && noStorm && hiOk && coinsHi > 0, info: { ufos: ufos.length, spots, same: spots === spots2, hiKinds: kinds, coinsHi, cellsHi, noStorm } };`));
 
   await T('upgrade buy spends the chapter wallet only', new Function(`
     const { S } = HH; S.ch[1].w = 100; S.ch[2].w = 77; S.ch[1].up[0] = 0;

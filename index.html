@@ -1741,7 +1741,7 @@ const CH = [null];
   }
   CH.push({
     n: 4, key: 'globe', mus: 'ch5.mp3', name: 'The Globe', short: 'Globe', c1: '#ff9800', c2: '#b34700', bgc: OCEAN, rim: '#ffd23f',
-    W, H, wrap: 1, poleFold: 1, spd: 3, upSpd: 2, runSpd: 5, eduMin: 25, start: P(-123.160, 49.262), cost: 3, need: 160, needP: 1.5, xpk: 2.5, pv: 2, view: 13, fill: .25,
+    W, H, wrap: 1, poleFold: 1, coinHi: [7, .3], spd: 3, upSpd: 2, runSpd: 5, eduMin: 25, start: P(-123.160, 49.262), cost: 3, need: 160, needP: 1.5, xpk: 2.5, pv: 2, view: 13, fill: .25,
     sizes: SIZES,
     real: SIZES.map(s => s * 278),                                     // one map unit is 278 metres
     tagN: { wonder: 'World Wonder', landmark: 'landmark', themepark: 'theme park', tree: 'tree' },
@@ -1761,8 +1761,9 @@ const CH = [null];
       whale: ['whale', 1, { m: [1.1, .35], mv: 'w' }], orca: ['orca', 1, { m: [1, .35], mv: 'w' }], shark: ['shark', 1, { m: [.9, .3], mv: 'w' }], dune: ['sand dune', 1, { m: [1.3, .4] }],
       skyline: ['city centre', 1, { m: [3.5, 6] }], hill: ['big hill', 1, { m: [3.6, 1.2] }], mesa: ['mesa', 1, { m: [3.2, 1.3] }], bluewhale: ['blue whale', 1, { m: [3.5, 1], mv: 'w' }],
       iceberg: ['iceberg', 1, { m: [3.2, 1.6], mv: 'w' }], mountain: ['mountain', 1, { m: [9, 5] }], icecap: ['ice cap', 1, { m: [9, 3] }],
-      cloud: ['cloud', 1, { m: [22, 8], mv: 'fly' }], storm: ['storm', 1, { m: [55, 15], mv: 'fly' }], range: ['mountain range', 1, { m: [55, 18] }],
-      bigstorm: ['big storm', 1, { m: [140, 30], mv: 'fly' }], hurricane: ['hurricane', 1, { m: [350, 60], mv: 'fly' }], supercell: ['giant storm system', 1, { m: [900, 120], mv: 'fly' }],
+      cloud: ['cloud', 1, { m: [22, 8], mv: 'fly' }], cloud2: ['big cloud', 1, { m: [55, 15], mv: 'fly' }], range: ['mountain range', 1, { m: [55, 18] }],
+      cloud3: ['cloud bank', 1, { m: [140, 30], mv: 'fly' }], cloud4: ['giant cloud', 1, { m: [350, 60], mv: 'fly' }], cloud5: ['sea of clouds', 1, { m: [900, 120], mv: 'fly', pl: 'seas of clouds' }],
+      ufo: ['UFO', 1, { m: [8, 3], mv: 'fly' }],    // v5.2 Part 15: never scattered; two hidden ones are placed in build()
       flag: ['flag', 1, { m: [20, 30], tags: 'flag' }], hat: ['top hat', 1, { m: [.012, .01] }],
       eiffel: ['Eiffel Tower', 1, { tags: 'landmark' }], liberty: ['Statue of Liberty', 1, { tags: 'landmark' }], bigben: ['Big Ben', 1, { tags: 'landmark' }], opera: ['Sydney Opera House', 1, { tags: 'landmark' }],
       pyramids: ['Pyramids of Giza', 1, { tags: 'landmark', pl: 'Pyramids of Giza' }], marina: ['Marina Bay Sands', 1, { tags: 'landmark' }], basil: ["St Basil's Cathedral", 1, { tags: 'landmark' }],
@@ -1772,14 +1773,14 @@ const CH = [null];
       lm_themepark: ['theme park', 1, { tags: 'landmark,themepark' }],
     }, Object.fromEntries([...new Set(LMS.filter(l => l.k && l.k.startsWith('lm_')).map(l => l.k)), 'lm_palace'].filter(k => k !== 'lm_themepark').map(k => [k, ['landmark', 1, { tags: 'landmark' }]]))),
     zones: {
-      city: { d: 1.1, coin: .3, at: onStreet, t: ['car:4,tree:2,hat:.04', 'house:4,bus,truck', 'lowrise:3,shop,church', 'tower:3,stadium:.3,factory', 'hotel:3', 'skyline:2', 'skyline', 'cloud', 'storm', 'bigstorm', 'hurricane', 'supercell'] },
-      farm: { d: .8, t: ['tree:3,cow:2,shed', 'barn:2,farmhouse:2,truck', 'farm:2,silo', 'factory:.5,castle:.3', 'forest:2', 'hill', 'mountain:.5', 'cloud', 'range:.5,storm', 'bigstorm', 'hurricane', 'supercell'] },
-      boreal: { d: .7, t: ['pine:4,moose', 'cabin:2', 'farm:.3', 'castle:.1', 'forest:3', 'hill', 'mountain', 'cloud', 'range,storm', 'bigstorm', 'hurricane', 'supercell'] },
-      jungle: { d: .8, t: ['palm:3,parrot', 'hut:2', 'temple:.3', '', 'rainforest:3', 'hill', 'mountain:.5', 'cloud', 'storm', 'bigstorm', 'hurricane', 'supercell'] },
-      desert: { d: .6, t: ['cactus:2,camel', 'tent:2', 'oasis', '', 'dune:2', 'mesa', 'dune', 'cloud:.3', 'storm:.4', 'bigstorm', 'hurricane', 'supercell'] },
-      ice: { d: .5, coin: .1, at: poleOk, t: ['penguin:3,polarbear:2', 'igloo:.5,seal:2', '', '', 'iceberg', 'iceberg', 'icecap', 'cloud', 'storm', 'bigstorm', 'hurricane', 'supercell'] },
-      ocean: { d: .35, coin: .08, t: ['boat', 'sailboat:2', 'fishboat:2', 'cargo:2', 'cruise,whale,orca,shark', 'bluewhale:.6,cargo', '', 'cloud:.5', 'storm', 'bigstorm', 'hurricane', 'supercell'] },
-      polar: { d: .35, coin: .08, t: ['seal', 'boat:.3', '', '', 'orca,whale', 'iceberg:2', 'iceberg', 'cloud', 'storm', 'bigstorm', 'hurricane', 'supercell'] },
+      city: { d: 1.1, coin: .3, at: onStreet, t: ['car:4,tree:2,hat:.04', 'house:4,bus,truck', 'lowrise:3,shop,church', 'tower:3,stadium:.3,factory', 'hotel:3', 'skyline:2', 'skyline', 'cloud', 'cloud2', 'cloud3', 'cloud4', 'cloud5'] },
+      farm: { d: .8, t: ['tree:3,cow:2,shed', 'barn:2,farmhouse:2,truck', 'farm:2,silo', 'factory:.5,castle:.3', 'forest:2', 'hill', 'mountain:.5', 'cloud', 'range:.5,cloud2', 'cloud3', 'cloud4', 'cloud5'] },
+      boreal: { d: .7, t: ['pine:4,moose', 'cabin:2', 'farm:.3', 'castle:.1', 'forest:3', 'hill', 'mountain', 'cloud', 'range,cloud2', 'cloud3', 'cloud4', 'cloud5'] },
+      jungle: { d: .8, t: ['palm:3,parrot', 'hut:2', 'temple:.3', '', 'rainforest:3', 'hill', 'mountain:.5', 'cloud', 'cloud2', 'cloud3', 'cloud4', 'cloud5'] },
+      desert: { d: .6, t: ['cactus:2,camel', 'tent:2', 'oasis', '', 'dune:2', 'mesa', 'dune', 'cloud:.3', 'cloud2:.4', 'cloud3', 'cloud4', 'cloud5'] },
+      ice: { d: .5, coin: .1, at: poleOk, t: ['penguin:3,polarbear:2', 'igloo:.5,seal:2', '', '', 'iceberg', 'iceberg', 'icecap', 'cloud', 'cloud2', 'cloud3', 'cloud4', 'cloud5'] },
+      ocean: { d: .35, coin: .08, t: ['boat', 'sailboat:2', 'fishboat:2', 'cargo:2', 'cruise,whale,orca,shark', 'bluewhale:.6,cargo', '', 'cloud:.5', 'cloud2', 'cloud3', 'cloud4', 'cloud5'] },
+      polar: { d: .35, coin: .08, t: ['seal', 'boat:.3', '', '', 'orca,whale', 'iceberg:2', 'iceberg', 'cloud', 'cloud2', 'cloud3', 'cloud4', 'cloud5'] },
       lake: { d: .5, coin: .1, t: ['boat:2', 'sailboat:2', 'fishboat'] },
     },
     zoneAt,
@@ -1810,6 +1811,9 @@ const CH = [null];
         const o = add(l.k, l.x, l.y, { keep: 1, id: l.id, label: l.label, sub: l.sub, cc: l.cc, fact: l.fact, quiet: 1 });
         sized(o, fw);
       }
+      // v5.2 Part 15: the sky is clouds, coins and mountain ranges; just TWO UFOs hide somewhere on the planet as rare finds
+      // (placed by the world's own seeded random, so they are always in the same two secret spots)
+      for (let i = 0; i < 2; i++) { const x = rng() * W, y = (25 + rng() * 130) * D; add('ufo', x, y, { keep: 1, id: 'ufo' + (i + 1), label: 'a UFO!', sub: 'a rare find', quiet: 1 }); }
       // "Find the country" flags (Educational only), planted at each country's heart
       for (const cc of Object.keys(HEART)) if (CTRY[cc]) add('flag', ...CTRY[cc].at, { keep: 1, id: 'flag_' + cc, label: 'Flag of ' + CTRY[cc].nm, quiet: 1, cc, nosolid: 1 });
       // the start street: a few cars driving round the blocks near home (moving traffic at house size)
@@ -2655,7 +2659,7 @@ function genCell(t, cx, cy) {
   const rc = rng();
   if (rc < 0.3) {
     const x = (gx + rng()) * cs, y = (gy + rng()) * cs, z = zoneOf(C, x, y);
-    if (z && C.Z[z] && !C.Z[z].deco && rc < C.Z[z].coin * 0.5) out.push(mkObj(C, 'coin', x, y, { t, s: 0.75, val: Math.max(1, Math.round(PTS[t] * C.cost / 4)), fl: C.layered ? G.fl : undefined }));
+    if (z && C.Z[z] && !C.Z[z].deco && rc < Math.max(C.Z[z].coin || 0, C.coinHi && t >= C.coinHi[0] ? C.coinHi[1] : 0) * 0.5) out.push(mkObj(C, 'coin', x, y, { t, s: 0.75, val: Math.max(1, Math.round(PTS[t] * C.cost / 4)), fl: C.layered ? G.fl : undefined }));
   }
   return out;
 }
@@ -4476,8 +4480,8 @@ const MODEL = (() => {
   const PER = { // per-chapter meanings of shared ids
     // v5 Globe: filler looks and landmark looks (type lm_<look>)
     'globe:boat': ['boat', { a: '#fafafa', b: '#1e88e5', cab: .5, d: 2.4 }], 'globe:hut': ['hut', {}], 'globe:farm': ['bld', { a: '#c8a46a', h: .35, fl: 1, roof: .3 }], 'globe:oasis': ['palm', {}],
-    'globe:rainforest': ['forest', { }], 'globe:dune': ['dunes', {}], 'globe:mountain': ['mountain', { h: .6 }], 'globe:icecap': ['glacier', {}], 'globe:storm': ['storm', {}], 'globe:range': ['mountain', { h: .4, seg: 7 }],
-    'globe:bigstorm': ['storm', {}], 'globe:hurricane': ['storm', {}], 'globe:supercell': ['storm', {}], 'globe:hat': ['tophat', { a: '#222' }], 'globe:seal': ['blob', { a: '#78909c', h: .7 }], 'globe:tent': ['tent', { a: '#e0c090' }],
+    'globe:rainforest': ['forest', { }], 'globe:dune': ['dunes', {}], 'globe:mountain': ['mountain', { h: .6 }], 'globe:icecap': ['glacier', {}], 'globe:cloud2': ['cloud', {}], 'globe:range': ['mountain', { h: .4, seg: 7 }],
+    'globe:cloud3': ['cloud', {}], 'globe:cloud4': ['cloud', {}], 'globe:cloud5': ['cloud', {}],   // v5.2 Part 15: the old storm rings read as flying saucers; the sky is clouds now 'globe:hat': ['tophat', { a: '#222' }], 'globe:seal': ['blob', { a: '#78909c', h: .7 }], 'globe:tent': ['tent', { a: '#e0c090' }],
     'globe:lm_pool': ['pool', {}], 'globe:lm_rock': ['rock', { a: '#c1572e', h: .45 }], 'globe:lm_dome': ['geodome', {}], 'globe:lm_sails': ['sails', {}], 'globe:lm_bridge': ['gbridge', {}], 'globe:lm_spire': ['spire', {}], 'globe:lm_falls': ['falls', {}], 'globe:lm_palace': ['palace', {}], 'globe:lm_castle': ['castle', {}], 'globe:lm_mountain': ['mountain', {}], 'globe:lm_lighthouse': ['lighthouse', {}], 'globe:lm_stadium': ['stadium', {}], 'globe:lm_polarbear': ['quad', { a: '#fafafa', d: 1.9, lh: .55, ears: 1 }], 'globe:lm_skyscraper': ['tower', { hh: 7, n: 16, spire: 1.2 }], 'globe:lm_geyser': ['geyser', {}], 'globe:lm_dam': ['dam', {}], 'globe:lm_rocket': ['rocket', {}], 'globe:lm_volcano': ['volcano', {}], 'globe:lm_obelisk': ['obelisk', {}], 'globe:lm_fort': ['fort', {}], 'globe:lm_liberty': ['liberty', {}], 'globe:lm_steppyr': ['steppyr', {}], 'globe:lm_statue': ['statue', {}], 'globe:lm_ruins': ['ruins', {}], 'globe:lm_canyon': ['rockarch', {}], 'globe:lm_reef': ['reef', {}], 'globe:lm_church': ['church', {}], 'globe:lm_forest': ['forest', {}], 'globe:lm_ship': ['ship', { a: '#37474f', b: '#e53935', box: 1, d: 4.5 }], 'globe:lm_oldcar': ['car', { a: '#26c6da', d: 2.4 }], 'globe:lm_island': ['island', {}], 'globe:lm_pig': ['quad', { a: '#f8bbd0', d: 1.3, lh: .3, ears: 1 }], 'globe:lm_saltflat': ['saltflat', {}], 'globe:lm_christ': ['christ', {}], 'globe:lm_opera': ['opera', {}], 'globe:lm_crown': ['crown', {}], 'globe:lm_glacier': ['glacier', {}], 'globe:lm_machu': ['machu', {}], 'globe:lm_nazca': ['nazca', {}], 'globe:lm_rainbow': ['rainbow', {}], 'globe:lm_moai': ['moai', {}], 'globe:lm_dunes': ['dunes', {}], 'globe:lm_mesa': ['mesa', { a: '#b5653a' }], 'globe:lm_turtle': ['turtle', {}], 'globe:lm_gondola': ['gondola', {}], 'globe:lm_hand': ['hand', {}], 'globe:lm_penguin': ['blob', { a: '#263238', h: 1.6 }], 'globe:lm_eiffel': ['eiffel', {}], 'globe:lm_glasspyr': ['glasspyr', {}], 'globe:lm_bigben': ['bigben', {}], 'globe:lm_shard': ['shard', {}], 'globe:lm_towerbridge': ['towerbridge', {}], 'globe:lm_wheel': ['wheel', {}], 'globe:lm_stones': ['stones', {}], 'globe:lm_cliff': ['cliff', {}], 'globe:lm_spires': ['spires', {}], 'globe:lm_glass': ['glass', {}], 'globe:lm_colosseum': ['colosseum', {}], 'globe:lm_pisa': ['pisa', {}], 'globe:lm_windmill': ['windmill', {}], 'globe:lm_canal': ['canal', {}], 'globe:lm_atomium': ['atomium', {}], 'globe:lm_tower': ['tower', { hh: 3 }], 'globe:lm_peak': ['mountain', { h: 1.3, a: '#8a8f94', b: '#7a7f84' }], 'globe:lm_parthenon': ['parthenon', {}], 'globe:lm_bluedome': ['bluedome', {}], 'globe:lm_cabin': ['cabin', {}], 'globe:lm_igloo': ['igloo', {}], 'globe:lm_yacht': ['boat', { a: '#fafafa', cab: .4, d: 3 }], 'globe:lm_basil': ['basil', {}], 'globe:lm_train': ['train', {}], 'globe:lm_tiger': ['quad', { a: '#ef8f2a', b: '#3a2a1a', d: 2, lh: .6, ears: 1 }], 'globe:lm_reindeer': ['quad', { a: '#8d6e63', horn: '#ddd', d: 1.7, lh: .8 }], 'globe:lm_mosque': ['mosque', {}], 'globe:lm_balloon': ['balloon', {}], 'globe:lm_terraces': ['terraces', {}], 'globe:lm_burj': ['burj', {}], 'globe:lm_petra': ['petra', {}], 'globe:lm_crater': ['volcano', { a: '#8a6a4a' }], 'globe:lm_soldiers': ['soldiers', {}], 'globe:lm_karst': ['karst', {}], 'globe:lm_panda': ['quad', { a: '#fafafa', head: '#fafafa', leg: '#222', ears: 1, d: 1.6, lh: .4 }], 'globe:lm_skyline': ['skyline', {}], 'globe:lm_fuji': ['mountain', { h: .75, a: '#6a7fa8', b: '#5a6f98', seg: 11 }], 'globe:lm_tokyotower': ['tokyotower', {}], 'globe:lm_skytree': ['skytree', {}], 'globe:lm_shrine': ['shrine', {}], 'globe:lm_temple': ['temple', {}], 'globe:lm_pagoda': ['pagoda', {}], 'globe:lm_taj': ['taj', {}], 'globe:lm_arch': ['arch', {}], 'globe:lm_stupa': ['stupa', {}], 'globe:lm_angkor': ['angkor', {}], 'globe:lm_lantern': ['lantern', {}], 'globe:lm_twins': ['twins', {}], 'globe:lm_hills': ['hills', {}], 'globe:lm_lizard': ['lizard', { a: '#6d6a52' }], 'globe:lm_felucca': ['boat', { a: '#8d6e63', mast: 2.2, d: 2.4 }], 'globe:lm_mudmosque': ['mudmosque', {}], 'globe:lm_rockarch': ['rockarch', {}], 'globe:lm_hut': ['hut', {}], 'globe:lm_baobab': ['baobab', {}], 'globe:lm_lemur': ['quad', { a: '#9e9e9e', b: '#222', d: 1.2, lh: .4, ears: 1 }], 'globe:lm_giraffe': ['quad', { a: '#f2c14e', b: '#a0601a', spots: 1, neck: 2.2, lh: 1.6, d: 1.8 }], 'globe:lm_elephant': ['quad', { a: '#9e9e9e', trunk: 1, ears: 1, d: 2.2, lh: 1.2 }], 'globe:lm_gorilla': ['blob', { a: '#3a3a3a', h: 1.2 }], 'globe:lm_kangaroo': ['quad', { a: '#b5824e', d: 1.4, lh: .9, neck: .5, ears: 1 }], 'globe:lm_station': ['polarbase', {}], 'globe:lm_themepark': ['themepark', {}], 'globe:lm_everest': ['mountain', { h: 1.1, a: '#7b7f86', b: '#6b6f76', seg: 9 }], 'globe:lm_greatwall': ['greatwall', {}], 'globe:lm_pyramids': ['pyramids', {}], 'globe:lm_marina': ['marina', {}],
     'space:moon': ['moonflat', {}], 'space:moondust': ['planet', { a: '#bdbdbd', b: '#9e9e9e' }], 'space:pebble': ['rock', { a: '#8f8f8f' }], 'space:moonrock': ['rock', { a: '#9a9a9a', h: .7 }], 'space:boot': ['bootprint', {}],
     'space:camera': ['camera', {}], 'space:flag': ['usflag', {}], 'space:apolloflag': ['usflag', {}], 'space:seismo': ['seismo', {}], 'space:lunarrover': ['rover', {}], 'space:lander': ['lander', {}], 'space:crater': ['crater', {}], 'space:moonhill': ['hill', { a: '#9a9a9a' }], 'space:bigcrater': ['crater', {}],
