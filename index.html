@@ -97,15 +97,19 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
 @keyframes flycoin{0%{transform:translate(0,0);opacity:1}100%{transform:translate(260px,-10px);opacity:0}}
 .banker{animation:bob 1.2s ease-in-out infinite;transform-origin:50% 90%}
 .flycoin{animation:flycoin .8s ease-in forwards}
-#s-main .strip{position:absolute;left:0;right:0;bottom:0;height:112px;background:#fff6d8;border-top:4px solid #f0d488;box-sizing:border-box;padding:14px 96px 16px 16px;display:flex;gap:14px}
+#s-main .strip{position:absolute;left:0;right:0;bottom:0;height:150px;background:#fff6d8;border-top:4px solid #f0d488;box-sizing:border-box;padding:14px 96px 16px 16px;display:flex;gap:14px}
 .mbtn{flex:1;display:flex;align-items:center;justify-content:center;gap:12px;border-radius:20px;font-weight:900;font-size:30px;letter-spacing:1px;color:#3a1d00;background:linear-gradient(#ffcf4a,#f59e0b);box-shadow:0 6px 0 #a35c00,0 8px 14px rgba(80,50,0,.25)}
 .mbtn:active{transform:translateY(4px);box-shadow:0 2px 0 #a35c00}
 .mbtn.blue{background:linear-gradient(#6ad1ff,#2b8fe0);color:#06213b;box-shadow:0 6px 0 #165a96,0 8px 14px rgba(0,40,80,.25)}
 .mbtn.green{background:linear-gradient(#8ef08e,#2eb84a);color:#06300f;box-shadow:0 6px 0 #18752c,0 8px 14px rgba(0,60,20,.25)}
 .mbtn.pink{background:linear-gradient(#ff9ad5,#e0459b);color:#3b0626;box-shadow:0 6px 0 #92245f,0 8px 14px rgba(80,0,40,.25)}
 .mbtn .mi{font-size:38px;display:flex}
-#b-settings{position:absolute;right:18px;bottom:26px;width:58px;height:58px;font-size:28px;background:#c9b77a;border-color:#fff}
-#main-sub{position:absolute;left:0;right:0;bottom:122px;text-align:center;font-size:19px;font-weight:800;color:#fff;text-shadow:0 2px 4px #000}
+#b-settings{position:absolute;right:16px;bottom:22px;width:84px;height:84px;padding:0;background:none}
+.art img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;-webkit-user-drag:none}
+.mbtn.art{background:none;box-shadow:none;padding:0}
+.mbtn.art:active,#b-settings:active{transform:translateY(3px) scale(.98);box-shadow:none}
+.art .lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+#main-sub{position:absolute;left:0;right:0;bottom:158px;text-align:center;font-size:19px;font-weight:800;color:#fff;text-shadow:0 2px 4px #000}
 #sizebtns{position:absolute;right:20px;top:250px;display:none;flex-direction:column;align-items:center;gap:8px;z-index:5;font-weight:900;font-size:15px;color:#fff;text-shadow:0 2px 3px #000}
 #sizebtns.on{display:flex}
 .ucard .steps{display:flex;align-items:center;justify-content:center;gap:10px;font-size:22px;color:#ffd96a}
@@ -123,12 +127,12 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
   <div class="scr" id="s-main">
     <div id="main-sub"></div>
     <div class="strip">
-      <button class="mbtn" id="b-start"><span class="mi" id="mi-story"></span>STORY</button>
-      <button class="mbtn blue" id="b-ispy"><span class="mi" id="mi-ispy"></span>I SPY</button>
-      <button class="mbtn green" id="b-edu"><span class="mi" id="mi-edu"></span>EDUCATIONAL</button>
-      <button class="mbtn pink" id="b-explore"><span class="mi" id="mi-explore"></span>EXPLORATION</button>
+      <button class="mbtn art" id="b-start"><img src="art/btn-story.webp" alt=""><span class="lbl">STORY</span></button>
+      <button class="mbtn art" id="b-ispy"><img src="art/btn-ispy.webp" alt=""><span class="lbl">I SPY</span></button>
+      <button class="mbtn art" id="b-edu"><img src="art/btn-edu.webp" alt=""><span class="lbl">EDUCATIONAL</span></button>
+      <button class="mbtn art" id="b-explore"><img src="art/btn-explore.webp" alt=""><span class="lbl">EXPLORATION</span></button>
     </div>
-    <button class="round" id="b-settings" aria-label="Settings"></button>
+    <button class="art" id="b-settings" aria-label="Settings"><img src="art/btn-settings.webp" alt=""><span class="lbl">SETTINGS</span></button>
   </div>
 
   <!-- CHAPTERS (story) / chapter picker for I SPY + EDUCATIONAL -->
@@ -4519,10 +4523,6 @@ function drawTitle() {
   x.fillStyle = '#1a0838'; for (const s2 of [-1, 1]) { x.beginPath(); x.arc(hx + s2 * 20 + 2, hy - 4, 4 * blink, 0, 7); x.fill(); }
   x.strokeStyle = '#fff'; x.lineWidth = 4; x.lineCap = 'round'; x.beginPath(); x.arc(hx, hy + 2, 14, 0.25, Math.PI - 0.25); x.stroke(); x.lineCap = 'butt';
   // the title, then the SkyTrain guideway + train crossing over it
-  x.save(); x.font = `900 108px ${UI_FONT}`; x.textAlign = 'center'; x.textBaseline = 'alphabetic';
-  x.lineWidth = 14; x.strokeStyle = '#3b1a86'; x.strokeText('HUNGRY HOLE', 640, 168);
-  const tg = x.createLinearGradient(0, 80, 0, 170); tg.addColorStop(0, '#fff7c2'); tg.addColorStop(1, '#ffc23a'); x.fillStyle = tg; x.fillText('HUNGRY HOLE', 640, 168);
-  x.restore();
   x.fillStyle = '#c9c9c9'; x.fillRect(0, 186, STAGE_W, 14); x.fillStyle = '#9e9e9e'; x.fillRect(0, 198, STAGE_W, 4);
   for (let X = 70; X < STAGE_W; X += 285) { x.fillStyle = '#b5b5b5'; x.fillRect(X - 9, 202, 18, 250); x.fillStyle = 'rgba(0,0,0,.12)'; x.fillRect(X + 3, 202, 6, 250); }
   const tx = ((t * 120) % (STAGE_W + 900)) - 450;
@@ -4532,9 +4532,10 @@ function drawTitle() {
     x.fillStyle = '#1e5aa8'; x.fillRect(cx, 176, 100, 6); x.fillStyle = '#ffd200'; x.fillRect(cx, 182, 100, 3);
     x.fillStyle = '#26343f'; for (let w = 0; w < 4; w++) x.fillRect(cx + 8 + w * 23, 157, 17, 13);
   }
-  x.fillStyle = '#fff'; x.font = `800 22px ${UI_FONT}`; x.textAlign = 'center';
-  x.fillText('a hole that eats things and grows!', 640, 236);
-  x.textAlign = 'left';
+  // v5.1: the owner's HUNGRY HOLE logo (cut from his menu art), riding over the guideway and the train
+  if (!TITLE.logo) { TITLE.logo = new Image(); TITLE.logo.src = 'art/logo.webp'; }
+  const lg = TITLE.logo, lw = 500, lh = lg.naturalWidth ? lw * lg.naturalHeight / lg.naturalWidth : 0, bob = Math.sin(t * 1.6) * 4;
+  if (lh) x.drawImage(lg, 640 - lw / 2, 8 + bob, lw, lh);
   if (G.screen !== 'main') { x.fillStyle = 'rgba(12,8,36,.62)'; x.fillRect(0, 0, STAGE_W, STAGE_H); }
 }
 /* ---------- main menu backdrop: the same pit on a starry purple floor, with toys circling in ---------- */
@@ -5145,14 +5146,12 @@ $('b-start').onclick = () => { audioInit(); UI.chapters('story'); };
 $('b-explore').onclick = () => { audioInit(); UI.chapters('explore'); };
 $('b-bigger').onclick = () => { if (G.run.kind === 'explore') MODES.explore.resize(1.6); };
 $('b-smaller').onclick = () => { if (G.run.kind === 'explore') MODES.explore.resize(1 / 1.6); };
-$('mi-story').innerHTML = svg('book'); $('mi-ispy').innerHTML = svg('eye'); $('mi-edu').innerHTML = svg('grad'); $('mi-explore').innerHTML = svg('compass');
 $('b-ispy').onclick = () => { audioInit(); UI.chapters('ispy'); };
 $('b-edu').onclick = () => { audioInit(); UI.chapters('edu'); };
 $('b-quest-hud').innerHTML = svg('help');
 $('b-up-hud').onclick = () => { if (G.mode !== 'play') return; G.paused = true; G.joy = null; persist(); UI.upgrades(G.C.n, true); };
 $('b-quest-hud').onclick = () => UI.quests();
 $('b-settings').onclick = () => { audioInit(); UI.settings('main'); };
-$('b-settings').innerHTML = svg('gear');
 $('b-pause').innerHTML = svg('pause');
 $('b-pause').onclick = () => UI.pause();
 $('b-sound-hud').onclick = () => { S.settings.sound = S.settings.sound ? 0 : 1; syncSoundBtn(); persist(); };
