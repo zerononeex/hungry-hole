@@ -1,4 +1,4 @@
-// Screenshots for review (v5): menus, scenes in each of the five worlds, the big map, the finale, and each mode. node tests/screens.js <outdir>
+// Screenshots for review (v5, v5.1): menus, scenes in each of the five worlds, the big map, the finale, and each mode. node tests/screens.js <outdir>
 const { chromium } = require('playwright');
 const URL = process.env.HH_URL || 'http://localhost:8765/index.html', OUT = process.argv[2] || 'docs/screenshots';
 (async () => {
@@ -54,6 +54,21 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html', OUT = proc
   await p.evaluate(() => { HH.UI.closeModal(); HH.UI.chapters('explore'); }); await p.waitForTimeout(300); await shot(p, '38-exploration-picker');
   await p.evaluate(() => { HH.UI.closeModal(); const { G } = HH; HH.startChapter(2); G.lvl = 3; G.cam.x = G.x; G.cam.y = G.y; });
   await p.waitForTimeout(1500); await shot(p, '42-hud-upgrades-button');
+  // v5.1 Part 12: never the void. Each world at its MAX size, at a corner of its map (the Globe and Space have none: they
+  // wrap / are open space), plus the v5.1 additions: stair signs, the carport, YVR, Science World, Whistler, co-op picker
+  for (const [file, n, at] of [['50-w1-max-size-corner', 1, 'ne'], ['51-w2-max-size-corner', 2, 'nw'], ['52-w2-max-size-corner-se', 2, 'se'], ['53-w3-max-size-corner', 3, 'se'],
+    ['54-w3-max-size-corner-nw', 3, 'nw'], ['55-w4-max-size', 4, 'ne'], ['56-w5-max-size', 5, 'ne']]) {
+    await p.evaluate(([n, at]) => { const { G } = HH, C = HH.CH[n]; HH.UI.closeModal && HH.UI.closeModal(); HH.startChapter(n, 'explore'); HH.setHoleD(C.sizes[C.N] * 1.45);
+      G.x = at.includes('e') ? C.W : 0; G.y = at.includes('s') ? C.H : 0; G.cam.x = G.x; G.cam.y = G.y; }, [n, at]);
+    await p.waitForTimeout(2200); await shot(p, file);
+  }
+  for (const [file, n, js] of [['57-w1-stairs-go-upstairs', 1, 'HH.setHoleD(.3); G.fl = 0; G.x = 2.8; G.y = 29.7'], ['58-w1-deck-stairs-go-downstairs', 1, 'HH.setHoleD(.4); G.fl = 1; G.x = 9.15; G.y = 16'],
+    ['59-w1-cars-under-the-porch', 1, 'HH.setHoleD(1.2); G.fl = 0; G.x = 5; G.y = 18.5'], ['60-w2-yvr', 2, 'HH.setHoleD(120); [G.x, G.y] = G.C.P(-123.185, 49.1935)'],
+    ['61-w2-science-world', 2, "HH.setHoleD(30); const o = G.auth.find(o => o.id === 'scienceworld'); G.x = o.x; G.y = o.y + 70"], ['62-w2-north-mountain-forest', 2, 'HH.setHoleD(250); [G.x, G.y] = G.C.P(-122.62, 49.6)']]) {
+    await p.evaluate(([n, js]) => { const { G } = HH; HH.UI.closeModal && HH.UI.closeModal(); HH.startChapter(n, 'explore'); new Function('G', js)(G); G.cam.x = G.x; G.cam.y = G.y; }, [n, js]);
+    await p.waitForTimeout(2200); await shot(p, file);
+  }
+  await p.evaluate(() => { HH.UI.closeModal(); HH.UI.chapters('story'); }); await p.waitForTimeout(300); await shot(p, '63-play-together-picker');
   const ph = await page(844, 390); await shot(ph, '40-phone-main');
   await ph.evaluate(() => HH.startChapter(3)); await ph.waitForTimeout(1200); await shot(ph, '41-phone-game');
   console.log('screens done; console errors:', errs.length, errs.slice(0, 3)); await b.close();
