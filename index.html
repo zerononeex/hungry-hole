@@ -108,6 +108,9 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
 #main-sub{position:absolute;left:0;right:0;bottom:122px;text-align:center;font-size:19px;font-weight:800;color:#fff;text-shadow:0 2px 4px #000}
 #sizebtns{position:absolute;right:20px;top:250px;display:none;flex-direction:column;align-items:center;gap:8px;z-index:5;font-weight:900;font-size:15px;color:#fff;text-shadow:0 2px 3px #000}
 #sizebtns.on{display:flex}
+.ucard .steps{display:flex;align-items:center;justify-content:center;gap:10px;font-size:22px;color:#ffd96a}
+.ucard .stp{width:40px;height:34px;border-radius:10px;background:#ffcf4a;color:#3a1d00;font:900 24px/1 system-ui,sans-serif;padding:0}
+.ucard .stp:active{transform:translateY(2px)}
 #sizebtns .round{font-size:40px;font-weight:900;background:rgba(224,69,155,.85)}
 </style>
 </head>
@@ -152,7 +155,7 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
       <span class="wallet" id="up-wallet"></span>
       <button class="btn" id="b-banker">BANKER</button>
     </div>
-    <div style="position:absolute;left:24px;top:540px;width:770px;font-size:17px;opacity:.8;line-height:1.4">Tap a card to pick it. Press and hold a card to read about it. Upgrades only help the world they were bought in.</div>
+    <div id="up-note" style="position:absolute;left:24px;top:540px;width:770px;font-size:17px;opacity:.8;line-height:1.4">Tap a card to pick it. Press and hold a card to read about it. Upgrades only help the world they were bought in.</div>
     <div class="holdpop" id="holdpop"></div>
   </div>
 
@@ -2423,7 +2426,10 @@ const akey = (cx, cy) => cx * 100003 + cy;
 /* kind: 'story' (the saved journey), 'ispy' or 'edu' (fresh runs that never move the story's position or size) */
 function loadChapter(n, kind) {
   kind = kind || 'story';
-  const C = prep(CH[n]); G.C = C; G.st = S.ch[n]; G.run = { kind };
+  const C = prep(CH[n]); G.C = C; G.run = { kind };
+  // v5.1 Part 10: Exploration runs on a session copy of the world's state, so its upgrade sandbox (any level 0-10, free)
+  // and anything else it touches are never written to the save; leaving Exploration drops the copy
+  G.st = kind === 'explore' ? JSON.parse(JSON.stringify(S.ch[n])) : S.ch[n];
   const st = G.st, story = kind === 'story';
   if (story) S.last = n;
   G.auth = []; G.agrid = new Map(); G.cells = new Map(); G.movers = []; G.tiles = []; G.help = []; G.toasts = []; G.combo = []; G.rollAt = 0;
@@ -4847,17 +4853,28 @@ const UI = {
   upgrades(n, fromGame) {
     if (fromGame !== undefined) UI.upGame = fromGame;
     if (n) UI.upCh = n;
-    if (!S.ch[UI.upCh].u) UI.upCh = 1;
-    const ch = UI.upCh, st = S.ch[ch];
-    $('up-tabs').innerHTML = WN.map(i => `<button class="tab${i === ch ? ' sel' : ''}" data-tab="${i}" ${S.ch[i].u ? '' : 'disabled'}>${i}. ${esc(CH[i].short)}</button>`).join('');
+    const sand = UI.upGame && G.C && G.run.kind === 'explore';      // v5.1: Exploration's sandbox (session-only levels, no coins)
+    if (sand) UI.upCh = G.C.n;
+    if (!S.ch[UI.upCh].u && !sand) UI.upCh = 1;
+    const ch = UI.upCh, st = sand ? G.st : S.ch[ch];
+    $('s-upgrades').classList.toggle('sand', !!sand);
+    $('up-tabs').innerHTML = sand ? `<span class="tab sel">EXPLORATION SANDBOX · ${esc(CH[ch].short)}</span>` : WN.map(i => `<button class="tab${i === ch ? ' sel' : ''}" data-tab="${i}" ${S.ch[i].u ? '' : 'disabled'}>${i}. ${esc(CH[i].short)}</button>`).join('');
     $('up-tabs').querySelectorAll('[data-tab]').forEach(b => b.onclick = () => UI.upgrades(+b.dataset.tab));
     $('up-grid').innerHTML = UPGRADES.map((u, i) => {
       const lv = st.up[i];
       return `<div class="ucard${i === UI.upSel ? ' sel' : ''}" data-up="${i}"><img class="uic" alt="" src="${UPICON[u.k] || ''}">
         <div class="un">${u.n}</div><div class="pips">${Array.from({ length: 10 }, (_, j) => `<i class="pip${j < lv ? ' on' : ''}"></i>`).join('')}</div>
-        <div class="cost">${lv >= 10 ? 'MAX' : fmt(upCost(ch, lv + 1)) + ' coins'}</div></div>`;
+        ${sand ? `<div class="steps"><button class="stp" data-sd="${i}:-1" aria-label="Lower">&minus;</button><b>${lv}</b><button class="stp" data-sd="${i}:1" aria-label="Raise">+</button></div>`
+        : `<div class="cost">${lv >= 10 ? 'MAX' : fmt(upCost(ch, lv + 1)) + ' coins'}</div>`}</div>`;
     }).join('');
-    $('up-wallet').innerHTML = `${svg('coin')} ${fmt(st.w)} <span style="font-size:15px;color:#fff;opacity:.8">in ${esc(CH[ch].short)}</span>`;
+    $('up-wallet').innerHTML = sand ? `<span style="font-size:20px;color:#8ef08e">FREE · just for this trip</span>` : `${svg('coin')} ${fmt(st.w)} <span style="font-size:15px;color:#fff;opacity:.8">in ${esc(CH[ch].short)}</span>`;
+    $('b-banker').style.visibility = sand ? 'hidden' : '';
+    $('up-note').textContent = sand ? 'Exploration sandbox: set any upgrade from 0 to 10 with - and +. It is free, works right away, and is forgotten when you leave Exploration.'
+      : 'Tap a card to pick it. Press and hold a card to read about it. Upgrades only help the world they were bought in.';
+    $('up-grid').querySelectorAll('[data-sd]').forEach(b => {
+      b.onpointerdown = e => e.stopPropagation(); b.onpointerup = e => e.stopPropagation();
+      b.onclick = e => { e.stopPropagation(); const [i, d] = b.dataset.sd.split(':').map(Number); sandSet(i, st.up[i] + d); UI.upSel = i; UI.upgrades(); };
+    });
     UI.upDetail();
     const pop = $('holdpop');
     $('up-grid').querySelectorAll('[data-up]').forEach(card => {
@@ -4884,6 +4901,16 @@ const UI = {
     UI.show('upgrades');
   },
   upDetail() {
+    const sand = UI.upGame && G.C && G.run.kind === 'explore';
+    if (sand) {
+      const i = UI.upSel, u = UPGRADES[i], lv = G.st.up[i];
+      $('up-detail').innerHTML = `<h3><img alt="" src="${UPICON[u.k] || ''}" style="width:46px;height:46px;vertical-align:-12px"> ${u.n}</h3>
+        <p>${u.d}</p><p>Level: <b>${lv}/10</b></p><p>Now: <b>${u.fx(lv)}</b></p>
+        <div style="position:absolute;left:20px;right:20px;bottom:20px;display:flex;gap:10px;justify-content:center"><button class="btn sm green" id="b-sand-max">ALL TO 10</button><button class="btn sm grey" id="b-sand-zero">ALL TO 0</button></div>`;
+      $('b-sand-max').onclick = () => { UPGRADES.forEach((_, j) => sandSet(j, 10)); UI.upgrades(); };
+      $('b-sand-zero').onclick = () => { UPGRADES.forEach((_, j) => sandSet(j, 0)); UI.upgrades(); };
+      return;
+    }
     const ch = UI.upCh, st = S.ch[ch], i = UI.upSel, u = UPGRADES[i], lv = st.up[i], cost = lv < 10 ? upCost(ch, lv + 1) : 0;
     $('up-detail').innerHTML = `<h3><img alt="" src="${UPICON[u.k] || ''}" style="width:46px;height:46px;vertical-align:-12px"> ${u.n}</h3>
       <p>${u.d}</p><p>Level: <b>${lv}/10</b></p><p>Now: <b>${u.fx(lv)}</b></p><p>${lv < 10 ? `Next: <b>${u.fx(lv + 1)}</b>` : '<b>Maxed out!</b>'}</p>
@@ -5055,6 +5082,8 @@ function buyUpgrade(ch, i) {
   const c = upCost(ch, lv + 1); if (st.w < c) return false;
   st.w -= c; st.up[i]++; persist(); return true;
 }
+/* v5.1 Exploration sandbox: set an upgrade level on the run's session copy (never the save); it applies live */
+function sandSet(i, lv) { if (G.run.kind !== 'explore' || G.st === S.ch[G.C.n]) return false; G.st.up[i] = clamp(Math.round(lv) || 0, 0, 10); if (G.net) G.net.ups(); return true; }
 const bankerArrive = amt => Math.floor(amt * 0.6);
 function bankerTransfer(from, to, amt) {
   amt = Math.floor(amt);
@@ -5147,7 +5176,7 @@ requestAnimationFrame(frame);
 /* test hook for automated checks (harmless in play) */
 window.HH = { get S() { return S; }, G, CH, UI, prep, loadChapter, startChapter, eat, holeD, need, addXP, bankerTransfer, bankerArrive, buyUpgrade, upCost,
   setHoleD, ringNow, goals, capD, miniRect, syncBeat, solidPush, solidBoxes,
-  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole, labelOn, poseOf, MODES, genCell, tierOf, mkObj, debugAudio, syncMusic };
+  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole, labelOn, poseOf, sandSet, MODES, genCell, tierOf, mkObj, debugAudio, syncMusic };
 </script>
 </body>
 </html>

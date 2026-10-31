@@ -153,6 +153,26 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     const wrongBlocked = wrong.every(t => !HH.canEat(t)); HH.eat(right); step(1);
     return { ok: mine.length >= 2 && wrongBlocked && a.p === 1 && right.txt === '1', info: { tiles: mine.length, first: right && right.txt, wrongBlocked, p: a.p } };`));
 
+  await T('Exploration upgrade sandbox (v5.1 Part 10): free 0-10 steppers apply live, the save stays byte-identical, Story sees the real levels', new Function(STEP + `
+    const { G, S } = HH; S.ch[2].u = 1; S.ch[2].w = 777; S.ch[2].up = [2, 1, 0, 3, 0, 0, 0, 0, 1, 0]; HH.persist();
+    const save0 = JSON.stringify(S.ch[2]), ls0 = JSON.parse(localStorage.getItem('hungry-hole-data-v1')).ch[2];
+    HH.startChapter(2, 'explore'); step(2);
+    const run = d => { G.x = G.C.start[0]; G.y = G.C.start[1]; G.vx = G.vy = 0; const x0 = G.x; G.joy = { x0: 0, y0: 0, x: 70, y: 0 }; step(30); G.joy = null; const v = G.x - x0; return v; };
+    const v0 = run();
+    document.getElementById('b-up-hud').click(); const sandUI = document.getElementById('s-upgrades').classList.contains('sand') && document.querySelectorAll('#up-grid [data-sd]').length === 20;
+    for (let i = 0; i < 12; i++) document.querySelector('[data-sd="0:1"]').click();        // Speed up past the top: stops at 10
+    const top = G.st.up[0];
+    for (let i = 0; i < 6; i++) document.querySelector('[data-sd="0:-1"]').click();        // and back down to 4 (the owner's "park it at 4")
+    const parked = G.st.up[0]; document.querySelector('[data-sd="8:-1"]').click(); const wide = G.st.up[8];
+    document.querySelector('#s-upgrades [data-back]').click(); step(2);
+    const v1 = run();
+    const liveOk = top === 10 && parked === 4 && wide === 0 && HH.UPL('speed') === 4 && v1 > v0 * 1.05;
+    HH.UI.main();
+    const same = JSON.stringify(S.ch[2]) === save0, ls1 = JSON.parse(localStorage.getItem('hungry-hole-data-v1')).ch[2], lsSame = JSON.stringify(ls1.up) === JSON.stringify(ls0.up) && ls1.w === ls0.w;
+    HH.startChapter(2, 'story'); step(1); const storyUp = G.st.up.join(''), storyW = G.st.w;
+    HH.startChapter(1); step(1);
+    return { ok: sandUI && liveOk && same && lsSame && storyUp === '2103000010' && storyW === 777, info: { sandUI, top, parked, wide, v0: +v0.toFixed(2), v1: +v1.toFixed(2), same, lsSame, storyUp, storyW } };`));
+
   await T('banker: exactly 60% arrives', new Function(`
     const { S } = HH; S.ch[2].u = 1; S.ch[1].w = 1000; S.ch[2].w = 50;
     const ok1 = HH.bankerTransfer(1, 2, 100); const a = [S.ch[1].w, S.ch[2].w];
