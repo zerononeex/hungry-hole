@@ -805,3 +805,5 @@ The world-redo sequence so far: World 1 The Home (floorplan), Metro Vancouver (s
 **v5.15 addendum (owner bug report): MUSIC CONTINUITY** — opening the Upgrades menu changes the song; it must NOT. A pause overlay never switches or restarts the track: you're still in the world's stage, so the world's song plays straight through, position uninterrupted. (Folded into the v5.1 co-op prompt as an independent Part 2 fix, same branch.)
 
 **v5.15 addendum 2 (owner UX fix): THE MINIMAP MOVES TO THE TOP-LEFT** — in every world and mode (including the Globe's mini-globe). Bottom-left is joystick territory and he keeps tapping the map by accident mid-steer. The objective/quest stack rearranges so nothing overlaps; a minimap tap still opens the big map and still never steers.
+
+**v5.15 addendum 3 (owner, from a screenshot): METRO VANCOUVER GROUND** — residential areas currently render on a pale beige/sand ground; that reads wrong. **Residential ground becomes GREEN** (grass/lawn) everywhere in the Vancouver world. Beaches keep their sand colour; parks, water, and roads are unchanged.
