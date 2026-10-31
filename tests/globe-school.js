@@ -35,6 +35,42 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     HH.startChapter(1); step(1);
     return { ok: mid >= 8 && allAU && okNames && flag >= 1 && labels > 0 && gone === true && giant === 0 && !saved, info: { mid, allAU, names, flagship: flag, labels, eatenGone: gone, giant, saved } };`));
 
+  await T('landmarks: the owner\'s whole roster is on the Globe (195 countries, 10-20 each, 2,358 places; every one a landmark model, a named area, or the hand-made landmark it already was), and no brand or theme-park name anywhere', new Function(`
+    const C = HH.prep(HH.CH[4]), R = window.HH_LM2.lm, by = {}, placed = new Set(), bad = [];
+    for (const r of R) (by[r[0]] = by[r[0]] || []).push(r[7]);
+    for (const l of C.LMS) for (const s of (l.src || [])) placed.add(l.cc + '|' + s);
+    for (const a of C.AREAS) placed.add(a.cc + '|' + a.src);
+    const missing = R.filter(r => !placed.has(r[0] + '|' + r[7]) && !C.LMS.some(l => (l.src || []).includes(r[7]))).map(r => r[0] + ':' + r[7]);
+    const sizes = Object.values(by).map(v => v.length), ccs = Object.keys(by);
+    const noShape = [...new Set(C.LMS.filter(l => l.k && !HH.MODEL.get(C, l.k, 0)).map(l => l.k))];
+    const ip = C.LMS.map(l => l.label).concat(C.AREAS.map(a => a.label)).filter(n => /disney|lego|universal studios|hobbiton|popeye|tivoli|ferrari|guinness|atlantis|james bond|haw par|jerudong/i.test(n));
+    const sameAsAn = ccs.filter(c => !window.HH_AN.c[c]);
+    return { ok: R.length === 2358 && ccs.length === 195 && Math.min(...sizes) >= 10 && Math.max(...sizes) <= 20 && !missing.length && !noShape.length && !ip.length && !sameAsAn.length,
+      info: { places: R.length, countries: ccs.length, min: Math.min(...sizes), max: Math.max(...sizes), points: C.LMS.filter(l => /^lm2_/.test(l.id)).length, areas: C.AREAS.length, missing: missing.slice(0, 8), noShape, ip, sameAsAn } };`));
+
+  await T('landmarks in the world: every built landmark stands inside its own country; every land area is centred inside its country (reefs, lakes and islands may sit in its sea)', new Function(STEP + `
+    const { G, S } = HH; S.ch[4].u = 1; HH.startChapter(4, 'explore'); const C = G.C;
+    const objs = [...G.agrid.values()].flat().filter(o => o.keep && (/^lm2_/.test(o.id) || (C.LMS.find(l => l.id === o.id) || {}).src));
+    const out = objs.filter(o => !/^lm_(reef|island|ship|felucca|yacht|glacier)$/.test(o.mk || o.k || '') && !/reef|island|ship|felucca|yacht|glacier/.test(o.type || '') && !C.inCountry(o.cc, o.x, o.y)).map(o => o.cc + ':' + o.label);
+    const WET = { reef: 1, water: 1, islands: 1, island: 1, falls: 1, beach: 1 };
+    const aOut = C.AREAS.filter(a => !WET[a.type] && !C.inCountry(a.cc, a.x, a.y)).map(a => a.cc + ':' + a.label);
+    HH.startChapter(1); step(1);
+    return { ok: objs.length > 1300 && !out.length && !aOut.length, info: { built: objs.length, outside: out.slice(0, 10), nOut: out.length, areasOutside: aOut.slice(0, 10), nAOut: aOut.length } };`));
+
+  await T('landmark spot-checks: Japan (Mount Fuji, Tokyo Tower, Tokyo Skytree), UK (Buckingham Palace, Tower Bridge), Canada (Stanley Park), Egypt (Pyramids of Giza), each at its real place', new Function(STEP + `
+    const { G, S } = HH; S.ch[4].u = 1; HH.startChapter(4, 'explore'); const C = G.C;
+    const objs = [...G.agrid.values()].flat().filter(o => o.keep);
+    const find = (cc, n) => { const o = objs.find(o => o.cc === cc && (o.label === n || ((C.LMS.find(l => l.id === o.id) || {}).src || []).includes(n)));
+      if (o) return { as: 'landmark', o, ll: C.ll(o.x, o.y) }; const a = C.AREAS.find(a => a.cc === cc && a.src === n); return a ? { as: 'area', o: a, ll: C.ll(a.x, a.y) } : null; };
+    const want = [['JP', 'Mount Fuji', 138.73, 35.36], ['JP', 'Tokyo Tower', 139.745, 35.659], ['JP', 'Tokyo Skytree', 139.811, 35.71], ['GB', 'Buckingham Palace', -0.142, 51.501],
+      ['GB', 'Tower Bridge', -0.075, 51.505], ['CA', 'Stanley Park (Vancouver)', -123.14, 49.30], ['EG', 'Pyramids of Giza', 31.134, 29.979]];
+    const info = {}, bad = [];
+    for (const [cc, n, lo, la] of want) { const f = find(cc, n); if (!f) { bad.push(n + ' missing'); continue; }
+      const d = Math.hypot(f.ll[0] - lo, f.ll[1] - la); info[n] = f.as + ' ' + d.toFixed(3) + 'deg ' + (f.o.k || f.o.type || f.o.mk || '');
+      if (d > .08 || !C.inCountry(cc, f.o.x, f.o.y)) bad.push(n + ' off by ' + d.toFixed(3)); }
+    HH.startChapter(1); step(1);
+    return { ok: !bad.length, info: { info, bad } };`));
+
   for (const [n, ok, info] of results) console.log((ok ? 'PASS ' : 'FAIL ') + n + '  ' + JSON.stringify(info));
   const pass = results.filter(r => r[1]).length; console.log(`${pass}/${results.length} passed; console errors: ${errs.length}`, errs.slice(0, 5));
   await b.close(); process.exit(pass === results.length && !errs.length ? 0 : 1);

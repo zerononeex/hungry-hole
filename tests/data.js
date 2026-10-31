@@ -83,6 +83,7 @@ const { chromium } = require('playwright');
         } }
         if (!cars || bad) fails.push(`Globe: ${bad}/${cars} town vehicles off the street`);
         const lm = auth.filter(o => o.keep && o.cc && o.T.tags.includes('landmark')), per = {}; for (const o of lm) per[o.cc] = (per[o.cc] || 0) + 1;
+        for (const a of (C.AREAS || [])) per[a.cc] = (per[a.cc] || 0) + 1;   // v5.2 Part 17: the owner's natural places are painted, named areas
         for (const cc of ['CN', 'RU', 'CA', 'US']) if ((per[cc] || 0) < 10) fails.push(`Globe: ${cc} has only ${per[cc] || 0} landmarks (want ~10)`);
         const bigC = ['IN', 'BR', 'AU', 'JP', 'FR', 'IT', 'GB', 'DE', 'ES', 'MX', 'EG', 'TR', 'AR', 'ZA', 'ID'].filter(cc => (per[cc] || 0) < 4); if (bigC.length) fails.push('Globe: big countries under 4 landmarks: ' + bigC.join(' '));
         if (Object.keys(per).length < 150) fails.push('Globe: only ' + Object.keys(per).length + ' countries have a landmark');

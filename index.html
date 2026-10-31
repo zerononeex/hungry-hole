@@ -207,6 +207,7 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
 <script src="data/globe.js"></script>
 <script src="data/globe-landmarks.js"></script>
 <script src="data/globe-animals.js"></script>
+<script src="data/globe-landmarks52.js"></script>
 <script src="audio/manifest.js"></script>
 <!-- co-op only (v5.1): PeerJS, loaded as an OPTIONAL script; if it never arrives the game is untouched and co-op says it can't connect -->
 <script>
@@ -576,7 +577,7 @@ const CH = [null];
     ['sofa', 'livL', .5, .9, { yaw: Q }], ['tvon', 'livL', .5, .3, { yaw: Q }], ['beanbag', 'livL', .2, .62, { id: 'beanbag' }], ['beanbag', 'livL', .8, .62], ['bookshelf', 'livL', .96, .5, { yaw: 0 }],
     // the lot
     ['bike', 'alley', .12, .6, { yaw: Q, id: 'bike' }], ['bin', 'alley', .5, .2], ['bin', 'alley', .6, .2], ['recycle', 'alley', .7, .2],
-    ['gardenbed', 'back', .9, .2, { yaw: 0 }], ['gardenbed', 'back', .9, .46, { yaw: 0 }],   // v5.1: moved north, clear of the deck stairs' foot ['shrub', 'back', .04, .3], ['shrub', 'back', .04, .7], ['birdbath', 'back', .55, .3, { id: 'birdbath' }],
+    ['gardenbed', 'back', .9, .2, { yaw: 0 }], ['gardenbed', 'back', .9, .46, { yaw: 0 }], ['shrub', 'back', .04, .3], ['shrub', 'back', .04, .7], ['birdbath', 'back', .55, .3, { id: 'birdbath' }],   // v5.1: beds moved north, clear of the deck stairs' foot
     ['planter', 'front', .2, .3], ['shrub', 'front', .05, .2], ['shrub', 'front', .95, .2], ['shrub', 'front', .95, .6], ['gnome', 'front', .7, .4, { id: 'gnome' }], ['mailbox', 'front', .9, .92, { id: 'mailbox' }],
     ['bin', 'sideW', .5, .4],
   ];
@@ -1648,6 +1649,14 @@ const CH = [null];
     for (const [lo, la, r] of dots) { const ring = []; for (let a = 0; a < 10; a++) ring.push(Math.round((lo + Math.cos(a * .628) * r) * 100 * 100) / 100, Math.round((la + Math.sin(a * .628) * r) * 100 * 100) / 100);
       row[3].push([ring]); if (cc !== 'VA' && cc !== 'MC') GD.land.push([ring]); }
   }
+  /* v5.2 Part 17: the owner's landmark roster. Its islands and atolls too small for the 1:50m map get small round
+     outlines (land, inside their country), so every listed place stands on its own country */
+  const LM2 = window.HH_LM2 || { lm: [], islands: {} };
+  for (const [cc, dots] of Object.entries(LM2.islands)) {
+    const row = GD.countries.find(r => r[0] === cc); if (!row) continue;
+    for (const [lo, la, r] of dots) { const ring = []; for (let a = 0; a < 10; a++) ring.push(Math.round((lo + Math.cos(a * .628) * r) * 1e4) / 100, Math.round((la + Math.sin(a * .628) * r) * 1e4) / 100);
+      row[3].push([ring]); GD.land.push([ring]); }
+  }
   const LAND = GD.land.map(polyW), LAKES = GD.lakes.map(polyW);
   const RIV = GD.rivers.map(([n, l]) => { const p = toW(l); return { n, p, b: bbox(p) }; });
   const HWY = GD.hwy.map(l => { const p = toW(l); let L = 0; for (let i = 2; i < p.length; i += 2) L += Math.hypot(p[i] - p[i - 2], p[i + 1] - p[i - 1]); return { p, b: bbox(p), L }; });
@@ -1769,13 +1778,35 @@ const CH = [null];
   const FIX = { kitspool: .09, scienceworld: .22, canadaplace: .55, lionsgate: 1.4, spaceneedle: 3.6, goldengate: 9, grandcanyon: 23, liberty: 56, eiffel: 140, pyramids: 345, greatwall: 870, everest: 1300 };
   const OWN = { eiffel: 1, liberty: 1, bigben: 1, opera: 1, pyramids: 1, marina: 1, basil: 1, table: 1, fuji: 1, colosseum: 1, greatwall: 1, taj: 1, christ: 1, chichen: 1, petra: 1, machu: 1 };
   const WONDERS = { colosseum: 1, greatwall: 1, taj: 1, christ: 1, chichen: 1, petra: 1, machu: 1 };
-  const LMS = [];
+  const LMS = [], AREAS = [];
   LMD.forEach((r, i) => {
     const [id0, cc, nm, lon, lat, look, fact] = r, tp = id0 === '_tp';
+    if (id0[0] === '_' && LM2.lm.length) return;                       // v5.2 Part 17: the owner's list replaces the old anonymous picks
     const id = id0[0] === '_' ? (tp ? 'park' : 'lm') + i : id0;
     LMS.push({ id, cc, label: tp ? 'a theme park' : nm, sub: tp ? 'rides, a big wheel and a fairytale castle' : (CTRY[cc] ? CTRY[cc].nm.replace(/^the /, '') : ''), x: (lon + 180) * D, y: (90 - lat) * D,
       k: OWN[id] ? id : 'lm_' + look, fact: fact ? fact + (WONDERS[id] ? ' (One of the New 7 Wonders of the World!)' : '') : '', famous: !!fact });
   });
+  /* v5.2 Part 17: every one of the owner's landmarks, at its real place. A place the hand-made roster already has (the
+     objective ladder: Mount Fuji, Tower Bridge, the Pyramids...) is that landmark (its own model, its size on the ladder);
+     built places become landmark models in the game's own art; natural features (parks, reefs, canyons, falls, lakes,
+     mountains...) are painted areas with their names, never point models */
+  const core = s => s.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/\(.*?\)/g, '').replace(/^the |\bthe\b/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  const IDS = LMS.filter(l => !/^(lm|park)\d/.test(l.id)).map(l => [l, core(l.label)]);
+  LM2.lm.forEach(([cc, label, lon, lat, look, kind, rad, src], i) => {
+    const n = core(src), x = (lon + 180) * D, y = (90 - lat) * D;
+    const same = IDS.find(([l, c]) => (l.cc === cc || Math.hypot(l.x - x, l.y - y) < 2 * D) && c.length > 3 && (n.includes(c) || c.includes(n)));
+    if (same) (same[0].src = same[0].src || []).push(src);
+    if (kind === 'area') { AREAS.push({ cc, label, x, y, r: Math.max(rad * D, 6), type: look, src, named: !same }); return; }
+    if (same) return;
+    LMS.push({ id: 'lm2_' + i, cc, label, sub: look === 'themepark' ? 'rides, a big wheel and a fairytale castle' : (CTRY[cc] ? CTRY[cc].nm.replace(/^the /, '') : ''), x, y, k: 'lm_' + look, fact: '', famous: true, src: [src] });
+  });
+  AREAS.sort((a, b) => b.r - a.r);
+  const ATINT = { park: 'rgba(52,140,62,A)', forest: 'rgba(28,108,46,A)', mountain: 'rgba(160,140,112,A)', volcano: 'rgba(116,72,56,A)', water: 'rgba(52,128,204,A)',
+    falls: 'rgba(150,205,255,A)', beach: 'rgba(240,214,150,A)', island: 'rgba(214,200,130,A)', islands: 'rgba(214,200,130,A)', reef: 'rgba(80,220,210,A)', wetland: 'rgba(84,140,96,A)',
+    desert: 'rgba(232,200,120,A)', salt: 'rgba(246,243,236,A)', ice: 'rgba(238,243,246,A)', canyon: 'rgba(196,104,62,A)', valley: 'rgba(132,176,80,A)', cave: 'rgba(84,72,62,A)',
+    springs: 'rgba(206,232,242,A)', river: 'rgba(74,143,214,A)', oasis: 'rgba(40,152,80,A)' };
+  const AWET = { reef: 1, islands: 1, island: 1, water: 1 };
+  const AGLYPH = { mountain: '▲ ', volcano: '▲ ', falls: '≋ ', water: '≈ ', reef: '≈ ', park: '♣ ', forest: '♣ ' };
   for (const [n, a3, lo, la, pop, cap] of GD.cities) {                 // every capital that has no landmark of its own nearby
     if (!cap) continue;
     LMS.push({ capital: 1, n, x: (lo + 18000) * Q, y: (9000 - la) * Q, pop });
@@ -1835,7 +1866,7 @@ const CH = [null];
     hereName(x, y) { if (surf(x, y) === 0) return null; const cc = ccAt(x, y); if (!cc || !CTRY[cc]) return null;
       return ({ US: 'United States', GB: 'UK', AE: 'UAE', CD: 'DR Congo' })[cc] || CTRY[cc].nm.replace(/^the /, ''); },
     countries: Object.fromEntries(CLIST.map(c => [c.cc, [c.nm]])),
-    P, ll, surf, ccAt, cityAt, LMS, CITY,
+    P, ll, surf, ccAt, cityAt, LMS, CITY, AREAS,
     /* v5.2 Part 12: label layers keyed to the hole's size. 0 tiny: capitals + countries (no continents at street level);
        1 mid: capitals + countries; 2 giant: capitals fade out, countries thinned so dense places never become a wall of
        text, continents spread over their land */
@@ -1859,6 +1890,8 @@ const CH = [null];
       if (tier === 2) for (const [n, lo, la] of CONTS) put(n, ...P(lo, la), 30, 'rgba(255,248,225,.9)', 'continent', 900, 0);
       if (tier < 2) for (const c of CAPS) put('★ ' + c.n, c.x, c.y, 15, '#fff3a8', 'capital', 900, 0);
       for (const c of CBYAREA) if (tier < 2 || c.area >= 4) put(c.nm.replace(/^the /, '').toUpperCase(), c.lab[0], c.lab[1], tier === 2 ? 14 : 17, S.passport[c.cc] ? '#ffd23f' : 'rgba(255,255,255,.92)', 'country', 900, 1);
+      // v5.2 Part 17: natural places carry their names below the continent tier, thinned like the countries
+      if (tier < 2) for (const a of AREAS) if (a.named && a.r / pw > 4) put((AGLYPH[a.type] || '') + a.label, a.x, a.y, 13, '#eaffd8', 'area', 800, 1);
       if (pw > .8) for (const [n, lo, la] of OCEANS) put(n, ...P(lo, la), 20, 'rgba(200,230,255,.8)', 'ocean', 900, 1);
       return out;
     },
@@ -1876,6 +1909,13 @@ const CH = [null];
         if (WET[l.k.slice(3)] || surf(l.x, l.y) === 1) continue;
         search: for (let r = .5; r < 40; r *= 1.4) for (let a = 0; a < 6.28; a += .5) if (surf(l.x + Math.cos(a) * r, l.y + Math.sin(a) * r) === 1) { l.x += Math.cos(a) * r * 1.15; l.y += Math.sin(a) * r * 1.15; break search; }
       }
+      // v5.2 Part 17: and a place always stands on its own country (falls and peaks on a border, a statue on the quay):
+      // a step over the simplified border onto its own side
+      const own = (l, wet) => { const c = CTRY[l.cc]; if (!c || wet || inSet(l.x, l.y, c.polys)) return;
+        search: for (let r = .3; r < .8 * D; r *= 1.3) for (let a = 0; a < 6.28; a += .4) { const x = l.x + Math.cos(a) * r, y = l.y + Math.sin(a) * r, e = Math.min(3, r * .5);
+          if (inSet(x, y, c.polys) && inSet(x + Math.cos(a) * e, y + Math.sin(a) * e, c.polys)) { l.x = x + Math.cos(a) * e; l.y = y + Math.sin(a) * e; break search; } } };
+      for (const l of L) own(l, WET[l.k.slice(3)] || WET[l.k]);
+      if (!AREAS.owned) { AREAS.owned = 1; for (const a of AREAS) own(a, { reef: 1, water: 1, islands: 1, island: 1, falls: 1, beach: 1 }[a.type]); }
       for (const l of L) {
         let fw = FIX[l.id];
         if (!fw) { const h = (Math.sin(l.x * 12.9898 + l.y * 78.233) * 43758.5453) % 1, u = Math.abs(h); fw = SIZES[(l.famous ? 6 : 5) + Math.floor(u * 3)] * (.7 + .25 * u); fw = Math.max(SIZES[3], Math.min(fw, near(l) * .8)); }
@@ -2017,6 +2057,14 @@ const CH = [null];
       const line = (p, ox, oy) => { g.moveTo(p[0] + ox, p[1] + oy); for (let i = 2; i < p.length; i += 2) g.lineTo(p[i] + ox, p[i + 1] + oy); };
       g.beginPath(); for (const [ox, oy] of offs) for (const q of LAND) if (vis(q.b, ox, oy, 0)) path(q, ox, oy);
       g.fillStyle = LANDC; g.fill('evenodd');
+      // v5.2 Part 17: the owner's natural places, painted as soft areas (never point models): land ones stay on the land,
+      // water ones (reefs, lakes, bays, island groups) paint over the water
+      const paintAreas = wet => { if (mini) return; for (const [ox, oy] of offs) for (const a of AREAS) {
+        if (!AWET[a.type] !== !wet) continue;
+        const cx = a.x + ox, cy = a.y + oy, r = a.r; if (cx + r < V.x0 || cx - r > V.x1 || cy + r < V.y0 || cy - r > V.y1 || r < pw * 1.5) continue;
+        const t = ATINT[a.type] || ATINT.park, gr = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+        gr.addColorStop(0, t.replace('A', '.5')); gr.addColorStop(.65, t.replace('A', '.4')); gr.addColorStop(1, t.replace('A', '0'));
+        g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill(); } };
       // land cover tints, clipped to the land: deserts, rainforest belt, northern forest, the ice
       g.save(); g.clip('evenodd');
       for (const [ox, oy] of offs) {
@@ -2044,10 +2092,12 @@ const CH = [null];
           }
         }
       }
+      paintAreas(0);                                                   // land places, clipped to the land
       g.restore();
       if (V.y1 > 175 * D) { g.fillStyle = '#eef3f6'; g.fillRect(V.x0, 175 * D, V.x1 - V.x0, V.y1 - 175 * D + D); }   // the polar plateau is solid ice to the pole and a hair past it (no seam)
       g.beginPath(); for (const [ox, oy] of offs) for (const q of LAKES) if (vis(q.b, ox, oy, 0)) path(q, ox, oy);
       g.fillStyle = OCEAN; g.fill('evenodd');
+      paintAreas(1);
       // borders, rivers, highways: lines, never filled shapes
       g.lineJoin = 'round'; g.lineCap = 'round';
       const bw = Math.max(lw(mini ? .6 : 1.3), .05);
@@ -4605,6 +4655,7 @@ const MODEL = (() => {
     giantplanet: ['planet', { a: '#c3a6ff', band: '#8a6fd0' }], giantmoon: ['planet', { a: '#f0f0e8', b: '#bdbdb5' }], yellowstar: ['star', { a: '#ffd23f' }], redstar: ['star', { a: '#ff5e57' }], bluestar: ['star', { a: '#6ad1ff' }],
     crystalmoon: ['crystal', {}], giantufo: ['ufo', { a: '#9aa6b5', b: '#ff4fd8' }], superplanet: ['planet', { a: '#7cf7c6', ring: '#bff', band: '#3ab090' }], giantstar: ['star', { a: '#ff9f43', b: '#ffcf8a' }], supergiant: ['star', { a: '#e8f4ff', b: '#bfe0ff' }],
     // v5.2 Part 16: the Globe's animal families (per-species colours come in as a palette; shape details as params)
+    animal: ['quad', { a: '#9a7b5a', d: 1.7, lh: .55, ears: 1 }],   // the type's own fallback (each animal wears its family's model)
     an_cat: ['quad', { a: '#d9a441', d: 1.9, lh: .5, ears: 1 }], an_bear: ['quad', { a: '#6d4c33', d: 1.9, lh: .5, ears: 1 }], an_panda: ['quad', { a: '#f5f5f5', leg: '#1e1e1e', b: '#1e1e1e', d: 1.8, lh: .5, ears: 1 }],
     an_canine: ['quad', { a: '#9a7b5a', d: 1.7, lh: .55, ears: 1 }], an_hyena: ['quad', { a: '#a08a62', d: 1.7, lh: .7, ears: 1, spots: 1, b: '#4a3a2a' }],
     an_deer: ['quad', { a: '#9c6b3f', d: 1.8, lh: .95, neck: .35, horn: '#d9c8a8' }], an_antelope: ['quad', { a: '#b98a52', d: 1.7, lh: .9, neck: .3, horn: '#3a2a1a' }],
