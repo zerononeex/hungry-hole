@@ -754,3 +754,5 @@ The world-redo sequence so far: World 1 The Home (floorplan), Metro Vancouver (s
 **v5.7 addendum 3 (owner): Beaver Lake is IN** **and ALL of Stanley Park's parking lots are in**, at their real locations.
 
 **v5.7 addendum 4 (owner): the Vancouver Rowing Club and the yacht club (Royal Vancouver Yacht Club, Coal Harbour) are IN** at the park's Coal Harbour entrance.
+
+**v5.7 addendum 5 (owner): the TOTEM POLES at Brockton Point are IN** (scenery landmarks — the standing rule holds: totem poles are never eatable) **and DEADMAN'S ISLAND is IN** — a visible island in Coal Harbour off the park's edge (scenery across the water; likely what the retracted "pineapple island" was reaching for).
