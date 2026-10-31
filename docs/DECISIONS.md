@@ -410,3 +410,226 @@ The v4 addendum in `docs/SPEC.md` is the authority. These are the calls the spec
 
 ## HUD UPGRADES button
 The round up-arrow became an orange (#ff8c1a) pill that reads UPGRADES. Its behaviour is the same: pause, open Upgrades, and BACK resumes the exact run (the behaviour test checks the colour, the label, and that position and size are kept). Screenshot: `docs/screenshots/42-hud-upgrades-button.jpg`.
+
+# v5 — THE WORLDS REDO (builder decisions, 2026-10-31)
+
+Branch `claude/hungry-hole-v5`. Zero named this branch in the v5 prompt, which overrides the session's default branch name (`claude/project-thread-tltki1`). Nothing is merged and no PR is open: GitHub Pages serves `main`, so merging is publishing, and that is Kakashi's call.
+
+## Where the prompt and the spec differ (the spec's latest ruling wins)
+- **Educational and the objective ladder.** The prompt says "Educational ignores gating"; spec v5.0 says Educational targets come as an ordered ladder with the growth cap. These do not clash once "gating" is read as the zone rings (v4.7). So in Educational the whole map is open (no rings), and each lesson step is a rung: the set starts pre-sized for step 1 (v4.9), and the hole is capped at the current step's target. Math tiles never glow; sequence tiles do.
+- **Music v2 (spec v5.13).** The spec puts orchestrated music "in scope" as same-name drop-in files. The prompt says the 13 audio files and `audio/manifest.js` stay exactly as they are. Nothing in code needs to change for the drop-in, so this build does not touch, generate or rename any audio. When the owner drops in new files with the same names, they play.
+- **Roster.** Spec v5.13 is final: five worlds. Wilderness and Chaos are retired, not parked. Old Backyard (old Ch2) was already folded into the Home. Saves keep the retired worlds' data aside (see Saves).
+
+## H. Exactly five worlds
+- **The worlds:** 1 The Home · 2 Metro Vancouver · 3 Stanley Park · 4 Space · 5 The Globe. "WORLDS" is the word used everywhere in the UI.
+- **Old code removed:** Backyard, Wilderness and Chaos are gone from the UI, from data and from the models. Model recipes are now keyed per world (`MODEL.PER['key:type']`), so one world's look never leaks into another.
+- **Music per world:** the files are unchanged, so each world reuses the old track that fits it best.
+  - Home: `ch1.mp3`
+  - Vancouver: `ch3.mp3` (old Vancouver)
+  - Stanley Park: `ch4.mp3`
+  - Space: `ch6.mp3`
+  - Globe: `ch5.mp3`
+  - `ch2.mp3` and `ch7.mp3` are not used. Their files stay listed in the manifest, untouched.
+
+## Saves (ground rule: `hungry-hole-data-v1` never changes)
+- **One-time migration** (`migrate5`) for any save without `w5`:
+  - Home ← old 1
+  - Vancouver ← old 3
+  - Stanley Park is new
+  - Space ← old 6
+  - Globe ← old 5
+- **Retired worlds:** the save data of old 2, 4 and 7 is copied verbatim into `S.retired` and ignored. Nothing else is touched.
+- **Kept per world:** wallets, upgrades, quest boards, checklist counts, completions, passport and learning totals.
+- **Eaten landmarks:** kept for Vancouver, whose map is unchanged. For Home, Space and the Globe the maps are new, so their old ids would mean different things. Those are parked as `eaten4` and the world starts fresh.
+- **Stanley Park unlock:** it opens if old Vancouver was complete, because finishing Vancouver used to open the next chapter.
+- **Shared origin:** the game only ever reads and writes its own key. It never enumerates storage and never clears it. "Reset everything" rewrites only `hungry-hole-data-v1`.
+- **Test:** `tests/behaviour.js` "v4 save with RETIRED-world data" builds a seven-chapter v4 save that carries progress, wallets, I Spy decks and Educational sets in worlds 4 and 7. It checks:
+  - all of that sits verbatim in `S.retired`
+  - every kept world's wallet, upgrades, board, completion and eaten landmarks are intact
+  - all five worlds play
+  - nothing changes after a reload
+  - another app's key on the same origin is untouched
+- The v2 and v3 save tests were updated to the five-world mapping and still pass.
+
+## A1–A2. Objective ladder, rings, modes
+- **Story:** every world's tasks are its size-gate beats (8–12 per world). The hole is capped at the next objective (fit size × 1.04), with a friendly message: "You're not growing anymore until you get X. Complete your objective to grow more!" Eating the objective lifts the cap. The checklist is a bonus and never completes a world.
+- **Rings:** one nested playable rect per beat, so the border grows as the ladder climbs.
+- **I Spy:** plays inside the ring that holds the current target.
+- **Educational:** the whole map is open.
+- **Exploration:** any world, the whole map, free size with + / −, no objectives. It pays no coins, so it can't be used to farm wallets.
+- **Restart:** restarting a world replays the ladder from the first objective (beat and eaten list reset). The checklist, board and wallet are kept.
+
+## A3. Density: "classy, not carpeted"
+- **Filler:** loose filler is `FILL_K` (0.3 of v3) × a per-world `fill`. Placed things (buildings along roads, trees in forests, authored landmarks) are exempt through `fillKeep`.
+- **Per-world filler factors** (share of the v3 scatter):
+
+  | World | Filler share | Kept dense |
+  | --- | --- | --- |
+  | Home | 0.06 | — |
+  | Vancouver | 0.09 | street trees, forests and buildings stay dense |
+  | Stanley Park | 0.03 | the forest trees stay dense |
+  | Space | 0.30 | — |
+  | Globe | 0.075 | — |
+
+  Every world is cut by at least 70%; most by 90% or more. Vancouver's trees stay dense, as the owner asked.
+- **Type→room whitelist:** the Home has an explicit `ALLOW` map, enforced in `tests/data.js`. Every zone list and every authored object must pass `C.okIn`. The test caught a hat listed in a bedroom, so hats are now allowed in closets, halls and bedrooms.
+- **Cars:** only on roads (lane-snapped). Parked cars sit at curbs, driveways and lots.
+- **People:** on sidewalks.
+- **The Globe's town:** cars, houses and trees snap to a street grid. The data test checks that every town vehicle is on it.
+- **Street furniture:**
+  - `crossingsOf()` finds real X crossings and T junctions between different roads in the OSM road data (angle > 20°, deduped within 9 m).
+  - `furnishCrossing()` puts 4 streetlights at the corners of each crossing, a stop sign at 1 in 3 crossings and a bin at 1 in 5.
+  - This runs in Vancouver and Stanley Park's city streets, and streams with the lamp layer.
+  - The old random lamp scatter was removed from Vancouver zones. Stanley Park's OSM lamps within 16 m of a crossing are skipped so corners aren't doubled.
+  - The Globe has no streetlights, per the spec.
+- **Eats per size step (honest numbers):** the bot reports the average eats per size step:
+
+  | World | Average eats per size step |
+  | --- | --- |
+  | Home | about 23 |
+  | Space | about 45 |
+  | Stanley Park | about 70 |
+  | Globe | about 76 |
+  | Vancouver | about 255 |
+
+  These are far above "about 4". The reason is that the bot keeps eating while it travels and while it is capped at an objective, and those eats are counted against the step. Size-worthy eats (things at most one size below you) are lower:
+
+  | World | Size-worthy eats per step |
+  | --- | --- |
+  | Space | 9 |
+  | Home | 15 |
+  | Stanley Park | 32 |
+  | Globe | 65 |
+  | Vancouver | 95 |
+
+  XP per eat was raised (per-world `xpk` 2–3) and filler cut hard. The pace bot (8–15 min) is the guardrail that was tuned to, and every world is inside it. Getting to a literal ~4 meaningful eats per step would mean hiding most edible things on the travel legs. That would make the worlds feel empty, so I stopped at "classy" and left this for Kakashi to judge in play.
+
+## A4. Movement and idle life
+- **Movers:** cars, buses, boats, SkyTrain, animals, ships, whales and the rest stay in their zone. Off-stream movers are paused, they stay edible, and they never flee.
+- **Idle life:**
+  - `sway` on plants and trees
+  - butterflies flutter (Home, Stanley Park)
+  - sunlight glints twinkle on open water in every world (`waterGlints`)
+  - carousels, desk globes and planets turn (`SPIN`)
+  - the nursery mobile turns and the rocking horse rocks
+  - clouds drift
+- **Terrain:** textured ground with relief. Mountains block until they are edible.
+- **Labels:** only on active targets (`labelOn`).
+
+## A5. Targeting
+- **Targets:** the help arrow is always on. Every target gets a beacon pillar and a label at any zoom. Targets self-heal: a missing one is re-placed inside the current ring.
+- **I Spy:**
+  - a 30-item pool per world, dealt from a saved shuffle-bag, 5 per run
+  - each hand is sorted into a size ladder, smallest first
+  - a fresh run starts at starting size with the world's upgrades
+- **Educational:** all worlds are unlocked and every set is pre-sized. The Globe starts lessons city-sized (`eduMin` 25), because the planet is big. Grade 2/3, Learning Full/Sometimes/Off and "How big am I?" are unchanged.
+
+## A6. Minimap
+- **Placement:** bottom-left in every world; the Globe keeps a globe look (an orthographic mini-globe that names the country you're over).
+- **Markers:** the hole is a pulsing dot, targets are stars, the partner is a dot (the hook is ready for co-op).
+- **Big map:** tapping the minimap opens it, and it cycles 100 / 50 / 25%. The zoomed views follow the hole.
+- **Steering:** a minimap touch never steers.
+
+## A7. Walls
+- **Walls are absolute.** Collision radius is capped, so a big hole still fits through doorways and up stairs. The new behaviour test pushes the biggest hole at 8 walls from both sides; it never crosses.
+- **Open-top dollhouse:** walls fade between the camera and the hole. X-ray is visual only.
+- **Flat things you sit on** (the picnic blanket, rugs, the Moon's face) are drawn cut away over the open hole and laid flat, so they never cover it. Before this fix, Space's Apollo start hid the hole under the Moon.
+
+## B. Title and modes
+- **Title:** a living Vancouver title scene: SkyTrain on its guideway, buses, cars, clouds, the hole at a crosswalk.
+- **Mode strip:** a cream strip with STORY / I SPY / EDUCATIONAL / EXPLORATION, and a small SETTINGS gear.
+- **Removed:** there are no Upgrades or Chapters menu buttons. Upgrades open from the in-game HUD (orange UPGRADES), and boards from the Story world pick.
+- **World pick:** every mode opens one. `tests/ui-flow.js` checks the strip, the four pickers and that the old buttons are gone.
+
+## C. The Home
+- **Layout:** transcribed from the owner's floorplan as layout only. No text from the image appears anywhere.
+- **Building:** two floors, with stairs as paths: you roll up the run and the floor changes at its middle. Also a deck, garage, side paths, front and back yards, and the alley.
+- **Pace:** the last objective (the family car, 4.6 m) was out of reach in a long bot run. Two causes:
+  - the top size step ended exactly at the car's size, so you needed the whole last level
+  - a big hole starves in a small house, because things only respawned out of sight (4 hole-widths)
+- **Fix:** top size 5.2 m, `needP` 1.13, and `respawnR` 6 m in the Home, so things come back once you're a room away. Three bot seeds now finish in 9.4–11.0 min.
+
+## D. Metro Vancouver
+New: SkyTrain guideway, pillars and stations; blue buses; street trees; forests; the Grouse trail; snow on Cypress and Whistler; intersection streetlights; the objective ladder (Steam Clock → … → Whistler).
+
+## E. Stanley Park
+- **Map:** a real OSM bake inside the owner's red-line boundary.
+- **Start:** a picnic blanket on Ceperley Meadow, at ant scale. The ladder runs from the picnic sandwich to Deadman's Island.
+- **Landmarks:** an enterable Aquarium (an open-top hall with front doors), Brockton and Prospect Point lighthouses, the Hollow Tree, Siwash Rock, the Girl in a Wetsuit and more.
+- **Rules:** water is never food. Totem poles are scenery only.
+
+## F. Space
+- **Start:** at the Apollo landing site. The Moon's surface is a zoomed-in stage, a deliberate scale break: the Moon you finally swallow is 15 units across, but its face where you start is far bigger. Earth starts orbiting only after the Moon.
+- **Contents:** orbiting planets, real moons, dwarf planets, the Oort cloud and Planet Nine.
+
+## G. The Globe
+- **Map data:** a true-scale equirectangular map baked from Natural Earth (public domain) by `tools/bake-globe.py`. It holds land, lakes, country outlines, rivers as lines (the Nile is named), major highways as lines and cities.
+- **Map scale:** 400 world units per degree. Growth is compressed (13 sizes from 4 cm to 950 km in game metres), so one world can go from a house to Everest.
+- **Start:** small-house size on a Kitsilano street with looping traffic. Kitsilano was chosen to sit well away from the owner's own corner, which never appears or is singled out.
+- **Speed:**
+  - The speed upgrade counts double here (`upSpd` 2).
+  - Water travel is faster.
+  - I Spy and Educational move 5× faster (`runSpd`), because their targets are continents apart.
+- **Highways:** while you're small, cars drive the nearest real highway (a pool of 18, reassigned as you move). From far out, highways show as flowing light. There are no streetlights.
+- **Landmarks:** about 400, in `data/globe-landmarks.js`, with every country covered (≥150 is checked in the data test).
+  - CN, RU, CA and the US have 10 or more each; big countries have 4–5.
+  - All New 7 Wonders and Giza are in, plus the named ones: Tokyo Tower, Skytree, the Shard, Buckingham Palace, the Louvre and Tower Bridge.
+  - Every country has a capital marker where no landmark is near.
+  - Holy sites where non-believers can't go (the Kaaba and similar) are deliberately left out.
+- **Theme parks:** 24, at the real locations of major parks, drawn in our own art and unnamed. The data test checks they are unnamed.
+- **Oceans:** ships, whales, orcas and sharks (no salmon).
+- **Finale:** the ladder runs Kits Pool → … → Everest. Eating Everest rolls the credits and pays +5,000 coins the first time.
+
+## I. Co-op: NOT SHIPPED (reported plainly)
+Two-device co-op over WebRTC with a room code and no servers of our own was not built in this pass, and I would not call it reliable if it were. Reasons:
+- **Signalling:** WebRTC needs a signalling exchange before the two iPads can talk. With no server of our own, that means either a third-party public broker (PeerJS cloud or similar), whose uptime we don't control and which sends play data to someone else, or copying a ~2 KB offer/answer blob between iPads by hand, which kids can't do.
+- **iPad networking:** iOS Safari hides local addresses behind mDNS candidates, so same-Wi-Fi connections fail on some routers without a TURN relay, and a TURN relay is a server.
+- **Testing:** two real iPads can't be exercised from this container, so "works" could not be verified.
+
+What is ready: the partner dot on the minimap and the mini-globe (`G.mate`) and a shared-ladder-friendly run model (I Spy and Educational hands are already data). The decision Kakashi or the owner needs to make is whether a third-party signalling broker is acceptable.
+
+## Performance (iPad levers)
+- **iPad levers:**
+  - streaming radius: cells generate only around the camera
+  - off-stream movers paused
+  - every visible object merged into one dynamic mesh per material each frame
+  - highways and rivers drawn as lines on the ground texture
+- **Two stalls found and fixed in this pass:**
+  - The ground canvas was GPU-backed. Painting thousands of OSM paths into it and uploading stalled Stanley Park's West End to about 1 fps in headless Chromium. It is now a CPU canvas (`willReadFrequently`), and that spot runs at about 24–31 fps.
+  - The camera crawled through extreme zooms after a big size jump (a world or mode switch, or a big +/−), re-texturing at each step. It now snaps when it is more than 3× off target.
+- **`tests/perf.js`** probes the three heaviest spots:
+
+  | Spot | fps |
+  | --- | --- |
+  | Vancouver downtown | 17–21 |
+  | Stanley Park West End | 24.5 |
+  | Globe street start | 18–22 |
+
+  These are in GPU-less headless Chromium (SwiftShader), in line with v4's 17–20. The 50 fps target can't be measured without a GPU; it needs checking on a real iPad.
+
+## Results per section (tests at hand-off)
+| Section | Result |
+| --- | --- |
+| A1–A2 ladder, rings | behaviour test "objective ladder" (cap holds at the next objective; last objective completes the world, unlocks the next, MAIN MENU returns) |
+| A3 density | data test whitelist PASS ×5; Globe street-grid PASS; per-world factors above |
+| A4 movement / idle life | movers in-zone and paused off-stream; water glints, spin, sway, butterflies |
+| A5 targeting | I Spy and Educational behaviour tests PASS; audio scripted runs PASS |
+| A6 minimap | screens `27-w5-big-map`, `28-w3-big-map` |
+| A7 walls | behaviour "walls are absolute" PASS (16/16 pushes held) |
+| B title / modes | ui-flow PASS (four modes, five worlds per picker, no old buttons) |
+| C–G worlds | reachability 100% in all five; pace bot in window in all five (table below) |
+| H five worlds | data PASS ×5; music per world PASS in audio test |
+| I co-op | not shipped (above) |
+| Saves | retired-world migration test PASS |
+| Audio | 8/8, Chromium launched with no autoplay bypass |
+
+### Pace bot (`node tests/balance-bot.js`, sim-minutes to finish the objective ladder; window 8–15)
+| World | Finish (sim-min) | Objectives eaten at (min) | Eats / size step (all, size-worthy) |
+| --- | --- | --- | --- |
+| W1 The Home | 11.0 / 9.8 / 9.4 (seeds 0 / 3 / 5) | e.g. 1.7 2.7 3.4 5.0 5.8 6.1 6.9 … | ~23, ~15 |
+| W2 Metro Vancouver | 8.7 | 2.41 3.04 4.24 4.37 5.59 6.72 7.73 8.63 8.72 8.75 | ~256, ~96 |
+| W3 Stanley Park | 8.5 | 0.13 0.24 0.59 3.95 6.01 7.16 7.96 8.40 8.47 8.53 | ~70, ~32 |
+| W4 Space | 8.2 | 0.12 0.28 0.36 0.45 0.96 3.92 6.69 7.66 8.18 | ~45, ~10 |
+| W5 The Globe | 9.6 | 0.37 0.97 1.15 1.33 2.33 4.87 6.05 7.81 8.70 9.04 9.40 9.62 | ~78, ~67 |
+
+All five worlds finish inside the 8–15 minute window. The game itself uses `Math.random`, so the same seed varies by about a minute between runs (one Home run at an interim tuning came in at 7.5, which is why Home was nudged to `needP` 1.13). Vancouver, Stanley Park and Space sit near the bottom of the window. A real child explores more than the bot, so they should land mid-window; tune `need` up per world if Kakashi finds them quick.

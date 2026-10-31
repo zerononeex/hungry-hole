@@ -642,10 +642,10 @@ const CH = [null];
   // the zones a loose thing can be rolled in: a room's list, filtered by the placement constitution
   const okIn = (k, room) => { const a = ALLOW[k]; return !a || a === '*' || a.split(',').includes(CAT[room]); };
   CH.push({
-    n: 1, key: 'home', mus: 'ch1.mp3', name: 'The Home', short: 'Home', c1: '#4f7fd6', c2: '#2a3f8f', bgc: '#6aa84f', rim: '#9b6bff', metric: 1, layered: 1,
-    W, H, start: [5.3, 26.1 + OY], startFl: 1, edge: .15, cost: 1, need: 260, needP: 1.15, pv: 1.5, view: 13, xpk: 2, fill: .2, spd: 1.8,
+    n: 1, key: 'home', respawnR: 6, mus: 'ch1.mp3', name: 'The Home', short: 'Home', c1: '#4f7fd6', c2: '#2a3f8f', bgc: '#6aa84f', rim: '#9b6bff', metric: 1, layered: 1,
+    W, H, start: [5.3, 26.1 + OY], startFl: 1, edge: .15, cost: 1, need: 260, needP: 1.13, pv: 1.5, view: 13, xpk: 2, fill: .2, spd: 1.8,
     walls3d: { floors: [WALLS[0], WALLS[1]], h: 2.4, cut: 1 },
-    sizes: [0, 0.045, 0.08, 0.14, 0.24, 0.42, 0.7, 1.15, 1.9, 3, 4.6],
+    sizes: [0, 0.045, 0.08, 0.14, 0.24, 0.42, 0.7, 1.15, 1.9, 3, 5.2],
     types: T0,
     zones: Object.assign(Object.fromEntries(Object.entries(ROOM_T).map(([k, t]) => [k, { d: RM[k][7] ? .6 : 1, t, at: atRoom, out: RM[k][7] ? 1 : 0 }])), {
       xlane: { d: .3, deco: 1, coin: 0, t: 'xbush:2,xflower:2,xtree', at: atOut },
@@ -2519,7 +2519,7 @@ function gather(x0, y0, x1, y1, z) {
     const b = o.pb || (o.pb = pathBox(o));
     if (C.wrap || (b[2] >= x0 - P && b[0] <= x1 + P && b[3] >= y0 - P && b[1] <= y1 + P)) out.push(o);
   }
-  const rD = holeD() * 4;
+  const rD = Math.min(holeD() * 4, G.C.respawnR || 1e12);     // (the Home is small: things come back once you're a room away, so a big hole never starves)
   for (const t of activeLayers(z)) {
     const cs = C.LC[t], hp = C.sizes[t] * 0.5;
     for (let cy = Math.floor((y0 - hp) / cs); cy <= Math.floor((y1 + hp) / cs); cy++)
