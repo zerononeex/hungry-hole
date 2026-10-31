@@ -1,4 +1,4 @@
-// Audio suite (v4.1). Chromium is launched with NO autoplay-policy flags, so the browser blocks sound until a real tap,
+// Audio suite (v4.1; v5: five worlds, every mode opens a world pick first). Chromium is launched with NO autoplay-policy flags, so the browser blocks sound until a real tap,
 // the same rule the owner's iPhone applies. Checks: music starts from the first tap and really plays (WebAudio, via
 // HH.debugAudio), switches with chapter/menu, the MUSIC toggle drives the gain; every SFX file decodes; and the game
 // never speaks (zero speechSynthesis use across scripted Story, I Spy and Educational runs). node tests/audio.js
@@ -22,17 +22,20 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
   const before = await dbg();
   results.push(['silent before the first tap (no gesture yet)', !before.playing && before.track === null, before]);
 
-  await p.click('#b-start');                                           // the real tap: STORY
+  await p.click('#b-start');                                           // the real tap: STORY opens the world pick (menu music)
+  const pick = await waitTrack('menu.mp3');
+  await p.click('[data-play="1"]');                                    // second real tap: World 1
   const story = await waitTrack('ch1.mp3');
-  results.push(['first tap: ch1.mp3 plays through WebAudio, context running', story.track === 'ch1.mp3' && story.playing && story.ctxState === 'running' && Math.abs(story.gainValue - 0.55) < 1e-6 && story.level > 0, story]);
+  results.push(['first tap starts music (world pick: menu.mp3), World 1 tap: ch1.mp3 through WebAudio, context running', pick.track === 'menu.mp3' && pick.playing && story.track === 'ch1.mp3' && story.playing && story.ctxState === 'running' && Math.abs(story.gainValue - 0.55) < 1e-6 && story.level > 0, story]);
 
   await p.evaluate(() => HH.UI.main());
   const menu = await waitTrack('menu.mp3');
   results.push(['back on the menu: menu.mp3 plays', menu.track === 'menu.mp3' && menu.playing && menu.level > 0, menu]);
 
-  const chs = {};
-  for (let n = 1; n <= 7; n++) { await p.evaluate(n => { HH.S.ch[n].u = 1; HH.startChapter(n); }, n); const d = await waitTrack('ch' + n + '.mp3'); chs[n] = d.track === 'ch' + n + '.mp3' && d.playing && d.level > 0; }
-  results.push(['chapter changes: each of ch1-ch7.mp3 plays in its chapter', Object.values(chs).every(Boolean), chs]);
+  // v5 music per world (DECISIONS.md): the files stay as-is; ch2.mp3 and ch7.mp3 belonged to the retired worlds
+  const MUS = { 1: 'ch1.mp3', 2: 'ch3.mp3', 3: 'ch4.mp3', 4: 'ch6.mp3', 5: 'ch5.mp3' }, chs = {};
+  for (let n = 1; n <= 5; n++) { await p.evaluate(n => { HH.S.ch[n].u = 1; HH.startChapter(n); }, n); const d = await waitTrack(MUS[n]); chs[n] = d.track === MUS[n] && d.playing && d.level > 0; }
+  results.push(['world changes: each of the five worlds plays its own track', Object.values(chs).every(Boolean), chs]);
 
   await p.evaluate(() => { HH.S.settings.music = 0; HH.syncMusic && HH.syncMusic(); }); await p.waitForTimeout(400);
   const off = await dbg();
@@ -47,7 +50,7 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
   const runs = await p.evaluate(async () => {
     const { G, S } = HH, wait = ms => new Promise(r => setTimeout(r, ms)), out = {};
     const step = k => { for (let i = 0; i < k; i++) { G.now += 33; G.t += 1 / 30; HH.update(1 / 30); } };
-    for (let n = 1; n <= 7; n++) S.ch[n].u = 1;
+    for (let n = 1; n <= 5; n++) S.ch[n].u = 1;
     HH.startChapter(1); G.lvl = 4; step(5); let e = 0; for (const o of G.vis.slice()) if (!o.dead && HH.canEat(o) && e < 40) { HH.eat(o); e++; } step(30); out.storyEaten = e;
     for (const n of [2, 4]) { HH.startChapter(n, 'ispy'); G.run.tg.forEach(t => t.o && HH.eat(t.o)); await wait(1300); HH.UI.closeModal && HH.UI.closeModal(); }
     out.ispy = 'ch2+ch4';

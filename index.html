@@ -1964,7 +1964,7 @@ const CH = [null];
     rings: (() => { const B = (a, b, c, d) => [(a + 180) * D, (90 - d) * D, (c + 180) * D, (90 - b) * D];
       const r1 = B(-123.30, 49.20, -122.98, 49.36), r2 = B(-124.6, 47.0, -121.4, 49.9), r3 = B(-126, 31, -104, 50.5), r4 = B(-128, 22, -60, 56);
       return [r1, r1, r1, r1, r2, r3, r3, r4, null, null, null, null]; })(),
-    finish(first) { setTimeout(() => { SFX.fanfare(); if (first) { G.st.w += 5000; persist(); } UI.credits(); }, 1200); },
+    finish(first) { setTimeout(() => { SFX.fanfare(); if (first) { G.st.w += 5000; } S.journey = 1; persist(); UI.credits(); }, 1200); },
     ispy: ['#eiffel', '#colosseum', '#greatwall', '#taj', '#pyramids|the Egyptian pyramids', '#liberty', '#bigben', '#opera', '#christ', '#chichen', '#fuji', '#marina', '#petra',
       '#machu', '#basil', '#tokyotower', '#skytree', '#shard', '#towerbridge', '#louvre', '#cntower', '#niagara', 'car', 'hat', 'sailboat', 'cargo', 'cruise', 'whale', 'orca', 'shark'],
     eduSubj: 'geography',
@@ -3077,6 +3077,7 @@ function update(dt) {
   // camera
   const tz = targetZoom();
   G.cam.z += (tz - G.cam.z) * Math.min(1, dt * 2.5);
+  if (G.cam.z > tz * 3 || G.cam.z < tz / 3) G.cam.z = tz;          // a jump in size (a world or mode switch, a big +/-) snaps instead of crawling through extreme zooms
   G.cam.x += dx(G.x, G.cam.x) * Math.min(1, dt * 6); G.cam.y += dy(G.y, G.cam.y) * Math.min(1, dt * 6);
   if (C.wrap) { G.cam.x = (G.cam.x % C.W + C.W) % C.W; G.cam.y = (G.cam.y % C.H + C.H) % C.H; }
   // objects near the camera (the tilted view sees further north; keep a southern margin for tall things)
@@ -4003,6 +4004,9 @@ void main(){ vec2 p = vUv * 2.0 - 1.0; float r = length(p), a = atan(p.y, p.x);
 const QUAD_VS = `varying vec2 vUv; varying vec2 vW; void main(){ vUv = uv; vW = position.xz; gl_Position = projectionMatrix * viewMatrix * vec4(position,1.0); }`;
 const SHADOW_FS = `uniform vec2 hole; uniform float R; varying vec2 vUv; varying vec2 vW;
 void main(){ if (length(vW - hole) < R) discard; float r = length(vUv - 0.5) * 2.0; gl_FragColor = vec4(0.0, 0.0, 0.0, (1.0 - smoothstep(0.35, 1.0, r)) * 0.32); }`;
+/* flat things you sit on (a rug, the picnic blanket): solid colour, but cut away over the open hole so they never cover it */
+const UNDER_VS = `varying vec3 vC; varying vec2 vW; void main(){ vC = color; vW = position.xz; gl_Position = projectionMatrix * viewMatrix * vec4(position,1.0); }`;
+const UNDER_FS = `uniform vec2 hole; uniform float R; varying vec3 vC; varying vec2 vW; void main(){ if (length(vW - hole) < R) discard; gl_FragColor = vec4(vC, 1.0); }`;
 const GLOW_FS = `uniform float t; varying vec2 vUv; varying vec2 vW;
 void main(){ float r = length(vUv - 0.5) * 2.0; float a = smoothstep(1.0, 0.7, r) * smoothstep(0.35, 0.7, r) * (0.55 + 0.25 * sin(t * 6.0)); gl_FragColor = vec4(1.0, 0.88, 0.4, a); }`;
 
@@ -4016,7 +4020,7 @@ function initGL() {
   LAMBERT.x = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.32, depthWrite: false });
   BASIC.m = new THREE.MeshBasicMaterial({ vertexColors: true });
   // ground: one big plane per chapter, painted from the chapter's zones into a moving canvas texture
-  V3.gcv = document.createElement('canvas'); V3.gcv.width = REG_W; V3.gcv.height = REG_H; V3.gctx = V3.gcv.getContext('2d');
+  V3.gcv = document.createElement('canvas'); V3.gcv.width = REG_W; V3.gcv.height = REG_H; V3.gctx = V3.gcv.getContext('2d', { willReadFrequently: true });   // CPU-backed: thousands of map paths raster once, then upload (a GPU canvas re-raster stalled every frame)
   V3.tex = new THREE.CanvasTexture(V3.gcv); V3.tex.minFilter = THREE.LinearFilter; V3.tex.generateMipmaps = false;   // the region is repainted at the current zoom, so mipmaps buy nothing
   V3.gmat = new THREE.ShaderMaterial({ vertexShader: GROUND_VS, fragmentShader: GROUND_FS, uniforms: {
     map: { value: V3.tex }, reg: { value: new THREE.Vector4(0, 0, 1, 1) }, base: { value: new THREE.Color() }, hole: { value: new THREE.Vector2() },
@@ -4041,7 +4045,8 @@ function initGL() {
   V3.mG = mkMerge(BASIC.m, ['position', 'color']);
   V3.mS = mkMerge(new THREE.ShaderMaterial({ vertexShader: QUAD_VS, fragmentShader: SHADOW_FS, uniforms: su, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), ['position', 'uv']);
   V3.mH = mkMerge(new THREE.ShaderMaterial({ vertexShader: QUAD_VS, fragmentShader: GLOW_FS, uniforms: su, transparent: true, depthWrite: false, depthTest: false }), ['position', 'uv'], 10);
-  V3.merge = [V3.mO, V3.mX, V3.mG, V3.mS, V3.mH];
+  V3.mU = mkMerge(new THREE.ShaderMaterial({ vertexShader: UNDER_VS, fragmentShader: UNDER_FS, uniforms: su, vertexColors: true }), ['position', 'color'], 0, true);
+  V3.merge = [V3.mO, V3.mX, V3.mG, V3.mS, V3.mH, V3.mU];
   V3.ok = true;
 }
 /* ---------- merged batches: every visible object is baked into one dynamic mesh per material each frame.
@@ -4102,6 +4107,7 @@ function modelOf(o) {
 }
 const FALL_DEPTH = 0.9;                              // pit depth in hole radii
 /* fills _p3/_q/_s3 for object o (camera-relative). Returns false when it should not be drawn. */
+const SPIN = { carousel: .7, globe: .5, planet: .2 };
 function poseOf(o, md, hx, hz, R) {
   let x = dx(o.x, G.cam.x), z = dy(o.y, G.cam.y), y = 0;
   const fw = o.fw * (o.vs || 1), sv = o.sv || 1, now = G.now;
@@ -4116,6 +4122,7 @@ function poseOf(o, md, hx, hz, R) {
   if (o.lift && !o.fall) y += o.lift;                // resting on a counter / stove top
   if (o.coin) yaw = G.t * 3 + (o.ph || 0);
   const f = o.fall;
+  if (md && SPIN[md.rid] && !f) yaw += G.t * SPIN[md.rid];   // idle life: carousels, desk globes and planets turn
   if (f) {
     const p = clamp((now - f.t0) / f.dur, 0, 1), e = p * p, a = p * (f.spin || 3.5);
     const rx = f.x0 * (1 - e), rz = f.y0 * (1 - e);
@@ -4268,12 +4275,13 @@ function drawWorld3D() {
     if (o.backdrop && !G.cine && Math.hypot(dx(o.x, G.x), dy(o.y, G.y)) < o.fw * .55) continue;
     const md = modelOf(o); if (!md) continue;
     if (!poseOf(o, md, hx, hz, R)) continue;
+    if (o.under && !o.fall && md.h) _s3.y = Math.min(_s3.y, R * 0.05 / md.h);   // a rug / the Moon's face lies flat, so the cut-out shows the pit right below
     _m4.compose(_p3, _q, _s3);
     const xr = !o.fall && hidesHole(o, md, hx, hz, R);
-    if (md.geo) pushMerge(xr ? V3.mX : V3.mO, o.fw * z < LOD_PX && !o.fall ? lodOf(md) : md.geo);
+    if (md.geo) pushMerge(o.under && !o.fall ? V3.mU : xr ? V3.mX : V3.mO, o.fw * z < LOD_PX && !o.fall ? lodOf(md) : md.geo);
     if (md.glow) pushMerge(V3.mG, md.glow);
     const fw = o.fw * (o.vs || 1);
-    if (!o.fall && fw * z > 3) {
+    if (!o.fall && fw * z > 3 && fw * z < 700) {        // (a screen-filling building's soft shadow is invisible but costs a full-screen blend)
       const sx = md.w * fw * 1.35, sz = md.d * fw * 1.25;
       _qy.setFromAxisAngle(_up, o.coin ? 0 : (o.yaw || 0));
       _m4.compose(_p3.set(_p3.x, 0, _p3.z), _qy, _s3.set(o.coin ? fw * .8 : sx, 1, o.coin ? fw * .8 : sz));
@@ -4724,11 +4732,38 @@ function compassArrow(o, col) {
   g.restore();
 }
 
+/* idle life (v5 A4): sunlight glints twinkle on open water. Points sit on a world grid sized to the view, so they stay
+   put as the camera moves; whether a point is water is asked once and cached. Cheap: at most ~160 tiny strokes a frame. */
+const WATERZ = new Set(['water', 'lake', 'marina', 'pool', 'ocean', 'pond', 'sea', 'river', 'polar']), GLINT = { C: null, m: new Map() };
+function waterGlints() {
+  const C = G.C, vr = G.vr; if (!vr || G.cine) return;
+  if (GLINT.C !== C || GLINT.m.size > 20000) { GLINT.C = C; GLINT.m.clear(); }
+  const vw = vr[2] - vr[0], st = Math.pow(2, Math.round(Math.log2(Math.max(vw / 12, 1e-3)))), out = [0, 0];
+  const x0 = Math.floor((G.cam.x + vr[0]) / st), x1 = Math.ceil((G.cam.x + vr[2]) / st), y0 = Math.floor((G.cam.y + vr[1]) / st), y1 = Math.ceil((G.cam.y + vr[3]) / st);
+  if ((x1 - x0) * (y1 - y0) > 400) return;
+  const hc = [0, 0], he = [0, 0], R = holeD() / 2;                // keep the open hole itself clear
+  toScreen(dx(G.x, G.cam.x), dy(G.y, G.cam.y), 0, hc); toScreen(dx(G.x, G.cam.x) + R * 1.15, dy(G.y, G.cam.y), 0, he);
+  const hr2 = (he[0] - hc[0]) ** 2 + (he[1] - hc[1]) ** 2;
+  g.strokeStyle = '#fff'; g.lineWidth = 2; g.lineCap = 'round';
+  for (let i = x0; i <= x1; i++) for (let j = y0; j <= y1; j++) {
+    const h = hash4(C.n, i, j, Math.round(Math.log2(st))), jx = (h % 1000) / 1000, jy = ((h / 1000 | 0) % 1000) / 1000;
+    const wx = (i + jx) * st, wy = (j + jy) * st, key = st + ':' + i + ',' + j;
+    let w = GLINT.m.get(key);
+    if (w === undefined) { const z = zoneOf(C, C.wrap ? ((wx % C.W) + C.W) % C.W : wx, wy); GLINT.m.set(key, w = WATERZ.has(z) || (!z && C.isWater && C.isWater(wx, wy)) ? 1 : 0); }
+    if (!w) continue;
+    const a = Math.pow(Math.max(0, Math.sin(G.t * 1.6 + (h % 628) / 100)), 6); if (a < .05) continue;
+    if (!toScreen(dx(wx, G.cam.x), dy(wy, G.cam.y), 0, out) || (out[0] - hc[0]) ** 2 + ((out[1] - hc[1]) * 1.6) ** 2 < hr2) continue;
+    const r = 2 + 4 * a; g.globalAlpha = .85 * a;
+    g.beginPath(); g.moveTo(out[0] - r, out[1]); g.lineTo(out[0] + r, out[1]); g.moveTo(out[0], out[1] - r * .6); g.lineTo(out[0], out[1] + r * .6); g.stroke();
+  }
+  g.globalAlpha = 1;
+}
+
 /* ---------- frame ---------- */
 function render() {
   g.setTransform(K, 0, 0, K, 0, 0); g.clearRect(0, 0, STAGE_W, STAGE_H);
   if (G.mode === 'play' && G.C) {
-    drawWorld3D(); drawLabels(); drawHUD(); if (G.C.hud) G.C.hud();
+    drawWorld3D(); waterGlints(); drawLabels(); drawHUD(); if (G.C.hud) G.C.hud();
     if (G.cine && G.C.cineDraw) G.C.cineDraw();
   } else drawTitle();
 }
@@ -4996,7 +5031,7 @@ const UI = {
   credits() {
     UI.show('credits'); G.mode = 'menu';
     $('credits-roll').innerHTML = `<div style="font-size:64px;font-weight:900;color:#ffd23f">YOU ARE THE BLACK HOLE</div><br>
-      <div>HUNGRY HOLE</div><br><div>From one Lego brick…</div><div>…to a whole galaxy.</div><br>
+      <div>HUNGRY HOLE</div><br><div>From one Lego brick…</div><div>…to the whole world.</div><br>
       <div>The Home · Metro Vancouver · Stanley Park</div><div>Space · The Globe</div><br>
       <div>Thanks for playing!</div><br><div>+5,000 coins added to World 5</div><br><div>Journey COMPLETE</div>
       <div style="font-size:22px;opacity:.85">Every world stays open forever. Go back and finish your Quest Boards!</div><br>
