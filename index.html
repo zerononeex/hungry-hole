@@ -206,7 +206,8 @@ const STAGE_W = 1280, STAGE_H = 720;
 const FALL_MS = 340;                          // tip over the rim, sink, spin + shrink; then the eat pipeline runs
 const WOBBLE_MIN = 0.85, WOBBLE_STEP = 0.36;  // owner's wobble rule: from 85% of the needed size, bumps can tip a leaning thing in
 const NEED_K = 0.2, XP_K = 1.8, SPEED = 4.32, START_P = 0.3;   // growth need per level (x chapter need), XP per eat, speed in hole-widths/s, pre-grown start
-const FILL_K = 0.3;                           // v4 density cut: loose filler scatter at ~30% of v3 (placed/authored things carry the world)
+const FILL_K = 0.3;
+const SPACE_CUT = 0.5;                        // v5.1: Space's ambient scatter (space, belt, Kuiper, Oort, the scenery beyond) at half density                           // v4 density cut: loose filler scatter at ~30% of v3 (placed/authored things carry the world)
 const PTS = [0, 5, 8, 12, 16, 22, 30, 40, 52, 66, 82, 100, 120, 145, 170, 200]; // points by tier (x chapter cost scale)
 const MULT = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]; // points ladder (x2.0 only at lvl 10)
 const GROW = l => 1 + 0.15 * l;               // v4: Growth Boost x1.0 -> x2.5 (upgrades must be unmistakable)
@@ -1597,14 +1598,16 @@ const CH = [null];
       sun: ['the Sun', 1, { c1: '#ffcc33', m: [PW.sun, PW.sun] }],
       rover: ['Mars rover', 1, { m: [9, 6] }], ringice: ['ring ice', 8, { s: .7 }], ringrock: ['ring rock', 8, { s: .8 }], hat: ['top hat', 7],
     },
+    /* v5.1 Part 14 (spec v5.15 addendum 13, corrected): the ambient scatter between the clusters is cut by half (0.30 -> 0.15 of v3).
+       The Apollo site, Earth orbit, the planetary clusters and the placed discoveries keep their density; nothing else is rebalanced. */
     zones: {
       moon: { d: 1.6, coin: .2, t: ['moondust:5,pebble:3,boot:2', 'pebble:2,moonrock:4', 'moonrock:2,camera,flag:.3', 'seismo:.5,astronaut:.6,moonrock', 'crater:.8'] },
-      space: { d: .55, t: [...E6, 'rock:3,ice,bolt,glove,stardust:2', 'satellite,meteor:2,probe', 'comet:2,ufo,rocket', 'station:.2,outpost:.3', 'giantcomet'] },
+      space: { d: .55 * SPACE_CUT, t: [...E6, 'rock:3,ice,bolt,glove,stardust:2', 'satellite,meteor:2,probe', 'comet:2,ufo,rocket', 'station:.2,outpost:.3', 'giantcomet'] },
       earthorbit: { d: 1.1, coin: .3, t: [...E6, 'junk:4,bolt:3,glove:2,rock', 'satellite:4,telescope', 'rocket:2', 'station'] },
-      belt: { d: 1.3, t: [...E6, 'rock:4,stardust', 'asteroid:8', 'bigast:5,comet', 'outpost', 'mothership:.3'] },
-      kuiper: { d: .8, t: [...E6, 'ice:5,rock', 'meteor,minimoon', 'comet:3', '', 'giantcomet:2'] },
-      oort: { d: .35, t: [...E6, 'ice:6', 'meteor', 'comet:4', '', 'giantcomet:3'] },
-      xspace: { d: .2, deco: 1, t: [...E6, 'rock:3,ice:2', 'meteor,satellite', 'comet:2', '', 'giantcomet'] },
+      belt: { d: 1.3 * SPACE_CUT, t: [...E6, 'rock:4,stardust', 'asteroid:8', 'bigast:5,comet', 'outpost', 'mothership:.3'] },
+      kuiper: { d: .8 * SPACE_CUT, t: [...E6, 'ice:5,rock', 'meteor,minimoon', 'comet:3', '', 'giantcomet:2'] },
+      oort: { d: .35 * SPACE_CUT, t: [...E6, 'ice:6', 'meteor', 'comet:4', '', 'giantcomet:3'] },
+      xspace: { d: .2 * SPACE_CUT, deco: 1, t: [...E6, 'rock:3,ice:2', 'meteor,satellite', 'comet:2', '', 'giantcomet'] },
     },
     zoneAt, outside: () => 'xspace',
     build(add, rng) {
@@ -2098,7 +2101,7 @@ const CH = [null];
         g.fillStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.arc(cx, cy, pr + 5, 0, 7); g.fill();
         g.fillStyle = '#ff3b6b'; g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, pr, 0, 7); g.fill(); g.stroke();
         g.strokeStyle = 'rgba(160,210,255,.85)'; g.lineWidth = 3; g.beginPath(); g.arc(cx, cy, GR, 0, 7); g.stroke();
-        const cc = ccAt(G.x, G.y); txt(cc ? CTRY[cc].nm.replace(/^the /, '') : surf(G.x, G.y) === 2 ? 'Lake' : 'Ocean', cx, Y - 12, 15, '#fff', 'center', 900);
+        const cc = ccAt(G.x, G.y); txt(cc ? CTRY[cc].nm.replace(/^the /, '') : surf(G.x, G.y) === 2 ? 'Lake' : 'Ocean', cx, Y + Wd + 16, 15, '#fff', 'center', 900);
       };
     })(),
     /* from far out the highways read as moving light: dots flowing along the real roads (drawn over the ground) */
@@ -4363,7 +4366,7 @@ function drawRing() {
   }
   g.restore();
 }
-/* ---------- minimap (bottom-left, everywhere; the Globe keeps a globe look) + the tappable big map ---------- */
+/* ---------- minimap (top-left, everywhere; the Globe keeps a globe look) + the tappable big map ---------- */
 function miniImg(C) {
   if (C._mini) return C._mini;
   const S0 = 1024, k = S0 / Math.max(C.W, C.H), c = document.createElement('canvas');
@@ -4375,9 +4378,9 @@ function miniImg(C) {
 }
 function miniRect() {
   const C = G.C;
-  if (C.wrap) return [14, STAGE_H - 14 - 180, 180, 180];
+  if (C.wrap) return [14, 14, 180, 180];
   const k = Math.min(200 / C.W, 170 / C.H), w = C.W * k, h = C.H * k;
-  return [14, STAGE_H - 14 - h, w, h];
+  return [14, 14, w, h];                             // v5.1: TOP-left (bottom-left is the joystick's thumb zone)
 }
 function drawMapLayer(X, Y, W, H, vx0, vy0, vw, vh, img, round) {
   const C = G.C, k = W / vw, fx = img.width / C.W, fy = img.height / C.H;
@@ -4585,8 +4588,9 @@ function fitText(s, max, size) { g.font = `800 ${size}px ${UI_FONT}`; while (siz
 function drawHUD() {
   const C = G.C, st = G.st;
   g.setTransform(K, 0, 0, K, 0, 0);
-  // checklist pill (top-left); I Spy / Educational show their own cards instead
+  // checklist pill (top-left, under the minimap); I Spy / Educational show their own cards instead
   let y = 12;
+  const mr = miniRect(); g.save(); g.translate(0, mr[1] + mr[3] + (C.wrap ? 34 : 12) - y);   // v5.1: the whole objective/quest stack sits below the minimap
   if (G.run.kind !== 'story') drawModeHUD();
   else {
   g.fillStyle = 'rgba(20,14,46,.78)'; rr(g, 12, y, 372, 190, 16); g.fill();
@@ -4631,6 +4635,7 @@ function drawHUD() {
     y += h + 6;
   }
   }
+  g.restore();
   // points (top-centre)
   txt(fmt(st.pts), STAGE_W / 2, 30, 34, '#fff', 'center', 900);
   txt('POINTS', STAGE_W / 2, 58, 12, '#cbd', 'center');
@@ -4724,7 +4729,6 @@ function compassArrow(o, col) {
   if (toScreen(X, Y, 0, p) && p[0] > 40 && p[0] < STAGE_W - 40 && p[1] > 40 && p[1] < STAGE_H - 40) return;
   const a = Math.atan2(Y - dy(G.y, G.cam.y), X - dx(G.x, G.cam.x));   // map direction (the camera never turns)
   let ex = clamp(STAGE_W / 2 + Math.cos(a) * 900, 420, STAGE_W - 40), ey = clamp(STAGE_H / 2 + Math.sin(a) * 900, 120, STAGE_H - 110);
-  if (ex < 250 && ey > STAGE_H - 240) ex = 250;
   if (ex > STAGE_W - 270 && ey < 200) ey = 200;
   g.save(); g.translate(ex, ey); g.rotate(a);
   g.fillStyle = col; g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 3;
@@ -5142,7 +5146,7 @@ requestAnimationFrame(frame);
 
 /* test hook for automated checks (harmless in play) */
 window.HH = { get S() { return S; }, G, CH, UI, prep, loadChapter, startChapter, eat, holeD, need, addXP, bankerTransfer, bankerArrive, buyUpgrade, upCost,
-  setHoleD, ringNow, goals, capD, syncBeat, solidPush, solidBoxes,
+  setHoleD, ringNow, goals, capD, miniRect, syncBeat, solidPush, solidBoxes,
   exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole, labelOn, poseOf, MODES, genCell, tierOf, mkObj, debugAudio, syncMusic };
 </script>
 </body>
