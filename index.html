@@ -183,6 +183,8 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
 <script src="three.min.js"></script>
 <script src="data/ch3-osm.js"></script>
 <script src="data/stanley.js"></script>
+<script src="data/globe.js"></script>
+<script src="data/globe-landmarks.js"></script>
 <script src="audio/manifest.js"></script>
 <script>
 'use strict';
@@ -1664,319 +1666,400 @@ const CH = [null];
   });
 })();
 
-/* ---------- CHAPTER 5: WORLD TOUR (wrap-around globe; must match the real Earth) ---------- */
+/* ---------- WORLD 5: THE GLOBE — a to-scale replica of the Earth (Natural Earth, baked into data/globe.js) ----------
+   The map is true to scale: continents, countries, lakes, rivers (the Nile is named) and the major highways, all in
+   their real shapes and places (equirectangular, wrapping east-west and over the poles). The hole is not: you start
+   about the size of a small house on a Vancouver street with traffic, and the growth ladder and speeds are
+   compressed so the planet is crossable (spec v5.11). Landmarks stand at their real spots, sized to the ladder so
+   they stay readable (scale doctrine 4b). Water is faster to cross than land; the speed upgrade counts double here.
+   No streetlights on the Globe (owner exclusion). Theme parks are real parks in our own art, never named. */
 (() => {
-  const D = 400, W = 360 * D, H = 180 * D;                               // 400 units per degree, equirectangular (v4: 4x the v3 globe's area)
+  const GD = window.HH_GLOBE || { land: [], lakes: [], countries: [], rivers: [], hwy: [], cities: [] }, LMD = window.HH_LM || [];
+  const D = 400, W = 360 * D, H = 180 * D, Q = D / 100;              // 400 units per degree; the data is in hundredths of a degree
   const P = (lon, lat) => [(lon + 180) * D, (90 - lat) * D];
   const ll = (x, y) => [x / D - 180, 90 - y / D];
-  // simplified real coastlines [lon,lat,...]: name, kind (continent flavour or ice)
-  const LAND = [
-    ['na', [-168, 66, -162, 70, -156, 71.3, -141, 69.6, -128, 70, -117, 69, -108, 68.5, -95, 68, -90, 69, -82, 69.5, -82, 66, -87, 64, -93, 61, -94, 58.7, -92, 57, -86, 55.5, -82, 52.5, -79, 51.5,
-      -79, 54.5, -77, 58, -78, 62.5, -73, 62, -70, 59, -65, 60.3, -61.5, 56, -56, 52, -59, 48, -60, 47, -64, 45, -66, 44.6, -70, 43.8, -70.5, 41.8, -74, 40.6, -76, 38, -76, 35, -78, 33.8,
-      -81, 31.5, -80.5, 28, -80, 25.3, -81.5, 25.5, -82.7, 28, -84, 30, -89, 30.3, -90, 29, -94, 29.6, -97.3, 27.5, -97.5, 24, -97.5, 21.5, -96, 19, -94.5, 18.3, -91, 18.8, -90.4, 21,
-      -87, 21.5, -87.5, 18, -88.3, 16, -86, 15.8, -83.2, 15, -83.5, 11, -82, 9, -79.5, 9.5, -77.4, 8.5, -78.2, 8, -80, 7.3, -81.5, 8, -83, 8.2, -85.7, 10, -87.5, 13, -91.5, 14,
-      -94.5, 16, -96.5, 15.7, -101, 17.3, -105.5, 20, -105.2, 21.8, -106.4, 23.2, -108, 25, -110.9, 27.9, -112.5, 29.8, -114.7, 31.7, -113.5, 29.5, -112.3, 27.5, -111.3, 26, -110.3, 24.2,
-      -109.9, 22.9, -110.5, 23.5, -112, 24.8, -114, 27.6, -115.8, 30.3, -117.1, 32.5, -118.5, 34, -120.6, 34.6, -122.5, 37.7, -124, 40.5, -124.5, 43, -124, 46.2, -124.7, 48.4, -127.5, 50.5,
-      -130, 54, -133, 57, -137, 58.5, -140, 59.8, -146, 60.5, -151, 59, -154, 57.5, -158, 56.5, -162, 55, -164.5, 54.5, -160, 58.5, -162, 60, -165, 62, -164.5, 63.5, -161, 64.5, -166, 65.3]],
-    ['sa', [-77.4, 8.5, -75.5, 10.5, -72, 12, -68, 10.6, -62, 10.7, -60, 8.5, -57, 6, -52, 5, -50, 1.8, -48.5, -1, -44, -2.5, -39, -3.5, -35, -5.5, -35, -9, -37, -12, -39, -17, -40, -20.5,
-      -42, -23, -45, -23.8, -48.5, -26, -48.5, -28.5, -51, -31, -53.5, -34, -56.2, -34.9, -58.2, -34.75, -57.5, -36.3, -57.5, -38.2, -62, -39, -62.5, -40.8, -65, -41, -64, -42.5, -65.5, -45,
-      -67.5, -46.5, -66, -48, -69, -51, -68.5, -52.5, -70, -54.5, -67.5, -55, -72, -54, -75, -51, -75.5, -47, -73.8, -43, -73.5, -38, -71.6, -33, -71.4, -28, -70.3, -23, -70.2, -18.4,
-      -75, -15.5, -77, -12, -79.5, -7.5, -81, -5, -80, -2, -80.5, 0, -79, 1.5, -77.5, 4, -77.3, 7]],
-    ['af', [-17, 21, -16, 24, -13.5, 27.5, -9.8, 29.5, -9.5, 32.5, -6.5, 35.8, -2, 35.2, 3, 36.8, 10, 37.3, 11, 35.2, 10.2, 33.8, 15, 32.3, 20, 30.9, 20, 32.5, 23, 32.6, 29, 30.9,
-      32.3, 31.3, 34.4, 31.3, 34.9, 29.5, 34.2, 27.8, 35.5, 23.9, 37.2, 21, 38.5, 18, 39.5, 15.5, 42.3, 13, 43.3, 11.9, 44.5, 10.4, 51.2, 11.8, 51, 10.4, 49.5, 6.5, 46, 2, 42, -0.6,
-      40, -3, 39, -6.5, 39.5, -10.5, 40.5, -15, 37, -17.5, 35.3, -22, 35.5, -24, 32.8, -26, 32.5, -28.5, 30, -31.3, 27.5, -33.5, 22, -34.2, 20, -34.8, 18.4, -34.2, 18, -32, 17, -29,
-      15.2, -27, 14.4, -23, 12, -18, 11.8, -15.5, 13.5, -12, 13, -8.5, 12.2, -6, 12, -4.5, 9.5, -1, 9.5, 1, 9.6, 3.8, 8.5, 4.5, 6, 4.3, 4.5, 6.2, 2, 6.3, -2, 4.8, -4.5, 5.2, -7.5, 4.4,
-      -11, 6.7, -13.3, 9, -15, 10.8, -16.8, 12.5, -17.5, 14.7, -16.5, 16.5, -16.3, 19]],
-    ['eu', [-5.6, 36, -9, 37, -8.9, 39.5, -9.3, 43, -8, 43.7, -1.5, 43.4, -1.2, 46, -4.5, 47.8, -1.5, 48.8, 1.5, 50.2, 4, 51.5, 5.5, 53.3, 8.6, 53.9, 8.1, 55.5, 8.6, 57.1, 10.6, 57.7,
-      11.9, 58.2, 10.6, 59.5, 8, 58.1, 5.5, 58.8, 5, 61, 5.5, 62.5, 8.5, 63.5, 11, 64.8, 13.5, 67.5, 16, 69, 19, 70, 23.5, 70.8, 28, 71, 31, 70, 33, 69.3, 40, 67.8, 44, 68.5, 53, 68.3,
-      58, 68.8, 60.5, 69.8, 66, 69.5, 69, 72.8, 73, 72.5, 80, 73.5, 87, 75, 97, 76, 104, 77.7, 113, 73.8, 119, 73.1, 129, 72.8, 140, 72.5, 150, 71, 160, 69.8, 170, 70, 180, 69, 180, 65,
-      178, 64.5, 177, 62.5, 173, 61.5, 170, 60, 164, 59.8, 163, 58, 162.5, 56, 160, 53, 156.5, 51, 156, 57.5, 155, 59.2, 151, 59.2, 143, 59.3, 141, 58.5, 137, 54, 140.5, 53.3, 141.4, 52,
-      140.4, 48.5, 138.5, 46.8, 135.2, 43.5, 132, 43, 129.6, 42.4, 129.4, 40.8, 128, 39, 129.4, 37, 129.5, 35.4, 126.5, 34.4, 126.2, 37.5, 125.2, 37.7, 124.7, 39.8, 121.5, 39, 121.6, 40.9,
-      119.5, 39.8, 117.7, 38.8, 118.8, 37.4, 122.5, 37.4, 120.3, 36.1, 119.2, 35, 120.8, 32.5, 121.9, 30.9, 121.5, 28.5, 119.5, 25.5, 116.5, 23, 113.5, 22.2, 110.2, 20.5, 108.5, 21.6,
-      106.7, 20.6, 106, 19.5, 105.6, 18.5, 107, 16.8, 108.8, 15.3, 109.4, 12.5, 108.8, 11, 106.8, 10.3, 105, 8.6, 104.8, 10.4, 103, 11, 100.9, 12.7, 100, 13.4, 99.2, 10.3, 100.3, 8.4,
-      101.3, 6.9, 103.4, 4.7, 104.2, 1.5, 103.85, 1.22, 103.4, 1.3, 101.3, 2.9, 100.4, 5.4, 98.3, 8, 98.6, 13, 97.6, 16.5, 94.5, 16, 94.2, 19.5, 92.3, 21, 91.8, 22.5, 90.5, 22, 88.8, 21.6,
-      86.9, 20.5, 85, 19.3, 82.3, 16.6, 80.2, 13.3, 79.8, 10.3, 78, 8.3, 77.5, 8, 76.5, 8.9, 74.8, 12.8, 73.5, 16, 72.9, 19, 72.6, 21.4, 70.2, 20.8, 68.8, 22.4, 67, 24.8, 64, 25.3,
-      61.5, 25.2, 57.3, 25.8, 56.3, 27.2, 54, 26.7, 51.5, 27.9, 50, 30.2, 48.5, 29.9, 48.4, 28.5, 49.6, 27, 50.2, 26.2, 51.2, 26.1, 51.6, 24.5, 54.5, 24.2, 56.3, 26.3, 56.5, 24.6,
-      57.8, 23.7, 59.8, 22.5, 58.5, 20.4, 57.8, 19, 55.3, 17.6, 52.2, 15.6, 49, 14.1, 45, 12.8, 43.5, 12.7, 42.7, 15.7, 41.5, 18.5, 39.2, 21.5, 38, 24, 36.5, 26, 35, 28, 35, 29.5,
-      34.5, 31.5, 35, 33, 35.9, 35, 36, 36.6, 35, 36.6, 32.5, 36.1, 30.6, 36.7, 28, 36.7, 27.2, 38, 26.3, 40.1, 22.9, 40.6, 23, 39, 24, 38, 23.7, 37.8, 22.8, 36.5, 21.6, 36.9, 21.1, 38.4,
-      20, 39.6, 19.4, 41.8, 16.5, 43.5, 15.5, 44, 13.6, 45.1, 12.3, 45.4, 12.6, 44, 14, 42.4, 16, 41.4, 18.5, 40.2, 17.2, 40.45, 16.6, 38.9, 15.7, 38, 15.6, 40.1, 14.5, 40.6, 12.3, 41.6,
-      11, 42.5, 10.2, 43.9, 8.7, 44.4, 7.5, 43.8, 6, 43.1, 4.6, 43.4, 3.2, 42.5, 3.2, 41.8, 1, 41.1, 0.2, 39.9, -0.5, 38.3, -2.1, 36.7, -4.4, 36.7]],
-    ['na', [-180, 68.9, -172, 67, -169.7, 66, -172, 64.4, -180, 65]],
-    ['eu', [-5.7, 50, -3, 50.6, 1.4, 51.2, 1.7, 52.7, 0.2, 53.5, -0.3, 54.5, -1.6, 55.6, -2, 57, -1.8, 57.6, -4, 57.6, -3, 58.6, -5, 58.6, -6.2, 56.8, -5.5, 55.5, -4.8, 54.8, -3.2, 54.2,
-      -3, 53.3, -4.5, 53.3, -4.2, 52.4, -5.2, 51.7, -3.2, 51.4]],
-    ['eu', [-6, 52.2, -6.2, 53.5, -5.5, 54.5, -7.3, 55.3, -8.5, 54.5, -10, 53.5, -10.3, 52, -8.5, 51.6]],
-    ['ice', [-24, 65.5, -22, 66.4, -16, 66.5, -13.6, 65.2, -15, 64.3, -18.5, 63.4, -22.5, 63.8]],
-    ['as', [130, 31.2, 131.5, 31.5, 132, 33.5, 134.5, 33.7, 135.8, 33.5, 137, 34.6, 139.8, 35, 140.9, 36, 141, 38.2, 142, 39.6, 141.4, 41.4, 140, 40.7, 139.8, 38.5, 138.5, 37.4,
-      136.7, 37.2, 135.5, 35.6, 133, 35.5, 131, 34.4, 129.7, 33.5]],
-    ['as', [140, 41.5, 141.3, 41.8, 143.3, 42, 145.8, 43.4, 144.3, 44.1, 141.7, 45.4, 141.3, 43.3, 140, 42.5]],
-    ['as', [121, 25.2, 121.9, 24.9, 121.4, 22.8, 120.8, 21.9, 120.1, 23]],
-    ['as', [79.9, 9.8, 81.3, 8.5, 81.8, 7, 80.6, 5.9, 79.8, 7]],
-    ['as', [95.3, 5.6, 98, 4, 100.3, 2, 104, -1, 106, -3, 106, -5.8, 104.5, -5.9, 102, -4, 100, -1, 97.5, 2.3]],
-    ['as', [105.2, -6.8, 108, -6.2, 111, -6.5, 114.5, -7.6, 114.4, -8.7, 110, -8.1, 106, -7.4]],
-    ['as', [109, 1.5, 109.6, -1, 110.5, -3, 114, -3.5, 116.5, -3.3, 117.5, 0, 118.8, 1, 117.8, 4.2, 119.2, 5.4, 117, 7, 115.5, 5, 113.5, 3.2, 111, 1.8]],
-    ['as', [119.4, -5.6, 119.5, -0.5, 120.8, 1.3, 124.8, 1.4, 121.2, -1, 123.2, -4.3, 122, -5.5, 120.4, -3]],
-    ['oc', [131, -1, 135, -3.3, 138, -1.6, 141, -2.6, 145.8, -5, 147.5, -6.2, 150, -10.5, 147.3, -10, 143.5, -9, 141, -9.1, 138.5, -8.3, 137.8, -5.3, 134.5, -4, 132.2, -2.8]],
-    ['as', [120.6, 18.5, 122.3, 18.4, 121.8, 15.8, 124.2, 13.5, 123.6, 12.6, 121.6, 13.8, 120.5, 14.5, 120, 16]],
-    ['as', [122, 7, 122.8, 8.1, 125.5, 9.6, 126.6, 7.3, 125.4, 5.6, 124, 6.3]],
-    ['oc', [172.7, -34.4, 174.4, -35.9, 175.9, -37.3, 178.5, -37.7, 177, -39.6, 176.8, -40.3, 175.2, -41.6, 174.6, -41.3, 173.9, -39.2, 174.7, -38, 173, -35.3]],
-    ['oc', [172.7, -40.5, 174.3, -41.8, 173.2, -43.5, 171.2, -44.5, 169, -46.6, 166.5, -46, 167, -45, 168.5, -44, 171, -42.3]],
-    ['oc', [113.5, -22, 114, -26.5, 115, -29.5, 115.6, -33.5, 117.9, -35.1, 123.5, -33.9, 126, -32.3, 131, -31.5, 134, -32.7, 135.9, -34.8, 137.7, -35, 138.5, -34.8, 140, -37.8,
-      143.5, -38.8, 146.3, -39, 150, -37.5, 151.35, -33.9, 153.1, -30.4, 153.6, -28.2, 153, -25, 150.8, -22.6, 149, -20.5, 146.2, -18.8, 145.3, -15, 143.6, -14, 142.5, -10.7, 141.6, -13.5,
-      141.5, -17, 140, -17.7, 137.5, -16, 135.5, -14.9, 136.8, -12.2, 132.6, -11.5, 130.4, -12.5, 129.5, -14.9, 127.5, -14.3, 125.2, -15.2, 122.3, -17.3, 121, -19.5, 118.5, -20.3, 116, -20.8, 114, -21.8]],
-    ['oc', [144.7, -40.7, 148.3, -40.9, 148.3, -42.2, 147, -43.6, 145.3, -42.5]],
-    ['af', [49.3, -12, 50.5, -15.5, 49.5, -17.5, 47.2, -25, 45, -25.5, 43.5, -22, 44.3, -17, 47, -15.5]],
-    ['na', [-84.9, 21.9, -83, 23, -82.2, 23.25, -80, 23.2, -77.2, 21.7, -74.2, 20.2, -75.7, 19.9, -77.7, 19.9, -78.5, 21.3, -81.5, 22.2]],
-    ['na', [-74.4, 19.8, -72.8, 19.9, -69.5, 19.7, -68.4, 18.6, -71, 18, -74.4, 18.4]],
-    ['ice', [-73, 78, -60, 82, -30, 83.5, -20, 81.5, -18, 77, -21, 72, -22, 70, -26, 68.5, -33, 66.5, -40, 65, -43, 60, -48, 61, -51, 64, -53, 67, -55, 70.5, -58, 75.5, -66, 76.5]],
-    ['ice', [-90, 72, -80, 73.5, -71, 71, -62, 67, -64, 63, -72, 62.5, -78, 64.5, -74, 67.5, -81, 69.5]],
-    ['ice', [-125, 72, -120, 74.5, -105, 73.5, -95, 74, -82, 76, -75, 79, -62, 82.5, -90, 81, -110, 78, -120, 76]],
-    ['ice', [-180, -90, -180, -78, -160, -78, -150, -75, -120, -72, -90, -72, -75, -70, -65, -66, -60, -63, -57, -64, -60, -70, -40, -77, -20, -72, 0, -70, 30, -69, 60, -67, 90, -66,
-      120, -66, 150, -68, 165, -72, 170, -78, 180, -78, 180, -90]],
-  ];
-  const SEAS = [[10.6, 57.6, 11.9, 57.6, 12.6, 56.3, 14.3, 55.5, 16, 56.1, 16.6, 57.1, 18.4, 59.3, 17.4, 60.6, 17.8, 62.4, 19.8, 63.6, 22, 65.4, 25.3, 65.3, 24.8, 64.6, 21.5, 63, 21.4, 61,
-    22.6, 60.2, 26, 60.4, 30, 59.9, 28, 59.4, 23.5, 59.2, 23.5, 58.3, 21.7, 57.5, 21, 56.2, 21.2, 55.2, 19.9, 54.5, 18.6, 54.4, 14.3, 53.9, 11, 54, 10, 55],
-  [27.5, 42.5, 28.8, 44.3, 30.6, 46.4, 33.5, 46, 32.5, 45.4, 33.6, 44.4, 35.5, 45.1, 37.5, 44.7, 39.6, 43.5, 41.6, 41.6, 39, 41, 36, 41.7, 33, 42, 29.2, 41.2, 28, 41.6],
-  [46.7, 44.3, 49.3, 46.5, 53, 46.8, 53.2, 45, 51.3, 44.5, 52.7, 41.9, 53.9, 40.7, 53.9, 37.3, 51, 36.7, 49.1, 37.6, 49.4, 40.2, 48.6, 41.8, 47.4, 43]];
-  const NILE = [31.0, 31.4, 31.2, 30.0, 31.3, 27, 32.9, 24.1, 32.5, 19, 32.5, 15.6, 31.6, 12, 31.5, 9, 32, 5, 33, 0.5];
-  const toXY = a => { const o = []; for (let i = 0; i < a.length; i += 2) o.push(...P(a[i], a[i + 1])); return o; };
-  const bbox = p => { let a = 1e9, b = 1e9, c = -1e9, d = -1e9; for (let i = 0; i < p.length; i += 2) { a = Math.min(a, p[i]); c = Math.max(c, p[i]); b = Math.min(b, p[i + 1]); d = Math.max(d, p[i + 1]); } return [a, b, c, d]; };
-  const LANDP = LAND.map(([k, a]) => { const p = toXY(a); return { k, p, b: bbox(p) }; });
-  const SEAP = SEAS.map(a => { const p = toXY(a); return { p, b: bbox(p) }; });
-  const NILEP = toXY(NILE);
-  const FLAGC = { CA: '#e53935', US: '#1e3a8a', MX: '#2e7d32', CU: '#1565c0', BR: '#43a047', AR: '#81d4fa', CL: '#d32f2f', PE: '#c62828', EC: '#fdd835', GB: '#283593', FR: '#1e88e5',
-    IT: '#388e3c', ES: '#ffca28', DE: '#212121', RU: '#f5f5f5', EG: '#c62828', NG: '#2e7d32', ZA: '#00796b', TZ: '#1b5e20', IN: '#ff9800', NP: '#b71c1c', CN: '#e53935', JP: '#fafafa',
-    VN: '#d32f2f', SG: '#e53935', AU: '#0d47a1', NZ: '#1a237e', JO: '#212121', ID: '#e53935', FJ: '#4fc3f7', MV: '#2e7d32' };
-  const COUNTRIES = {
-    CA: ['Canada', [[-110, 58, 8], [-80, 52, 5], [-123.5, 50.5, 1.8], [-95, 63, 8], [-72, 48, 3.5]]], US: ['USA', [[-98, 39, 7], [-117, 37, 4], [-84, 34, 5], [-81.5, 28.5, 2.5], [-75, 41.5, 3], [-150, 64, 6], [-121, 45, 3], [-155.5, 19.6, 1.5]]],
-    MX: ['Mexico', [[-102, 23, 5], [-89, 19.5, 2.5]]], CU: ['Cuba', [[-81.5, 22.5, 2], [-77, 21, 2.5]]], BR: ['Brazil', [[-50, -10, 12], [-45, -21, 5]]], AR: ['Argentina', [[-64, -34, 6], [-67, -45, 3.5]]],
-    CL: ['Chile', [[-71.3, -33.5, 1.8], [-73, -39.5, 1.5], [-109.35, -27.12, 1]]], PE: ['Peru', [[-75, -11, 5]]], EC: ['Ecuador', [[-78.5, -1.5, 2.5], [-90.5, -0.6, 1.5]]],
-    GB: ['the United Kingdom', [[-2, 53.5, 3.5]]], FR: ['France', [[2.5, 46.8, 4], [-149.43, -17.65, 1.2]]], IT: ['Italy', [[12, 43, 2.5], [15.5, 40.5, 2]]], ES: ['Spain', [[-4, 40, 4]]],
-    DE: ['Germany', [[10.3, 51, 3]]], RU: ['Russia', [[40, 58, 9], [80, 62, 14], [120, 62, 15], [155, 62, 8]]], EG: ['Egypt', [[30.5, 27, 6]]], NG: ['Nigeria', [[8, 9, 5], [4.2, 7.2, 1.2]]],
-    ZA: ['South Africa', [[24, -30, 6], [19.5, -33.5, 2]]], TZ: ['Tanzania', [[35, -6, 4.5]]], IN: ['India', [[79, 22, 8], [77, 12, 5]]], NP: ['Nepal', [[84.2, 28.2, 2]]],
-    CN: ['China', [[105, 34, 10], [113, 25, 5], [118, 38, 4]]], JP: ['Japan', [[138, 36.5, 3.5], [142.5, 43.3, 2]]], VN: ['Vietnam', [[105.8, 21, 2], [108, 15, 1.3], [106.7, 10.5, 1.2]]],
-    SG: ['Singapore', [[103.82, 1.35, 0.6]]], AU: ['Australia', [[134, -25, 14], [146, -38, 4]]], NZ: ['New Zealand', [[174, -40, 4], [170, -44, 3]]], JO: ['Jordan', [[36.4, 30.8, 1.2]]],
-    ID: ['Indonesia', [[101.5, -1.5, 3.3], [110, -7.3, 3], [114, -1, 3], [115.2, -8.4, 1]]], FJ: ['Fiji', [[178, -17.8, 1.5]]], MV: ['the Maldives', [[73.5, 4.2, 1.5]]],
-  };
-  function countryAt(lon, lat) {
-    let best = null, bd = 1e9;
-    for (const [cc, [, seeds]] of Object.entries(COUNTRIES)) for (const [x, y, r] of seeds) { const d = Math.hypot(x - lon, y - lat); if (d < r && d < bd) { bd = d; best = cc; } }
-    return best;
-  }
-  // cities: name, country, lon, lat, local flavour type
-  const CITIES = [['Vancouver', 'CA', -123.1, 49.28, 'leaf'], ['Paris', 'FR', 2.35, 48.86, 'croissant'], ['Rome', 'IT', 12.5, 41.9, 'pizza'], ['London', 'GB', -0.12, 51.5, 'guard'],
-    ['Moscow', 'RU', 37.62, 55.75, 'doll'], ['Cairo', 'EG', 31.24, 30.04, 'camel'], ['Lagos', 'NG', 3.39, 6.45, 'drum'], ['Cape Town', 'ZA', 18.42, -33.92, 'penguin'],
-    ['Singapore', 'SG', 103.85, 1.29, 'noodles'], ['Tokyo', 'JP', 139.69, 35.69, 'sushi'], ['Hanoi', 'VN', 105.85, 21.03, 'moto'], ['Mexico City', 'MX', -99.13, 19.43, 'taco'],
-    ['Havana', 'CU', -82.38, 23.12, 'oldcar'], ['Buenos Aires', 'AR', -58.45, -34.6, 'dancer'], ['Rio de Janeiro', 'BR', -43.2, -22.9, 'parrot'], ['New York', 'US', -74.0, 40.71, 'hotdog'],
-    ['Sydney', 'AU', 151.15, -33.87, 'kangaroo'], ['Beijing', 'CN', 116.4, 39.9, 'panda'], ['Delhi', 'IN', 77.2, 28.6, 'tuktuk'], ['Lima', 'PE', -77.04, -12.05, 'llama'],
-    ['Los Angeles', 'US', -118.24, 34.05, 'palm'], ['Madrid', 'ES', -3.7, 40.42, 'guitar'], ['Berlin', 'DE', 13.4, 52.52, 'pretzel']];
-  const CITYP = CITIES.map(c => [...P(c[2], c[3]), 520, c]);
-  const LM = [ // id, type, lon, lat, name, place, cc, fact, wonder
-    ['eiffel', 'eiffel', 2.2945, 48.8584, 'Eiffel Tower', 'Paris, France', 'FR', 'It is made of iron and is 330 metres tall.'],
-    ['colosseum', 'colosseum', 12.4922, 41.8902, 'Colosseum', 'Rome, Italy', 'IT', 'Gladiators fought here almost 2,000 years ago.', 1],
-    ['greatwall', 'greatwall', 116.02, 40.36, 'Great Wall of China', 'China', 'CN', 'It is thousands of kilometres long!', 1],
-    ['taj', 'taj', 78.0421, 27.1751, 'Taj Mahal', 'Agra, India', 'IN', 'A white marble tomb built by an emperor for his wife.', 1],
-    ['pyramids', 'pyramids', 31.1342, 29.9792, 'Pyramids of Giza', 'Giza, Egypt', 'EG', 'Built about 4,500 years ago, beside the Nile.'],
-    ['liberty', 'liberty', -74.0445, 40.6892, 'Statue of Liberty', 'New York, USA', 'US', 'A gift from France to the USA in 1886.'],
-    ['bigben', 'bigben', -0.1246, 51.5007, 'Big Ben', 'London, England', 'GB', 'Big Ben is the name of the giant bell inside.'],
-    ['opera', 'opera', 151.2153, -33.8568, 'Sydney Opera House', 'Sydney, Australia', 'AU', 'Its roof looks like sails on the harbour.'],
-    ['christ', 'christ', -43.2105, -22.9519, 'Christ the Redeemer', 'Rio de Janeiro, Brazil', 'BR', 'The statue stands on a mountain above Rio.', 1],
-    ['chichen', 'chichen', -88.5678, 20.6843, 'Chichen Itza', 'Yucatán, Mexico', 'MX', 'A step pyramid built by the Maya people.', 1],
-    ['fuji', 'fuji', 138.7274, 35.3606, 'Mount Fuji', 'Japan', 'JP', 'Japan\'s tallest mountain is a volcano.'],
-    ['marina', 'marina', 103.8607, 1.2834, 'Marina Bay Sands', 'Singapore', 'SG', 'Three towers with a giant boat on top!'],
-    ['petra', 'petra', 35.4444, 30.3285, 'Petra', 'Jordan', 'JO', 'A city carved right into pink rock.', 1],
-    ['machu', 'machu', -72.545, -13.1631, 'Machu Picchu', 'Cusco, Peru', 'PE', 'An Inca city high up in the Andes mountains.', 1],
-    ['basil', 'basil', 37.6231, 55.7525, "St. Basil's Cathedral", 'Moscow, Russia', 'RU', 'Famous for its colourful onion domes.'],
-    ['table', 'table', 18.4037, -33.9628, 'Table Mountain', 'Cape Town, South Africa', 'ZA', 'It is flat on top, like a table.'],
-  ];
-  const ISLANDS = [['Hawaii', 'USA', 'US', -155.5, 19.6], ['Bali', 'Indonesia', 'ID', 115.19, -8.41], ['Tahiti', 'French Polynesia (France)', 'FR', -149.43, -17.65],
-    ['Galápagos Islands', 'Ecuador', 'EC', -90.5, -0.6], ['Fiji', 'Fiji', 'FJ', 178.0, -17.8], ['Maldives', 'the Maldives', 'MV', 73.5, 4.2], ['Rapa Nui (Easter Island)', 'Chile', 'CL', -109.35, -27.12]];
-  const PEAKS = [['Mount Everest', 'Nepal', 'NP', 86.925, 27.988, 'The tallest mountain on Earth: 8,849 metres!'], ['Kilimanjaro', 'Tanzania', 'TZ', 37.35, -3.07, 'The tallest mountain in Africa.'],
-    ['Mont Blanc', 'France', 'FR', 6.865, 45.833, 'The tallest mountain in the Alps.'], ['Aconcagua', 'Argentina', 'AR', -70.01, -32.65, 'The tallest mountain in the Americas.'],
-    ['Denali', 'Alaska, USA', 'US', -151.0, 63.07, 'The tallest mountain in North America.'], ['Mount Kosciuszko', 'Australia', 'AU', 148.26, -36.46, 'The tallest mountain in Australia.'],
-    ['Aoraki / Mount Cook', 'New Zealand', 'NZ', 170.14, -43.6, 'The tallest mountain in New Zealand.']];
   const wrapX = x => ((x % W) + W) % W, wrapY = y => ((y % H) + H) % H;
-  function landKind(x, y) {
-    for (const L of LANDP) { const b = L.b; if (x < b[0] || x > b[2] || y < b[1] || y > b[3]) continue; if (inPoly(x, y, L.p)) { for (const S2 of SEAP) if (x > S2.b[0] && x < S2.b[2] && y > S2.b[1] && y < S2.b[3] && inPoly(x, y, S2.p)) return null; return L.k; } }
-    return null;
+  const OCEAN = '#2a6fb5', LANDC = '#8cc56a';
+  const toW = r => { const a = new Float32Array(r.length); for (let i = 0; i < r.length; i += 2) { a[i] = (r[i] + 18000) * Q; a[i + 1] = (9000 - r[i + 1]) * Q; } return a; };
+  const bbox = p => { let a = 1e9, b = 1e9, c = -1e9, d = -1e9; for (let i = 0; i < p.length; i += 2) { if (p[i] < a) a = p[i]; if (p[i] > c) c = p[i]; if (p[i + 1] < b) b = p[i + 1]; if (p[i + 1] > d) d = p[i + 1]; } return [a, b, c, d]; };
+  const polyW = rings => { const rs = rings.map(toW); return { rs, b: bbox(rs[0]) }; };
+  const LAND = GD.land.map(polyW), LAKES = GD.lakes.map(polyW);
+  const RIV = GD.rivers.map(([n, l]) => { const p = toW(l); return { n, p, b: bbox(p) }; });
+  const HWY = GD.hwy.map(l => { const p = toW(l); let L = 0; for (let i = 2; i < p.length; i += 2) L += Math.hypot(p[i] - p[i - 2], p[i + 1] - p[i - 1]); return { p, b: bbox(p), L }; });
+  // countries (pieces with the same code are one country); names in the way a child would say them
+  const NAMES = { US: 'the USA', GB: 'the United Kingdom', RU: 'Russia', KR: 'South Korea', KP: 'North Korea', LA: 'Laos', BN: 'Brunei', SZ: 'Eswatini', CZ: 'Czechia',
+    CD: 'DR Congo', CG: 'Congo', CV: 'Cabo Verde', FK: 'the Falkland Islands', AE: 'the United Arab Emirates', NL: 'the Netherlands', PH: 'the Philippines', DO: 'the Dominican Republic',
+    BS: 'the Bahamas', GM: 'the Gambia', MV: 'the Maldives', CF: 'the Central African Republic', VA: 'Vatican City', FO: 'the Faroe Islands', VI: 'the US Virgin Islands', FM: 'Micronesia',
+    CY: 'Cyprus', SO: 'Somalia', AU: 'Australia', SB: 'the Solomon Islands', MH: 'the Marshall Islands', KY: 'the Cayman Islands', TC: 'the Turks and Caicos Islands', IM: 'the Isle of Man',
+    MP: 'the Northern Mariana Islands', VG: 'the British Virgin Islands', CK: 'the Cook Islands', AX: 'the Åland Islands', HM: 'the Heard and McDonald Islands', IO: 'the British Indian Ocean Territory',
+    GS: 'South Georgia', TF: 'the French Southern Lands', PN: 'the Pitcairn Islands', WF: 'Wallis and Futuna', FR: 'France', CI: 'Côte d\'Ivoire', TR: 'Türkiye', AQ: 'Antarctica' };
+  const CTRY = {}, CLIST = [];
+  for (const [cc, nm, , polys] of GD.countries) {
+    if (cc === 'KA') continue;                                         // a disputed glacier strip: no passport page of its own
+    let c = CTRY[cc]; if (!c) { c = CTRY[cc] = { cc, nm: NAMES[cc] || nm, polys: [], i: CLIST.length, big: 0, at: null }; CLIST.push(c); }
+    for (const pp of polys) { const q = polyW(pp); c.polys.push(q); const ar = (q.b[2] - q.b[0]) * (q.b[3] - q.b[1]); if (ar > c.big) { c.big = ar; c.at = [(q.b[0] + q.b[2]) / 2, (q.b[1] + q.b[3]) / 2]; } }
   }
+  // hearts of the countries used by "Find the country" (a bbox centre can fall in the sea)
+  const HEART = { FR: [2.5, 46.8], JP: [138.5, 36.2], BR: [-50, -10], CA: [-100, 56], EG: [30, 26.5], AU: [134, -25], IT: [12.5, 42.8], IN: [78.5, 22], MX: [-102, 23.5],
+    CN: [104, 34], RU: [90, 62], US: [-98, 39], KE: [37.9, .2], AR: [-65, -35], GB: [-1.5, 52.5], ES: [-3.7, 40.2], DE: [10.3, 51], ZA: [24, -30], PE: [-75, -10], NO: [9, 61.5] };
+  for (const [cc, [lo, la]] of Object.entries(HEART)) if (CTRY[cc]) CTRY[cc].at = P(lo, la);
+  /* land / lake / country lookups: an eighth-of-a-degree raster drawn once from the same polygons the ground shows,
+     with an exact point-in-polygon test along coastlines so ships and cows agree with the drawn shore */
+  const MW = 2880, MH = 1440, MK = MW / W;
+  let MASK = null, CMAP = null;
+  function raster() {
+    const c = document.createElement('canvas'); c.width = MW; c.height = MH; const x = c.getContext('2d');
+    const fillP = (q, col) => { x.fillStyle = col; x.beginPath(); for (const r of q.rs) { x.moveTo(r[0] * MK, r[1] * MK); for (let i = 2; i < r.length; i += 2) x.lineTo(r[i] * MK, r[i + 1] * MK); x.closePath(); } x.fill('evenodd'); };
+    x.fillStyle = '#000'; x.fillRect(0, 0, MW, MH);
+    for (const q of LAND) fillP(q, '#f00');
+    for (const q of LAKES) fillP(q, '#00f');
+    let d = x.getImageData(0, 0, MW, MH).data; MASK = new Uint8Array(MW * MH);
+    for (let i = 0, j = 0; j < MASK.length; i += 4, j++) MASK[j] = d[i] > 127 ? 1 : d[i + 2] > 127 ? 2 : 0;
+    x.fillStyle = '#000'; x.fillRect(0, 0, MW, MH);
+    for (const c2 of CLIST) for (const q of c2.polys) fillP(q, `rgb(${c2.i + 1},255,0)`);
+    d = x.getImageData(0, 0, MW, MH).data; CMAP = new Uint8Array(MW * MH);
+    for (let i = 0, j = 0; j < CMAP.length; i += 4, j++) CMAP[j] = d[i + 1] > 250 ? d[i] : 0;
+  }
+  const inRing = (x, y, r) => { let c = false; for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) { const yi = r[i + 1], yj = r[j + 1]; if ((yi > y) !== (yj > y) && x < (r[j] - r[i]) * (y - yi) / (yj - yi) + r[i]) c = !c; } return c; };
+  const inSet = (x, y, set) => { for (const q of set) { const b = q.b; if (x < b[0] || x > b[2] || y < b[1] || y > b[3]) continue; let c = false; for (const r of q.rs) if (inRing(x, y, r)) c = !c; if (c) return true; } return false; };
+  const cell = (x, y) => { if (!MASK) raster(); const i = Math.min(MW - 1, Math.max(0, x * MK | 0)), j = Math.min(MH - 1, Math.max(0, y * MK | 0)); return j * MW + i; };
+  function surf(x, y) {                                              // 0 sea, 1 land, 2 lake
+    x = wrapX(x); y = wrapY(y);
+    const k = cell(x, y), v = MASK[k];
+    if (MASK[k - 1] === v && MASK[k + 1] === v && MASK[k - MW] === v && MASK[k + MW] === v) return v;
+    return inSet(x, y, LAKES) ? 2 : inSet(x, y, LAND) ? 1 : 0;
+  }
+  function ccAt(x, y) {
+    x = wrapX(x); y = wrapY(y);
+    const k = cell(x, y); let v = CMAP[k];
+    if (!v) for (const o of [1, -1, MW, -MW, MW + 1, MW - 1, 1 - MW, -1 - MW]) if ((v = CMAP[k + o])) break;
+    return v ? CLIST[v - 1].cc : null;
+  }
+  // cities (Natural Earth populated places): a grey town with a street grid, sized by population
+  const CITY = GD.cities.map(([n, a3, lo, la, pop]) => ({ n, x: (lo + 18000) * Q, y: (9000 - la) * Q, pop, r: clamp(Math.sqrt(pop) / 17, 8, 250) }));
+  const CGS = 1000, CG = new Map();
+  for (const c of CITY) for (let gy = Math.floor((c.y - c.r) / CGS); gy <= Math.floor((c.y + c.r) / CGS); gy++) for (let gx = Math.floor((c.x - c.r) / CGS); gx <= Math.floor((c.x + c.r) / CGS); gx++) {
+    const k = gx * 1000 + gy; let a = CG.get(k); if (!a) CG.set(k, a = []); a.push(c);
+  }
+  const cityAt = (x, y) => { const a = CG.get(Math.floor(x / CGS) * 1000 + Math.floor(y / CGS)); if (a) for (const c of a) if (Math.hypot(x - c.x, y - c.y) < c.r) return c; return null; };
+  // land cover by place (lon/lat boxes for the big deserts; ice at the poles and on Greenland)
+  const DESERTS = [[-17, 16, 33, 30.5], [22, 20, 34, 31.5], [34, 15, 58, 30], [69, 24, 74, 29], [77, 37, 112, 45], [116, -31, 142, -20], [-117, 26, -104, 37], [-71, -27, -68, -18], [12, -28, 24, -18], [52, 27, 62, 34], [53, 38, 66, 45]];
+  const desertAt = (lon, lat) => DESERTS.some(b => lon > b[0] && lon < b[2] && lat > b[1] && lat < b[3]);
   function zoneAt(x, y) {
     x = wrapX(x); y = wrapY(y);
-    for (const [cx, cy, r, c] of CITYP) if (Math.abs(x - cx) < r && Math.abs(y - cy) < r && Math.hypot(x - cx, y - cy) < r) return 'c_' + c[0];
-    const k = landKind(x, y);
-    if (!k) return 'ocean';
-    const [, lat] = ll(x, y);
-    if (k === 'ice' || lat > 66 || lat < -60) return 'ice';
-    if (k === 'eu') return ll(x, y)[0] > 45 || (lat < 42 && ll(x, y)[0] > 26) ? 'as' : 'eu';
-    return k;
+    const s = surf(x, y), lat = 90 - y / D, lon = x / D - 180;
+    if (s === 0) return Math.abs(lat) > 62 ? 'polar' : 'ocean';
+    if (s === 2) return 'lake';
+    if (lat > 72 || lat < -60) return 'ice';
+    if (cityAt(x, y)) return 'city';
+    const cc = ccAt(x, y);
+    if (cc === 'GL' || cc === 'AQ') return 'ice';
+    if (desertAt(lon, lat)) return 'desert';
+    if (Math.abs(lat) < 12) return 'jungle';
+    if (lat > 55 || (lat > 48 && (cc === 'CA' || cc === 'RU'))) return 'boreal';
+    return 'farm';
   }
-  const zones = {
-    eu: { d: .9, t: ['tree:3,house:3,car:2,cow,tractor', 'forest:2,church,factory,barn', 'castle:2,tower', 'hill'] },
-    as: { d: .9, t: ['tree:3,house:3,car:2,moto,tuktuk', 'forest:2,factory,crane', 'temple:2,pagoda,tower', 'hill'] },
-    af: { d: .8, t: ['tree:2,house:2,giraffe,elephant,lion,camel', 'forest', 'temple:.2', 'hill'] },
-    na: { d: .9, t: ['tree:3,house:3,car:2,bison,cow', 'forest:2,barn,factory', 'tower,stadium', 'hill'] },
-    sa: { d: .9, t: ['tree:3,house:2,parrot,llama', 'forest:4', 'stadium:.3', 'hill'] },
-    oc: { d: .8, t: ['tree:2,house,kangaroo,koala', 'forest', '', 'hill'] },
-    ice: { d: .5, coin: .1, t: ['penguin:3,polarbear', 'iceberg'] },
-    ocean: { d: .35, coin: .08, t: ['sailboat', 'ship:2', 'cruise', 'whale'] },
-  };
-  for (const c of CITIES) zones['c_' + c[0]] = { d: 1.5, coin: .35, t: [`car:3,taxi:2,bus:2,house:2,tree,${c[4]}:5`, 'building:2,crane:2,church,factory', 'tower:3,hotel:2,stadium', 'skyline:2'] };
-  /* the mini-globe tracker: an orthographic globe that turns under you (you are always the dot in the middle);
-     places you have visited glow gold. Re-rendered only when you move half a degree, so it costs nothing. */
-  let thumb = null, tpx = null, globe = null, gkey = '';
-  function miniMap() {
-    const GR = 58, GS = GR * 2;
-    if (!thumb) {
-      thumb = document.createElement('canvas'); thumb.width = 360; thumb.height = 180; const x = thumb.getContext('2d');
-      x.fillStyle = '#2a6fb5'; x.fillRect(0, 0, 360, 180);
-      for (const L of LANDP) { x.fillStyle = L.k === 'ice' ? '#eef3f6' : '#7cb862'; x.beginPath(); for (let i = 0; i < L.p.length; i += 2) x.lineTo(L.p[i] / D, L.p[i + 1] / D); x.fill(); }
-      tpx = x.getImageData(0, 0, 360, 180).data;
-      globe = document.createElement('canvas'); globe.width = globe.height = GS;
-    }
-    const st = G.st, seen = st.seen || '', [lon0, lat0] = ll(wrapX(G.x), wrapY(G.y)), key = Math.round(lon0 * 2) + ',' + Math.round(lat0 * 2) + seen;
-    if (key !== gkey) {
-      gkey = key;
-      const gx = globe.getContext('2d'), im = gx.createImageData(GS, GS), d = im.data, p0 = lat0 * Math.PI / 180, sp0 = Math.sin(p0), cp0 = Math.cos(p0);
-      for (let j = 0; j < GS; j++) for (let i = 0; i < GS; i++) {
-        const nx = (i + .5 - GR) / GR, ny = (GR - j - .5) / GR, r2 = nx * nx + ny * ny; if (r2 >= 1) continue;
-        const rho = Math.sqrt(r2), c = Math.asin(rho), sc = Math.sin(c), cc = Math.cos(c);
-        const lat = rho ? Math.asin(cc * sp0 + ny * sc * cp0 / rho) * 180 / Math.PI : lat0;
-        let lon = lon0 + (rho ? Math.atan2(nx * sc, rho * cp0 * cc - ny * sp0 * sc) * 180 / Math.PI : 0);
-        lon = ((lon + 180) % 360 + 360) % 360;
-        const tx = Math.min(359, lon | 0), ty = clamp((90 - lat) | 0, 0, 179), s = (tx + ty * 360) * 4, o = (i + j * GS) * 4;
-        const lit = 0.5 + 0.5 * Math.sqrt(1 - r2), gold = seen[Math.floor(ty / 10) * 36 + Math.floor(tx / 10)] === '1' ? .3 : 0;
-        d[o] = (tpx[s] * (1 - gold) + 255 * gold) * lit; d[o + 1] = (tpx[s + 1] * (1 - gold) + 215 * gold) * lit; d[o + 2] = (tpx[s + 2] * (1 - gold) + 64 * gold) * lit; d[o + 3] = 255;
-      }
-      gx.putImageData(im, 0, 0);
-    }
-    const X = 14, Y = 436, cx = X + GR, cy2 = Y + GR;
-    g.fillStyle = 'rgba(20,14,46,.78)'; g.beginPath(); g.arc(cx, cy2, GR + 7, 0, 7); g.fill();
-    g.drawImage(globe, X, Y);
-    g.strokeStyle = 'rgba(160,210,255,.8)'; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy2, GR, 0, 7); g.stroke();
-    g.fillStyle = '#ff3b6b'; g.beginPath(); g.arc(cx, cy2, 5, 0, 7); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 2; g.stroke();
-    const cc = countryAt(lon0, lat0); txt(cc ? COUNTRIES[cc][0].replace(/^the /, '') : 'Ocean', cx, Y + GS + 18, 15, '#fff', 'center', 900);
+  /* inside a town everything small sits on the street grid: parked cars at the kerb, houses facing the street,
+     trees on the verge. Penguins live in the south, polar bears in the north. */
+  const GS = .3, ROAD = .025;
+  function onStreet(k, x, y, rng) {
+    const gx = Math.round(x / GS) * GS, gy = Math.round(y / GS) * GS, ew = Math.abs(y - gy) < Math.abs(x - gx), sd = rng() < .5 ? -1 : 1;
+    const off = { car: ROAD * .3, bus: ROAD * .3, truck: ROAD * .3, tree: ROAD * .5 + .008, house: ROAD * .5 + .036, shop: ROAD * .5 + .11, lowrise: ROAD * .5 + .1, church: ROAD * .5 + .09 }[k];
+    if (off === undefined) return [x, y];
+    return ew ? [x, gy + sd * off, k === 'car' || k === 'bus' || k === 'truck' ? Math.PI / 2 : 0] : [gx + sd * off, y, k === 'car' || k === 'bus' || k === 'truck' ? 0 : Math.PI / 2];
+  }
+  const poleOk = (k, x, y) => (k === 'penguin' && y < H / 2) || (k === 'polarbear' && y > H / 2) ? null : [x, y];
+  // ---- the landmark roster: hand-picked famous places + each country's capital, sized to the growth ladder ----
+  const SIZES = [0, .04, .1, .25, .6, 1.5, 4, 10, 25, 60, 150, 380, 950];
+  const FIX = { kitspool: .09, scienceworld: .22, canadaplace: .55, lionsgate: 1.4, spaceneedle: 3.6, goldengate: 9, grandcanyon: 23, liberty: 56, eiffel: 140, pyramids: 345, greatwall: 870, everest: 1300 };
+  const OWN = { eiffel: 1, liberty: 1, bigben: 1, opera: 1, pyramids: 1, marina: 1, basil: 1, table: 1, fuji: 1, colosseum: 1, greatwall: 1, taj: 1, christ: 1, chichen: 1, petra: 1, machu: 1 };
+  const WONDERS = { colosseum: 1, greatwall: 1, taj: 1, christ: 1, chichen: 1, petra: 1, machu: 1 };
+  const LMS = [];
+  LMD.forEach((r, i) => {
+    const [id0, cc, nm, lon, lat, look, fact] = r, tp = id0 === '_tp';
+    const id = id0[0] === '_' ? (tp ? 'park' : 'lm') + i : id0;
+    LMS.push({ id, cc, label: tp ? 'a theme park' : nm, sub: tp ? 'rides, a big wheel and a fairytale castle' : (CTRY[cc] ? CTRY[cc].nm.replace(/^the /, '') : ''), x: (lon + 180) * D, y: (90 - lat) * D,
+      k: OWN[id] ? id : 'lm_' + look, fact: fact ? fact + (WONDERS[id] ? ' (One of the New 7 Wonders of the World!)' : '') : '', famous: !!fact });
+  });
+  for (const [n, a3, lo, la, pop, cap] of GD.cities) {                 // every capital that has no landmark of its own nearby
+    if (!cap) continue;
+    LMS.push({ capital: 1, n, x: (lo + 18000) * Q, y: (9000 - la) * Q, pop });
   }
   CH.push({
-    n: 5, key: 'globe', mus: 'ch5.mp3', name: 'The Globe', short: 'Globe', c1: '#ff9800', c2: '#b34700', bgc: '#2a6fb5', rim: '#ffd23f',
-    W, H, wrap: 1, v2k: 200 / 400, spd: 5.2, start: P(-123.1, 49.28), cost: 3, need: 340, pv: 2, view: 13, agridSize: 4000,
-    sizes: [0, 16, 26, 42, 66, 100, 150, 230, 350],
-    real: [0, 800, 2000, 5000, 12000, 30000, 80000, 250000, 800000],
-    tagN: { wonder: 'World Wonder', landmark: 'landmark', island: 'island', tree: 'tree' },
+    n: 5, key: 'globe', mus: 'ch5.mp3', name: 'The Globe', short: 'Globe', c1: '#ff9800', c2: '#b34700', bgc: OCEAN, rim: '#ffd23f',
+    W, H, wrap: 1, spd: 3, upSpd: 2, runSpd: 5, eduMin: 25, start: P(-123.160, 49.262), cost: 3, need: 160, needP: 1.5, xpk: 2.5, pv: 2, view: 13, fill: .25,
+    sizes: SIZES,
+    real: SIZES.map(s => s * 278),                                     // one map unit is 278 metres
+    tagN: { wonder: 'World Wonder', landmark: 'landmark', themepark: 'theme park', tree: 'tree' },
     types: Object.assign({
-      car: ['car', 1], taxi: ['taxi', 1], bus: ['bus', 1, { pl: 'buses' }], house: ['house', 1], tree: ['tree', 1, { tags: 'tree' }], cow: ['cow', 1],
-      tractor: ['tractor', 1], sailboat: ['sailboat', 1, { mv: 'w' }], croissant: ['croissant', 1], pizza: ['pizza', 1], guard: ['royal guard', 1],
-      doll: ['nesting doll', 1], camel: ['camel', 1], drum: ['drum', 1], penguin: ['penguin', 1, { mv: 'w' }], noodles: ['bowl of noodles', 1, { pl: 'bowls of noodles' }],
-      sushi: ['sushi', 1, { pl: 'sushi' }], moto: ['motor scooter', 1], taco: ['taco', 1], oldcar: ['classic car', 1], dancer: ['tango dancer', 1], parrot: ['parrot', 1],
-      hotdog: ['hot dog', 1], kangaroo: ['kangaroo', 1, { mv: 'w' }], panda: ['panda', 1], tuktuk: ['tuk-tuk', 1], llama: ['llama', 1], palm: ['palm tree', 1, { tags: 'tree' }],
-      guitar: ['guitar', 1], pretzel: ['pretzel', 1], leaf: ['maple leaf', 1, { pl: 'maple leaves' }], giraffe: ['giraffe', 1], elephant: ['elephant', 1],
-      lion: ['lion', 1], koala: ['koala', 1], bison: ['bison', 1, { pl: 'bison' }], polarbear: ['polar bear', 1],
-      ship: ['ship', 2, { mv: 'w' }], building: ['shopping mall', 2], crane: ['construction site', 2], church: ['church', 2, { pl: 'churches' }], factory: ['factory', 2, { pl: 'factories' }],
-      barn: ['barn', 2, {}], forest: ['forest', 2, { tags: 'tree' }], iceberg: ['iceberg', 2],
-      tower: ['office tower', 3], stadium: ['stadium', 3], hotel: ['skyscraper hotel', 3], castle: ['castle', 3], temple: ['temple', 3], pagoda: ['pagoda', 3], cruise: ['cruise ship', 3, { mv: 'w' }],
-      skyline: ['skyscraper city', 4, { pl: 'skyscraper cities' }], whale: ['whale', 4, { mv: 'w' }], hill: ['big hill', 4],
-      eiffel: ['Eiffel Tower', 5, { tags: 'landmark', s: 1.3 }], colosseum: ['Colosseum', 5, { tags: 'landmark,wonder', s: 1.3 }], greatwall: ['Great Wall of China', 6, { tags: 'landmark,wonder', s: 1.5 }],
-      taj: ['Taj Mahal', 5, { tags: 'landmark,wonder', s: 1.3 }], pyramids: ['Pyramids of Giza', 5, { tags: 'landmark', s: 1.3 }], liberty: ['Statue of Liberty', 5, { tags: 'landmark', s: 1.3 }],
-      bigben: ['Big Ben', 5, { tags: 'landmark', s: 1.3 }], opera: ['Sydney Opera House', 5, { tags: 'landmark', s: 1.3 }], christ: ['Christ the Redeemer', 5, { tags: 'landmark,wonder', s: 1.3 }],
-      chichen: ['Chichen Itza', 5, { tags: 'landmark,wonder', s: 1.3 }], fuji: ['Mount Fuji', 7, { tags: 'landmark' }], marina: ['Marina Bay Sands', 5, { tags: 'landmark', s: 1.3 }],
-      petra: ['Petra', 5, { tags: 'landmark,wonder', s: 1.3 }], machu: ['Machu Picchu', 5, { tags: 'landmark,wonder', s: 1.3 }], basil: ["St. Basil's Cathedral", 5, { tags: 'landmark', s: 1.3 }],
-      table: ['Table Mountain', 5, { tags: 'landmark', s: 1.3 }],
-      island: ['island', 7, { tags: 'island' }], peak: ['tall mountain', 8],
-      flag: ['flag', 1, { tags: 'flag', s: 1.4 }], hat: ['top hat', 1],
-    }),
-    zones, zoneAt,
-    objInit(o) { if (o.zn !== 'ocean') { const [lon, lat] = ll(wrapX(o.x), wrapY(o.y)); o.cc = countryAt(lon, lat); } else o.cc = null; },
-    regionAt: (x, y) => { const [lon, lat] = ll(wrapX(x), wrapY(y)); return countryAt(lon, lat); },
-    regionPos: cc => COUNTRIES[cc] && P(COUNTRIES[cc][1][0][0], COUNTRIES[cc][1][0][1]),
-    regionName: cc => COUNTRIES[cc] ? COUNTRIES[cc][0].replace(/^the /, 'the ') : cc,
-    countries: COUNTRIES, countryAt, landKind, P, ll, CITIES, LM,
-    build(add) {
-      for (const [id, k, lon, lat, n, place, cc, fact, wonder] of LM) add(k, ...P(lon, lat), { keep: 1, id, label: n, sub: place, cc, fact: fact + (wonder ? ' (One of the 7 World Wonders!)' : '') });
-      ISLANDS.forEach(([n, sub, cc, lon, lat], i) => add('island', ...P(lon, lat), { keep: 1, id: 'isl' + i, label: n, sub, cc }));
-      PEAKS.forEach(([n, sub, cc, lon, lat, fact], i) => add('peak', ...P(lon, lat), { keep: 1, id: 'peak' + i, label: n, sub, cc, fact }));
-      // one flag per country, planted at its heart: the Educational "find France" targets (labels show only when targeted)
-      for (const [cc, [n, seeds]] of Object.entries(COUNTRIES)) add('flag', ...P(seeds[0][0] + .6, seeds[0][1] - .4), { keep: 1, id: 'flag_' + cc, label: 'Flag of ' + n.replace(/^the /, 'the '), quiet: 1, cc, pal: { a: FLAGC[cc] || '#e53935' } });
+      car: ['car', 1, { m: [.016, .007] }], tree: ['tree', 1, { m: [.022, .03], tags: 'tree' }], pine: ['pine tree', 1, { m: [.02, .035], tags: 'tree' }], palm: ['palm tree', 1, { m: [.02, .035], tags: 'tree' }],
+      cow: ['cow', 1, { m: [.01, .008] }], moose: ['moose', 1, { m: [.012, .012], pl: 'moose' }], parrot: ['parrot', 1, { m: [.008, .008] }], cactus: ['cactus', 1, { m: [.012, .02] }],
+      camel: ['camel', 1, { m: [.014, .012] }], penguin: ['penguin', 1, { m: [.008, .01] }], polarbear: ['polar bear', 1, { m: [.025, .015] }], seal: ['seal', 1, { m: [.018, .008] }],
+      boat: ['boat', 1, { m: [.028, .012], mv: 'w' }], shed: ['shed', 1, { m: [.025, .02] }],
+      house: ['house', 1, { m: [.055, .045] }], bus: ['bus', 1, { m: [.045, .016], pl: 'buses' }], truck: ['truck', 1, { m: [.04, .016] }], barn: ['barn', 1, { m: [.08, .06] }],
+      farmhouse: ['farmhouse', 1, { m: [.065, .05] }], cabin: ['cabin', 1, { m: [.05, .04] }], hut: ['hut', 1, { m: [.045, .035] }], tent: ['tent', 1, { m: [.035, .025] }],
+      igloo: ['igloo', 1, { m: [.04, .025] }], sailboat: ['sailboat', 1, { m: [.06, .08], mv: 'w' }],
+      lowrise: ['apartment block', 1, { m: [.18, .2] }], shop: ['shopping mall', 1, { m: [.2, .1] }], church: ['church', 1, { m: [.15, .25], pl: 'churches' }], farm: ['farm', 1, { m: [.22, .08] }],
+      silo: ['silo', 1, { m: [.12, .2] }], fishboat: ['fishing boat', 1, { m: [.15, .06], mv: 'w' }], temple: ['temple', 1, { m: [.2, .2] }], oasis: ['oasis', 1, { m: [.2, .12] }],
+      tower: ['office tower', 1, { m: [.45, 1.4] }], stadium: ['stadium', 1, { m: [.55, .2] }], factory: ['factory', 1, { m: [.5, .3], pl: 'factories' }], castle: ['castle', 1, { m: [.5, .45] }],
+      cargo: ['cargo ship', 1, { m: [.55, .15], mv: 'w' }],
+      hotel: ['skyscraper', 1, { m: [1.2, 4] }], forest: ['forest', 1, { m: [1.3, .9], tags: 'tree' }], rainforest: ['rainforest', 1, { m: [1.3, 1], tags: 'tree' }], cruise: ['cruise ship', 1, { m: [1.3, .4], mv: 'w' }],
+      whale: ['whale', 1, { m: [1.1, .35], mv: 'w' }], orca: ['orca', 1, { m: [1, .35], mv: 'w' }], shark: ['shark', 1, { m: [.9, .3], mv: 'w' }], dune: ['sand dune', 1, { m: [1.3, .4] }],
+      skyline: ['city centre', 1, { m: [3.5, 6] }], hill: ['big hill', 1, { m: [3.6, 1.2] }], mesa: ['mesa', 1, { m: [3.2, 1.3] }], bluewhale: ['blue whale', 1, { m: [3.5, 1], mv: 'w' }],
+      iceberg: ['iceberg', 1, { m: [3.2, 1.6], mv: 'w' }], mountain: ['mountain', 1, { m: [9, 5] }], icecap: ['ice cap', 1, { m: [9, 3] }],
+      cloud: ['cloud', 1, { m: [22, 8], mv: 'fly' }], storm: ['storm', 1, { m: [55, 15], mv: 'fly' }], range: ['mountain range', 1, { m: [55, 18] }],
+      bigstorm: ['big storm', 1, { m: [140, 30], mv: 'fly' }], hurricane: ['hurricane', 1, { m: [350, 60], mv: 'fly' }], supercell: ['giant storm system', 1, { m: [900, 120], mv: 'fly' }],
+      flag: ['flag', 1, { m: [20, 30], tags: 'flag' }], hat: ['top hat', 1, { m: [.012, .01] }],
+      eiffel: ['Eiffel Tower', 1, { tags: 'landmark' }], liberty: ['Statue of Liberty', 1, { tags: 'landmark' }], bigben: ['Big Ben', 1, { tags: 'landmark' }], opera: ['Sydney Opera House', 1, { tags: 'landmark' }],
+      pyramids: ['Pyramids of Giza', 1, { tags: 'landmark', pl: 'Pyramids of Giza' }], marina: ['Marina Bay Sands', 1, { tags: 'landmark' }], basil: ["St Basil's Cathedral", 1, { tags: 'landmark' }],
+      table: ['Table Mountain', 1, { tags: 'landmark' }], fuji: ['Mount Fuji', 1, { tags: 'landmark' }],
+      colosseum: ['Colosseum', 1, { tags: 'landmark,wonder' }], greatwall: ['Great Wall of China', 1, { tags: 'landmark,wonder' }], taj: ['Taj Mahal', 1, { tags: 'landmark,wonder' }],
+      christ: ['Christ the Redeemer', 1, { tags: 'landmark,wonder' }], chichen: ['Chichen Itza', 1, { tags: 'landmark,wonder' }], petra: ['Petra', 1, { tags: 'landmark,wonder' }], machu: ['Machu Picchu', 1, { tags: 'landmark,wonder' }],
+      lm_themepark: ['theme park', 1, { tags: 'landmark,themepark' }],
+    }, Object.fromEntries([...new Set(LMS.filter(l => l.k && l.k.startsWith('lm_')).map(l => l.k)), 'lm_palace'].filter(k => k !== 'lm_themepark').map(k => [k, ['landmark', 1, { tags: 'landmark' }]]))),
+    zones: {
+      city: { d: 1.1, coin: .3, at: onStreet, t: ['car:4,tree:2,hat:.04', 'house:4,bus,truck', 'lowrise:3,shop,church', 'tower:3,stadium:.3,factory', 'hotel:3', 'skyline:2', 'skyline', 'cloud', 'storm', 'bigstorm', 'hurricane', 'supercell'] },
+      farm: { d: .8, t: ['tree:3,cow:2,shed', 'barn:2,farmhouse:2,truck', 'farm:2,silo', 'factory:.5,castle:.3', 'forest:2', 'hill', 'mountain:.5', 'cloud', 'range:.5,storm', 'bigstorm', 'hurricane', 'supercell'] },
+      boreal: { d: .7, t: ['pine:4,moose', 'cabin:2', 'farm:.3', 'castle:.1', 'forest:3', 'hill', 'mountain', 'cloud', 'range,storm', 'bigstorm', 'hurricane', 'supercell'] },
+      jungle: { d: .8, t: ['palm:3,parrot', 'hut:2', 'temple:.3', '', 'rainforest:3', 'hill', 'mountain:.5', 'cloud', 'storm', 'bigstorm', 'hurricane', 'supercell'] },
+      desert: { d: .6, t: ['cactus:2,camel', 'tent:2', 'oasis', '', 'dune:2', 'mesa', 'dune', 'cloud:.3', 'storm:.4', 'bigstorm', 'hurricane', 'supercell'] },
+      ice: { d: .5, coin: .1, at: poleOk, t: ['penguin:3,polarbear:2', 'igloo:.5,seal:2', '', '', 'iceberg', 'iceberg', 'icecap', 'cloud', 'storm', 'bigstorm', 'hurricane', 'supercell'] },
+      ocean: { d: .35, coin: .08, t: ['boat', 'sailboat:2', 'fishboat:2', 'cargo:2', 'cruise,whale,orca,shark', 'bluewhale:.6,cargo', '', 'cloud:.5', 'storm', 'bigstorm', 'hurricane', 'supercell'] },
+      polar: { d: .35, coin: .08, t: ['seal', 'boat:.3', '', '', 'orca,whale', 'iceberg:2', 'iceberg', 'cloud', 'storm', 'bigstorm', 'hurricane', 'supercell'] },
+      lake: { d: .5, coin: .1, t: ['boat:2', 'sailboat:2', 'fishboat'] },
     },
-    tick() {
-      const st = G.st, i = Math.floor(G.y / H * 18) * 36 + Math.floor(G.x / W * 36);
-      if (!st.seen || st.seen.length !== 648) st.seen = '0'.repeat(648);
-      if (st.seen[i] !== '1') st.seen = st.seen.slice(0, i) + '1' + st.seen.slice(i + 1);
+    zoneAt,
+    spdAt: (x, y) => surf(x, y) === 1 ? 1 : 1.8,                       // the oceans are quick to cross (spec v5.11)
+    objInit(o) { if (o.zn !== 'ocean' && o.zn !== 'polar') o.cc = ccAt(o.x, o.y); else o.cc = null; },
+    regionAt: (x, y) => ccAt(x, y),
+    regionPos: cc => CTRY[cc] && CTRY[cc].at,
+    regionName: cc => CTRY[cc] ? CTRY[cc].nm : cc,
+    countries: Object.fromEntries(CLIST.map(c => [c.cc, [c.nm]])),
+    P, ll, surf, ccAt, cityAt, LMS, CITY,
+    build(add, rng) {
+      const C = this, N = SIZES.length - 1;
+      const sized = (o, fw) => { if (!o) return o; o.fw = fw; o.r = fw / 2; o.t = tierOf(C, fw); o.sv = 1; return o; };
+      // landmarks: fixed sizes for the objective ladder; the rest by fame, never wider than the gap to a neighbour
+      const L = LMS.filter(l => !l.capital), near = (l) => { let d = 1e9; for (const m of L) if (m !== l) d = Math.min(d, Math.hypot(wrapD(m.x - l.x, W), m.y - l.y)); return d; };
+      for (const l of LMS.filter(l => l.capital)) {                    // a capital joins the roster when nothing famous is already there
+        const cc = ccAt(l.x, l.y); if (!cc || L.some(m => Math.hypot(wrapD(m.x - l.x, W), m.y - l.y) < 200)) continue;
+        L.push({ id: 'cap_' + cc + '_' + l.n.replace(/\W/g, ''), cc, label: l.n, sub: 'the capital of ' + CTRY[cc].nm, x: l.x, y: l.y, k: 'lm_palace', fact: '', famous: false });
+      }
+      const WET = { reef: 1, island: 1, ship: 1, felucca: 1, yacht: 1, glacier: 1 };
+      for (const l of L) {                                             // the coastline is simplified: step a shore landmark onto the drawn land
+        if (WET[l.k.slice(3)] || surf(l.x, l.y) === 1) continue;
+        search: for (let r = .5; r < 40; r *= 1.4) for (let a = 0; a < 6.28; a += .5) if (surf(l.x + Math.cos(a) * r, l.y + Math.sin(a) * r) === 1) { l.x += Math.cos(a) * r * 1.15; l.y += Math.sin(a) * r * 1.15; break search; }
+      }
+      for (const l of L) {
+        let fw = FIX[l.id];
+        if (!fw) { const h = (Math.sin(l.x * 12.9898 + l.y * 78.233) * 43758.5453) % 1, u = Math.abs(h); fw = SIZES[(l.famous ? 6 : 5) + Math.floor(u * 3)] * (.7 + .25 * u); fw = Math.max(SIZES[3], Math.min(fw, near(l) * .8)); }
+        const o = add(l.k, l.x, l.y, { keep: 1, id: l.id, label: l.label, sub: l.sub, cc: l.cc, fact: l.fact, quiet: 1 });
+        sized(o, fw);
+      }
+      // "Find the country" flags (Educational only), planted at each country's heart
+      for (const cc of Object.keys(HEART)) if (CTRY[cc]) add('flag', ...CTRY[cc].at, { keep: 1, id: 'flag_' + cc, label: 'Flag of ' + CTRY[cc].nm, quiet: 1, cc, nosolid: 1 });
+      // the start street: a few cars driving round the blocks near home (moving traffic at house size)
+      const [sx, sy] = C.start, g0x = Math.round(sx / GS) * GS, g0y = Math.round(sy / GS) * GS;
+      for (let i = 0; i < 8; i++) {
+        const ax = g0x + (Math.floor(rng() * 5) - 2) * GS, ay = g0y + (Math.floor(rng() * 5) - 2) * GS, bw = GS * (1 + Math.floor(rng() * 2)), bh = GS * (1 + Math.floor(rng() * 2)), ln = ROAD * .25 * (i % 2 ? 1 : -1);
+        add('car', ax, ay, { path: [ax + ln, ay + ln, ax + bw - ln, ay + ln, ax + bw - ln, ay + bh - ln, ax + ln, ay + bh - ln, ax + ln, ay + ln], spd: .05 + rng() * .03, loop: 1, ph: rng(), face: 1 });
+      }
+      // highway traffic: a pool of cars that drive the nearest real highway while you are small
+      const pool = [];
+      for (let i = 0; i < 18; i++) { const o = add('car', sx, sy, { path: [sx, sy, sx + .001, sy], spd: 0, ph: rng(), face: 1, hw: 1, lane: (i % 2 ? 1 : -1) * ROAD * .25, quiet: 1 }); o.dead = 1; o.parked = 1; pool.push(o); }
+      let hwT = 0;
+      function traffic() {
+        const r = 2.2, segs = [];
+        for (const h of HWY) {
+          const b = h.b, ox = wrapD(b[0] - G.x, W) + G.x - b[0];
+          if (b[2] + ox < G.x - r || b[0] + ox > G.x + r || b[3] < G.y - r || b[1] > G.y + r) continue;
+          const p = h.p;
+          for (let i = 2; i < p.length; i += 2) {                      // clip the polyline to a window round the hole
+            const x0 = p[i - 2] + ox, y0 = p[i - 1], x1 = p[i] + ox, y1 = p[i + 1], vx = x1 - x0, vy = y1 - y0, l2 = vx * vx + vy * vy || 1;
+            const t = clamp(((G.x - x0) * vx + (G.y - y0) * vy) / l2, 0, 1), d = Math.hypot(x0 + vx * t - G.x, y0 + vy * t - G.y);
+            if (d > r) continue;
+            const l = Math.sqrt(l2), a = clamp(t - r / l, 0, 1), e = clamp(t + r / l, 0, 1);
+            segs.push([x0 + vx * a, y0 + vy * a, x0 + vx * e, y0 + vy * e]);
+          }
+        }
+        let j = 0;
+        for (const o of pool) {
+          if (o.fall) continue;
+          if (!segs.length || holeD() > .5) { if (!o.dead) { o.dead = 1; o.parked = 1; } continue; }
+          if (o.dead && !o.parked && G.now - (o.dt || 0) < 20000) continue;   // an eaten car comes back later
+          const s = segs[j++ % segs.length];
+          o.path = s.slice(); o.len = 0; o.pb = null; o.spd = .06 + (j % 5) * .012; o.ph = (j * .37) % 1; o.dead = 0; o.parked = 0;
+        }
+      }
+      // the visited-places glow on the mini globe
+      this.tick = dt => {
+        const st = G.st, i = Math.floor(wrapY(G.y) / H * 18) * 36 + Math.floor(wrapX(G.x) / W * 36);
+        if (!st.seen || st.seen.length !== 648) st.seen = '0'.repeat(648);
+        if (st.seen[i] !== '1') st.seen = st.seen.slice(0, i) + '1' + st.seen.slice(i + 1);
+        if ((hwT -= dt) <= 0) { hwT = 1.5; traffic(); }
+      };
     },
-    hud: miniMap,
-    finish() { G.cine = { k: 'moon', t0: G.now, objs: [] }; G.joy = null; },
-    /* the Moon reuses the topple system with scripted parameters: it rolls to the rim, leans and
-       wobbles over the gap, then takes the same tip-in fall as everything else (slow, many spins) */
-    cineUpdate() {
-      const c = G.cine, p = (G.now - c.t0) / 5200, R = holeD() / 2;
-      if (!c.moon) { c.moon = { mk: 'moon', mc: prep(CH[4]), fw: R * 3.2, sv: 1, x: G.x, y: G.y, bx: 0, by: 0, yaw: 0, ph: 0, lean: 0, wob: -1e9 }; c.objs = [c.moon]; }
-      const m = c.moon, fr = m.fw / 2;
-      if (p < 0.4) { const e = 1 - (1 - p / 0.4) ** 2; m.x = G.x + lerp(R * 9, R + fr * 0.75, e); m.y = G.y - lerp(R * 5, R * 0.35, e); m.yaw = -e * 6; }
-      else if (p < 0.62) { const e = (p - 0.4) / 0.22; m.ldir = Math.atan2(G.y - m.y, G.x - m.x); m.lean = 0.2 + e * 0.35; m.wobble = 1.2 * (1 - e); }
-      else if (!m.fall) m.fall = { t0: G.now, x0: dx(m.x, G.x), y0: dy(m.y, G.y), dur: 5200 * 0.38, l0: m.lean, spin: 9 };
-      if (G.now - c.t0 > 5200) { G.cine = null; SFX.fanfare(); UI.complete(); }
-    },
-    cineDraw() {
-      const p = (G.now - G.cine.t0) / 5200;
-      // the endgame sky: space opens above the globe — the Sun, Mercury, Mars, and the Moon rolling in (v4 clarification 4d)
-      const a = Math.min(1, p * 3); g.fillStyle = `rgba(2,4,24,${0.62 * a})`; g.fillRect(0, 0, STAGE_W, STAGE_H);
-      g.save(); g.globalAlpha = a; const r9 = mulberry(9);
-      g.fillStyle = '#fff'; for (let i = 0; i < 140; i++) g.fillRect(r9() * STAGE_W, r9() * STAGE_H, 1 + r9() * 2, 1 + r9() * 2);
-      const sx = STAGE_W - 170, sy = 130, sg = g.createRadialGradient(sx, sy, 20, sx, sy, 190); sg.addColorStop(0, 'rgba(255,214,90,.95)'); sg.addColorStop(.35, 'rgba(255,170,40,.45)'); sg.addColorStop(1, 'rgba(255,140,0,0)');
-      g.fillStyle = sg; g.fillRect(sx - 190, sy - 190, 380, 380); g.fillStyle = '#ffd34d'; g.beginPath(); g.arc(sx, sy, 62, 0, 7); g.fill();
-      const ball = (x, y, r, c1, c2) => { const bg2 = g.createRadialGradient(x - r * .35, y - r * .35, r * .1, x, y, r); bg2.addColorStop(0, c1); bg2.addColorStop(1, c2); g.fillStyle = bg2; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); };
-      ball(sx - 150, sy + 70, 9, '#ddd6cc', '#7a746c'); ball(560, 250, 24, '#ff9a6a', '#9c2f12');
-      for (const [s2, x, y] of [['the Sun', sx, sy + 86], ['Mercury', sx - 150, sy + 92], ['Mars', 560, 292]]) txt(s2, x, y, 16, 'rgba(255,255,255,.85)', 'center', 800);
-      g.restore();
-      txt(p < 0.62 ? 'THE MOON!' : 'GULP!', STAGE_W / 2, 150, 64, '#ffd23f', 'center', 900);
-    },
+    // the objective ladder: home in Vancouver → the Pacific Northwest → the west → New York → Paris → Giza → China → Everest
+    beats: ['kitspool', 'scienceworld', 'canadaplace', 'lionsgate', 'spaceneedle', 'goldengate', 'grandcanyon', 'liberty', 'eiffel', 'pyramids', 'greatwall', 'everest'],
+    rings: (() => { const B = (a, b, c, d) => [(a + 180) * D, (90 - d) * D, (c + 180) * D, (90 - b) * D];
+      const r1 = B(-123.30, 49.20, -122.98, 49.36), r2 = B(-124.6, 47.0, -121.4, 49.9), r3 = B(-126, 31, -104, 50.5), r4 = B(-128, 22, -60, 56);
+      return [r1, r1, r1, r1, r2, r3, r3, r4, null, null, null, null]; })(),
+    finish(first) { setTimeout(() => { SFX.fanfare(); if (first) { G.st.w += 5000; persist(); } UI.credits(); }, 1200); },
     ispy: ['#eiffel', '#colosseum', '#greatwall', '#taj', '#pyramids|the Egyptian pyramids', '#liberty', '#bigben', '#opera', '#christ', '#chichen', '#fuji', '#marina', '#petra',
-      '#machu', '#basil', '#table', '#isl0', '#isl3', '#peak0', 'hat', 'penguin', 'kangaroo', 'panda', 'giraffe', 'elephant', 'llama', 'camel', 'polarbear', 'whale', 'parrot'],
+      '#machu', '#basil', '#tokyotower', '#skytree', '#shard', '#towerbridge', '#louvre', '#cntower', '#niagara', 'car', 'hat', 'sailboat', 'cargo', 'cruise', 'whale', 'orca', 'shark'],
     eduSubj: 'geography',
     edu: [
       { n: 'Find the country', s: ['i:#flag_FR|Find France', 'i:#flag_JP|Find Japan', 'i:#flag_BR|Find Brazil'] },
       { n: 'Famous places', s: ['i:#pyramids|I spy the Egyptian pyramids', 'i:#eiffel|Find the Eiffel Tower in France', 'i:#taj|Find the Taj Mahal in India'] },
       { n: 'Around the world', s: ['i:#flag_CA|Find Canada', 'i:#flag_EG|Find Egypt', 'i:#flag_AU|Find Australia'] },
-      { n: 'Animals of the world', s: ['f:kangaroo,panda,llama', 'f:giraffe,elephant,lion', 'f:penguin,polarbear'] },
-      { n: 'Mountains and islands', s: ['i:#peak0|Find Mount Everest', 'i:#fuji|Find Mount Fuji in Japan', 'i:#isl0|Find Hawaii'] },
+      { n: 'Ocean giants', s: ['f:whale,orca,shark', 'f:cargo,cruise', 'i:#reef|Find the Great Barrier Reef'] },
+      { n: 'Mountains and islands', s: ['i:#everest|Find Mount Everest', 'i:#fuji|Find Mount Fuji in Japan', 'i:#hawaii|Find Hawaii'] },
       { n: 'More countries', s: ['i:#flag_IT|Find Italy', 'i:#flag_IN|Find India', 'i:#flag_MX|Find Mexico'] },
+      { n: 'Rivers and waterfalls', s: ['i:#nile|Find a sailboat on the Nile', 'i:#niagara|Find Niagara Falls', 'i:#victoria|Find Victoria Falls'] },
       { n: 'Travel maths', s: ['m:add', 'm:sub', 'm:mul'] },
     ],
-    doneTxt: 'Seven Wonders, six passport stamps, an island… and THE MOON!',
+    doneTxt: 'From one house in Vancouver to the top of Mount Everest: the whole world is in your belly!',
     words: ['EARTH', 'MAP', 'NILE', 'ROME', 'PARIS', 'TOKYO', 'CAIRO', 'WORLD', 'LIMA', 'OCEAN'],
-    check: ['c:wonder:7|g|Collect the 7 World Wonders', 'k:6', 'b:island|g|Eat a whole island'],
+    check: ['c:wonder:7|g|Collect the 7 World Wonders', 'k:20', 'c:themepark:3|g|Eat 3 theme parks'],
     quests: [
-      'c:car:5', 't:30', 'f:add', 'c:crane:3', 'x:6', 'b:liberty|g', 'c:ship:3', 'p:car,bus,car,bus', 'c:*@JP:5|g', 'a:ship:20',
+      'c:car:5', 't:30', 'f:add', 'c:house:3', 'x:6', 'c:bus:2', 'c:sailboat:3', 'p:car,bus,car,bus', 'c:*@JP:5|g', 'a:car:20',
       'f:sub', 'c:landmark:3|g', 'l:T', 'b:fuji|g', 'f:mul', 'c:castle:2', 'c:*@FR:5|g', 'x:10',
-      't:300', 'f:miss', 'p:house,tree,house,tree', 'b:eiffel|g', 'f:mul', 'c:*@EG:5|g', 'f:add', 'q:EARTH',
+      't:300', 'f:miss', 'p:house,tree,house,tree', 'b:bigben|g', 'f:mul', 'c:*@EG:5|g', 'f:add', 'q:EARTH',
       'l:C', 'f:sub', 'c:*@BR:5|g', 'q:PARIS|g', 'f:word', 'q:NILE|g',
-      'p:ship,sailboat,ship,sailboat', 'c:*@AU:5|g', 'p:crane,factory,crane,factory', 'f:miss',
+      'p:cargo,fishboat,cargo,fishboat', 'c:*@AU:5|g', 'p:tower,factory,tower,factory', 'f:miss',
       'r:4', 's:5000', 'r:7', 's:30000',
     ],
     bg(g, V) {
-      const pw = 1 / V.z;
-      g.fillStyle = '#2a6fb5'; g.fillRect(V.x0, V.y0, V.x1 - V.x0, V.y1 - V.y0);
-      const offs = []; for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) offs.push([i * W, j * H]);
-      g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = Math.max(8, pw * 1.2);
-      for (let lon = -180; lon <= 180; lon += 15) { const x = (lon + 180) * D; for (const [ox] of [[-W], [0], [W]]) if (x + ox > V.x0 && x + ox < V.x1) { g.beginPath(); g.moveTo(x + ox, V.y0); g.lineTo(x + ox, V.y1); g.stroke(); } }
-      for (let lat = -75; lat <= 75; lat += 15) { const y = (90 - lat) * D; for (const oy of [-H, 0, H]) if (y + oy > V.y0 && y + oy < V.y1) { g.beginPath(); g.moveTo(V.x0, y + oy); g.lineTo(V.x1, y + oy); g.stroke(); } }
-      const drawP = (p, b, col) => {
-        for (const [ox, oy] of offs) {
-          if (b[0] + ox > V.x1 || b[2] + ox < V.x0 || b[1] + oy > V.y1 || b[3] + oy < V.y0) continue;
-          g.fillStyle = col; g.beginPath(); g.moveTo(p[0] + ox, p[1] + oy); for (let i = 2; i < p.length; i += 2) g.lineTo(p[i] + ox, p[i + 1] + oy); g.closePath(); g.fill();
-          g.strokeStyle = 'rgba(30,60,30,.5)'; g.lineWidth = Math.max(10, 1.5 * pw); g.stroke();
+      const pw = 1 / V.z, mini = V.mini, lw = px => Math.max(px * pw, 0);
+      g.fillStyle = OCEAN; g.fillRect(V.x0, V.y0, V.x1 - V.x0, V.y1 - V.y0);
+      const offs = [];
+      for (const ox of [-W, 0, W]) for (const oy of [-H, 0, H]) if (V.x1 > ox && V.x0 < ox + W && V.y1 > oy && V.y0 < oy + H) offs.push([ox, oy]);
+      const vis = (b, ox, oy, m) => b[2] + ox >= V.x0 - m && b[0] + ox <= V.x1 + m && b[3] + oy >= V.y0 - m && b[1] + oy <= V.y1 + m;
+      const path = (q, ox, oy) => { for (const r of q.rs) { g.moveTo(r[0] + ox, r[1] + oy); for (let i = 2; i < r.length; i += 2) g.lineTo(r[i] + ox, r[i + 1] + oy); g.closePath(); } };
+      const line = (p, ox, oy) => { g.moveTo(p[0] + ox, p[1] + oy); for (let i = 2; i < p.length; i += 2) g.lineTo(p[i] + ox, p[i + 1] + oy); };
+      g.beginPath(); for (const [ox, oy] of offs) for (const q of LAND) if (vis(q.b, ox, oy, 0)) path(q, ox, oy);
+      g.fillStyle = LANDC; g.fill('evenodd');
+      // land cover tints, clipped to the land: deserts, rainforest belt, northern forest, the ice
+      g.save(); g.clip('evenodd');
+      for (const [ox, oy] of offs) {
+        const R = (a, b, c, d, col) => { const [x0, y1] = P(a, b), [x1, y0] = P(c, d); g.fillStyle = col; g.fillRect(x0 + ox, y0 + oy, x1 - x0, y1 - y0); };
+        const band = (la0, la1, la2, la3, col) => { const y0 = (90 - la3) * D + oy, y1 = (90 - la0) * D + oy, gr = g.createLinearGradient(0, y0, 0, y1);    // soft-edged latitude belts
+          gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop((la3 - la2) / (la3 - la0), col); gr.addColorStop((la3 - la1) / (la3 - la0), col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(V.x0, y0, V.x1 - V.x0, y1 - y0); };
+        band(44, 54, 66, 74, 'rgba(60,110,60,.28)'); band(-16, -8, 8, 16, 'rgba(40,120,50,.25)');
+        for (const b of DESERTS) {                                     // deserts fade out at their edges (no hard boxes)
+          const [x0, y1] = P(b[0], b[1]), [x1, y0] = P(b[2], b[3]), cx = (x0 + x1) / 2 + ox, cy = (y0 + y1) / 2 + oy, rx = (x1 - x0) * .72, ry = (y1 - y0) * .72;
+          if (cx + rx < V.x0 || cx - rx > V.x1 || cy + ry < V.y0 || cy - ry > V.y1) continue;
+          g.save(); g.translate(cx, cy); g.scale(rx, ry); const gr = g.createRadialGradient(0, 0, 0, 0, 0, 1);
+          gr.addColorStop(0, 'rgba(232,200,120,.8)'); gr.addColorStop(.7, 'rgba(232,200,120,.72)'); gr.addColorStop(1, 'rgba(232,200,120,0)'); g.fillStyle = gr; g.fillRect(-1, -1, 2, 2); g.restore();
         }
-      };
-      for (const L of LANDP) drawP(L.p, L.b, L.k === 'ice' ? '#eef3f6' : '#7cb862');
-      for (const [lo, la, rx, ry] of [[10, 23, 20, 7], [45, 23, 8, 6], [133, -25, 9, 5], [105, 43, 10, 3.5], [-70, -24, 2, 6]]) {
-        const [x, y] = P(lo, la); for (const [ox, oy] of offs) { if (x + ox + rx * D < V.x0 || x + ox - rx * D > V.x1 || y + oy + ry * D < V.y0 || y + oy - ry * D > V.y1) continue; g.fillStyle = 'rgba(222,196,120,.8)'; g.beginPath(); g.ellipse(x + ox, y + oy, rx * D, ry * D, 0, 0, 7); g.fill(); }
+        R(-180, 72, 180, 90, '#eef3f6'); R(-180, -90, 180, -60, '#eef3f6');
+        for (const cc of ['GL', 'AQ']) if (CTRY[cc]) { g.beginPath(); for (const q of CTRY[cc].polys) if (vis(q.b, ox, oy, 0)) path(q, ox, oy); g.fillStyle = '#eef3f6'; g.fill('evenodd'); }
+        if (!mini && pw < 3) for (const c of CITY) {                    // towns: grey blobs, then their street grids up close
+          if (c.x + ox + c.r < V.x0 || c.x + ox - c.r > V.x1 || c.y + oy + c.r < V.y0 || c.y + oy - c.r > V.y1) continue;
+          g.fillStyle = 'rgba(190,190,196,.55)'; g.beginPath(); g.arc(c.x + ox, c.y + oy, c.r, 0, 7); g.fill();
+          if (pw < .004) {
+            g.save(); g.beginPath(); g.arc(c.x + ox, c.y + oy, c.r, 0, 7); g.clip();
+            g.strokeStyle = '#7d7f86'; g.lineWidth = ROAD; g.beginPath();
+            for (let x = Math.ceil((V.x0 - ox) / GS) * GS; x < V.x1 - ox; x += GS) { g.moveTo(x + ox, V.y0); g.lineTo(x + ox, V.y1); }
+            for (let y = Math.ceil((V.y0 - oy) / GS) * GS; y < V.y1 - oy; y += GS) { g.moveTo(V.x0, y + oy); g.lineTo(V.x1, y + oy); }
+            g.stroke(); g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = ROAD * .08; g.setLineDash([ROAD * .6, ROAD * .6]); g.stroke(); g.setLineDash([]); g.restore();
+          }
+        }
       }
-      for (const S2 of SEAP) drawP(S2.p, S2.b, '#2a6fb5');
-      g.strokeStyle = '#2a6fb5'; g.lineWidth = Math.max(70, 2.5 * pw); g.lineJoin = 'round';
-      for (const [ox, oy] of offs) { g.beginPath(); g.moveTo(NILEP[0] + ox, NILEP[1] + oy); for (let i = 2; i < NILEP.length; i += 2) g.lineTo(NILEP[i] + ox, NILEP[i + 1] + oy); g.stroke(); }
-      g.textAlign = 'center'; g.textBaseline = 'middle';
-      const lab = (s, x, y, px, col) => { for (const [ox, oy] of offs) { const X = x + ox, Y = y + oy; if (X < V.x0 - 2000 * pw || X > V.x1 + 2000 * pw || Y < V.y0 - 100 * pw || Y > V.y1 + 100 * pw) continue; g.font = `900 ${px * pw}px ${UI_FONT}`; g.lineWidth = px * pw / 4; g.strokeStyle = 'rgba(0,0,0,.45)'; g.strokeText(s, X, Y); g.fillStyle = col; g.fillText(s, X, Y); } };
-      for (const c of CITIES) { const [x, y] = P(c[2], c[3]); lab(c[0], x, y - 300 - 14 * pw, 15, '#fff'); }
-      for (const [cc, [n, seeds]] of Object.entries(COUNTRIES)) { const [x, y] = P(seeds[0][0], seeds[0][1]); lab(n.replace(/^the /, '').toUpperCase(), x, y, 18, S.passport[cc] ? '#ffd23f' : 'rgba(255,255,255,.75)'); }
-      const [nx, ny] = P(32.6, 21); lab('Nile River', nx, ny, 14, '#bfe3ff');
-      for (const [n, lo, la] of [['PACIFIC OCEAN', -150, 5], ['ATLANTIC OCEAN', -35, 25], ['INDIAN OCEAN', 78, -20], ['ARCTIC OCEAN', 0, 85], ['SOUTHERN OCEAN', 60, -58]]) lab(n, ...P(lo, la), 22, 'rgba(200,230,255,.7)');
+      g.restore();
+      g.beginPath(); for (const [ox, oy] of offs) for (const q of LAKES) if (vis(q.b, ox, oy, 0)) path(q, ox, oy);
+      g.fillStyle = OCEAN; g.fill('evenodd');
+      // borders, rivers, highways: lines, never filled shapes
+      g.lineJoin = 'round'; g.lineCap = 'round';
+      g.beginPath(); for (const [ox, oy] of offs) for (const c of CLIST) for (const q of c.polys) if (vis(q.b, ox, oy, 0)) path(q, ox, oy);
+      g.strokeStyle = 'rgba(90,70,40,.45)'; g.lineWidth = Math.max(lw(mini ? .6 : 1.3), .05); g.stroke();
+      g.beginPath(); for (const [ox, oy] of offs) for (const r of RIV) if (vis(r.b, ox, oy, 0)) line(r.p, ox, oy);
+      g.strokeStyle = '#4a8fd6'; g.lineWidth = Math.max(lw(mini ? .8 : 1.8), 1.2); g.stroke();
+      if (!mini) {
+        g.beginPath(); for (const [ox, oy] of offs) for (const h of HWY) if (vis(h.b, ox, oy, 0)) line(h.p, ox, oy);
+        if (pw < .05) { g.strokeStyle = '#5a5d66'; g.lineWidth = Math.max(lw(2.2), .05); g.stroke(); }
+        g.strokeStyle = pw < .05 ? '#f0b43c' : 'rgba(240,180,60,.75)'; g.lineWidth = Math.max(lw(1.2), .022); g.stroke();
+        // map labels: countries and oceans from far out, the Nile by its river
+        g.textAlign = 'center'; g.textBaseline = 'middle';
+        const lab = (s, x, y, px, col) => { for (const [ox, oy] of offs) { const X = x + ox, Y = y + oy; if (X < V.x0 - 400 * pw || X > V.x1 + 400 * pw || Y < V.y0 - 40 * pw || Y > V.y1 + 40 * pw) continue; g.font = `900 ${px * pw}px ${UI_FONT}`; g.fillStyle = col; g.fillText(s, X, Y); } };
+        if (pw > .25) for (const c of CLIST) if (c.at && c.big > 4e5 * Math.min(1, pw / 8)) lab(c.nm.replace(/^the /, '').toUpperCase(), c.at[0], c.at[1], 16, S.passport[c.cc] ? '#ffd23f' : 'rgba(255,255,255,.75)');
+        if (pw > .8) for (const [n, lo, la] of [['PACIFIC OCEAN', -150, 5], ['ATLANTIC OCEAN', -35, 25], ['INDIAN OCEAN', 78, -20], ['ARCTIC OCEAN', 0, 82], ['SOUTHERN OCEAN', 60, -62], ['PACIFIC OCEAN', 170, 30]]) lab(n, ...P(lo, la), 22, 'rgba(200,230,255,.7)');
+        if (pw > .05) lab('Nile River', ...P(32.4, 21.5), 14, '#d4ecff');
+      }
+    },
+    miniPaint(x, k) {
+      x.setTransform(k, 0, 0, k, 0, 0); x.fillStyle = OCEAN; x.fillRect(0, 0, W, H);
+      const path = q => { for (const r of q.rs) { x.moveTo(r[0], r[1]); for (let i = 2; i < r.length; i += 2) x.lineTo(r[i], r[i + 1]); x.closePath(); } };
+      x.beginPath(); for (const q of LAND) path(q); x.fillStyle = LANDC; x.fill('evenodd');
+      x.save(); x.clip('evenodd'); x.fillStyle = '#eef3f6'; x.fillRect(0, 0, W, 18 * D); x.fillRect(0, 150 * D, W, 30 * D); x.restore();
+      x.beginPath(); for (const cc of ['GL', 'AQ']) if (CTRY[cc]) for (const q of CTRY[cc].polys) path(q); x.fillStyle = '#eef3f6'; x.fill('evenodd');
+      x.beginPath(); for (const q of LAKES) path(q); x.fillStyle = OCEAN; x.fill('evenodd');
+      x.beginPath(); for (const c of CLIST) for (const q of c.polys) path(q); x.strokeStyle = 'rgba(90,70,40,.5)'; x.lineWidth = .8 / k; x.stroke();
+    },
+    /* the mini globe (bottom-left): an orthographic Earth that turns under you; you are the pulsing dot in the middle,
+       targets are stars (on the far side they wait at the rim), places you have been glow gold */
+    miniGlobe: (() => {
+      let tpx = null, globe = null, gkey = '';
+      return (X, Y, Wd) => {
+        const GR = Wd / 2, GSZ = Math.round(Wd), cx = X + GR, cy = Y + GR;
+        if (!tpx) {
+          const t = document.createElement('canvas'); t.width = 360; t.height = 180; const x = t.getContext('2d');
+          CH[5].miniPaint(x, 360 / W); tpx = x.getImageData(0, 0, 360, 180).data;
+          globe = document.createElement('canvas'); globe.width = globe.height = GSZ;
+        }
+        const st = G.st, seen = st.seen || '', [lon0, lat0] = ll(wrapX(G.x), wrapY(G.y)), key = Math.round(lon0 * 2) + ',' + Math.round(lat0 * 2) + seen;
+        const p0 = lat0 * Math.PI / 180, sp0 = Math.sin(p0), cp0 = Math.cos(p0);
+        if (key !== gkey) {
+          gkey = key;
+          const gx = globe.getContext('2d'), im = gx.createImageData(GSZ, GSZ), d = im.data;
+          for (let j = 0; j < GSZ; j++) for (let i = 0; i < GSZ; i++) {
+            const nx = (i + .5 - GR) / GR, ny = (GR - j - .5) / GR, r2 = nx * nx + ny * ny; if (r2 >= 1) continue;
+            const rho = Math.sqrt(r2), c = Math.asin(rho), sc = Math.sin(c), cc = Math.cos(c);
+            const lat = rho ? Math.asin(cc * sp0 + ny * sc * cp0 / rho) * 180 / Math.PI : lat0;
+            let lon = lon0 + (rho ? Math.atan2(nx * sc, rho * cp0 * cc - ny * sp0 * sc) * 180 / Math.PI : 0);
+            lon = ((lon + 180) % 360 + 360) % 360;
+            const tx = Math.min(359, lon | 0), ty = clamp((90 - lat) | 0, 0, 179), s = (tx + ty * 360) * 4, o = (i + j * GSZ) * 4;
+            const lit = 0.5 + 0.5 * Math.sqrt(1 - r2), gold = seen[Math.floor(ty / 10) * 36 + Math.floor(tx / 10)] === '1' ? .3 : 0;
+            d[o] = (tpx[s] * (1 - gold) + 255 * gold) * lit; d[o + 1] = (tpx[s + 1] * (1 - gold) + 215 * gold) * lit; d[o + 2] = (tpx[s + 2] * (1 - gold) + 64 * gold) * lit; d[o + 3] = 255;
+          }
+          gx.putImageData(im, 0, 0);
+        }
+        g.fillStyle = 'rgba(20,14,46,.78)'; g.beginPath(); g.arc(cx, cy, GR + 6, 0, 7); g.fill();
+        g.drawImage(globe, X, Y, Wd, Wd);
+        const proj = (wx, wy) => {                                     // world point → [px, py, onFront]
+          const [lo, la] = ll(wrapX(wx), wrapY(wy)), ph = la * Math.PI / 180, dl = (lo - lon0) * Math.PI / 180;
+          const x = Math.cos(ph) * Math.sin(dl), y = cp0 * Math.sin(ph) - sp0 * Math.cos(ph) * Math.cos(dl), front = sp0 * Math.sin(ph) + cp0 * Math.cos(ph) * Math.cos(dl) > 0;
+          if (front) return [cx + x * GR, cy - y * GR, 1];
+          const l = Math.hypot(x, y) || 1; return [cx + x / l * (GR - 4), cy - y / l * (GR - 4), 0];
+        };
+        for (const o of beaconTargets()) { const [a, b, f] = proj(o.x, o.y); g.globalAlpha = f ? 1 : .55; star(a, b, 6); g.globalAlpha = 1; }
+        if (G.mate) { const [a, b] = proj(G.mate.x, G.mate.y); g.fillStyle = '#4ff0d8'; g.beginPath(); g.arc(a, b, 5, 0, 7); g.fill(); }
+        const pr = 5 + 2.5 * Math.sin(G.t * 5);
+        g.fillStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.arc(cx, cy, pr + 5, 0, 7); g.fill();
+        g.fillStyle = '#ff3b6b'; g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, pr, 0, 7); g.fill(); g.stroke();
+        g.strokeStyle = 'rgba(160,210,255,.85)'; g.lineWidth = 3; g.beginPath(); g.arc(cx, cy, GR, 0, 7); g.stroke();
+        const cc = ccAt(G.x, G.y); txt(cc ? CTRY[cc].nm.replace(/^the /, '') : surf(G.x, G.y) === 2 ? 'Lake' : 'Ocean', cx, Y - 12, 15, '#fff', 'center', 900);
+      };
+    })(),
+    /* from far out the highways read as moving light: dots flowing along the real roads (drawn over the ground) */
+    hud() {
+      if (holeD() < .5 || !G.vr) return;
+      const vr = G.vr, x0 = G.cam.x + vr[0], x1 = G.cam.x + vr[2], y0 = G.cam.y + vr[1], y1 = G.cam.y + vr[3], vw = x1 - x0, sp = vw / 45, out = [0, 0];
+      let n = 0; g.fillStyle = 'rgba(255,236,160,.9)';
+      for (const h of HWY) {
+        const b = h.b, ox = wrapD(b[0] - G.cam.x, W) + G.cam.x - b[0];
+        if (b[2] + ox < x0 || b[0] + ox > x1 || b[3] < y0 || b[1] > y1 || h.L < sp) continue;
+        const p = h.p; let s = (G.t * sp * .6) % sp;
+        for (let i = 2; i < p.length && n < 900; i += 2) {
+          const ax = p[i - 2] + ox, ay = p[i - 1], l = Math.hypot(p[i] - p[i - 2], p[i + 1] - p[i - 1]);
+          for (; s < l && n < 900; s += sp) {
+            const f = s / l, wx = ax + (p[i] - p[i - 2]) * f, wy = ay + (p[i + 1] - p[i - 1]) * f;
+            if (wx < x0 || wx > x1 || wy < y0 || wy > y1) continue;
+            if (toScreen(dx(wx, G.cam.x), dy(wy, G.cam.y), 0, out)) { g.fillRect(out[0] - 1.5, out[1] - 1.5, 3, 3); n++; }
+          }
+          s -= l;
+        }
+      }
     },
   });
 })();
@@ -2541,7 +2624,7 @@ function eat(o) {
   if (o.keep && story) st.eaten[o.id] = 1;
   if (o.tile) { tileEaten(o); return; }
   if (o.coin) { addCoins(o.val); SFX.coin(); addXP(o.t * 0.5 * XP_K * (C.xpk || 1)); return; }
-  SFX.gulp(o.t); G.eats = (G.eats || 0) + 1; if (o.t >= G.lvl - 1) G.big = (G.big || 0) + 1;
+  SFX.gulp(o.t); G.eats = (G.eats || 0) + 1; if (o.t >= G.lvl - 1) G.bigE = (G.bigE || 0) + 1;
   addXP(o.t * XP_K * (C.xpk || 1));
   // things far smaller than the hole are worth less, so late-game sweeping can't flood the wallet
   addPoints(Math.max(1, Math.round(PTS[o.t] * C.pv * MULT[UPL('points')] * clamp((o.t - Math.min(G.lvl, C.topT) + 3) / 3, 0.15, 1))));
@@ -2845,7 +2928,7 @@ const MODES = {
       const R = G.run, C = G.C; R.steps = C.edu[R.set].s.map(parseStep); R.si = 0;
       toast(C.edu[R.set].n, '#ffd23f'); MODES.edu.startStep();
       // v4.9 pre-sizing survives as the ladder's start: big enough for step 1 (the cap then follows each step)
-      const fw = Math.max(0, ...goals().map(o => o.fw)); if (fw) setHoleD(Math.max(holeD(), fw * 1.04));
+      const fw = Math.max(C.eduMin || 0, ...goals().map(o => o.fw * 1.04)); if (fw) setHoleD(Math.max(holeD(), fw));   // (the Globe starts lessons city-sized: the planet is big)
       G.cam.z = targetZoom();
     },
     heal() { const R = G.run, st = R.steps && R.steps[R.si], rng = mulberry((Math.random() * 1e9) | 0); if (!st || !st.t) return; for (const t of st.t) if (!t.done && (!t.o || t.o.dead && !t.o.fall)) { t.o = findTarget(t.spec, rng, t.pal); if (t.o) { t.o.tgt = 1; t.o.label = t.o.label || t.name; } } },
@@ -2907,7 +2990,7 @@ function update(dt) {
   if (G.cine) { if (C.cineUpdate) C.cineUpdate(dt); return; }
   // movement: the floating joystick's drag vector is direction + speed (where you touched never matters);
   // screen-up is stretched by the camera tilt so it moves at the same on-screen speed as sideways
-  const sp = D * (C.spd || SPEED) * UPF.speed(UPL('speed'));
+  const sp = D * (C.spd || SPEED) * UPF.speed(UPL('speed') * (C.upSpd || 1)) * (C.spdAt ? C.spdAt(G.x, G.y) : 1) * (G.run.kind !== 'story' && C.runSpd || 1);   // the Globe: water is faster, speed upgrades count double, quick runs travel faster
   let tvx = 0, tvy = 0;
   const j = G.joy;
   if (j) {
@@ -3456,6 +3539,64 @@ const MODEL = (() => {
     iclip: p => [bx(1, 1.35, .12, 0, .8, 0, '#a0703c'), bx(.82, 1.05, .04, 0, .74, .07, '#fafafa'), bx(.45, .2, .16, 0, 1.47, .03, '#90a4ae'), bx(.16, .4, .05, -.12, .66, .1, '#2eb84a', { rz: .8 }), bx(.16, .7, .05, .14, .78, .1, '#2eb84a', { rz: -.6 })],
     ieye: p => [sp(1.3, .85, .5, 0, 1, 0, '#fafafa'), cy(.55, .08, .55, 0, 1, .22, '#1e88e5', { rx: 1.5708, seg: 14 }), cy(.25, .1, .25, 0, 1, .26, '#111', { rx: 1.5708, seg: 12 })],
     iflag: p => [cy(.08, 2, .08, -.45, 1, 0, '#cfd8dc'), sp(.18, .18, .18, -.45, 2.05, 0, GOLD), bx(.9, .6, .06, 0, 1.6, 0, '#e53935'), bx(.9, .12, .065, 0, 1.6, 0, '#fafafa')],
+    /* ---- v5 Globe landmark looks (our own art: generic shapes, no logos) ---- */
+    pool: p => [bx(1, .08, 2.4, 0, .04, 0, '#ececec'), bx(.84, .09, 2.2, 0, .05, 0, '#3fb6e8'), ...[-.25, 0, .25].map(x => bx(.02, .095, 2.1, x, .05, 0, '#e3f6ff'))],
+    geodome: p => [cy(.12, .5, .12, 0, .25, 0, '#9aa6b5'), sp(1, 1, 1, 0, 1, 0, '#d9e1ea', { ico: 1 }), cy(1.3, .06, 1.3, 0, .03, 0, '#7f8c99')],
+    sails: p => [bx(1.2, .35, 2, 0, .17, 0, '#d8d4cc'), ...[-.7, -.35, 0, .35, .7].map((z, i) => co(.42, .9 - Math.abs(i - 2) * .1, .3, (i % 2 ? .2 : -.2), .75, z, '#fafafa', { seg: 3 }))],
+    gbridge: p => [bx(.3, .06, 4, 0, .5, 0, '#c9452f'), ...[-1, 1].flatMap(s => [bx(.08, 1.3, .08, -.13, .65, s * 1, '#c9452f'), bx(.08, 1.3, .08, .13, .65, s * 1, '#c9452f'), bx(.3, .06, .1, 0, 1.25, s * 1, '#c9452f')]),
+      ...[-.13, .13].flatMap(x => [bx(.02, .02, 1.05, x, .9, 0, '#e27a62', { rx: 0 }), bx(.02, .02, 1.12, x, .9, 1.5, '#e27a62', { rx: .62 }), bx(.02, .02, 1.12, x, .9, -1.5, '#e27a62', { rx: -.62 })])],
+    spire: p => [cy(.7, .3, .7, 0, .15, 0, '#b8bcc0'), cy(.22, 3.2, .22, 0, 1.9, 0, p.a || '#d7dadd', { top: .45 }), cy(.65, .3, .65, 0, 2.7, 0, p.b || '#8fa3b8'), cy(.45, .15, .45, 0, 2.95, 0, '#5d7ea8'), cy(.04, 1.1, .04, 0, 3.8, 0, '#eee')],
+    falls: p => [rk(1.2, .7, .6, 0, .35, -.35, '#6d6a5f'), bx(1, .66, .1, 0, .33, -.02, '#cfeeff'), bx(1.4, .06, .9, 0, .03, .45, '#4fa3e0'), sp(.9, .28, .4, 0, .1, .15, '#ffffff'), sp(.5, .2, .3, .35, .14, .3, '#f2fbff')],
+    palace: p => [bx(2.4, .55, 1, 0, .27, 0, p.a || '#efe6d4'), bx(2.42, .12, 1.02, 0, .58, 0, p.b || '#b8a98a'), ...[-.8, -.4, 0, .4, .8].map(x => bx(.18, .26, .02, x, .3, .51, WIN)), bx(.7, .4, .7, 0, .8, 0, p.a || '#efe6d4'), sp(.6, .55, .6, 0, 1.05, 0, p.c || '#7fb0c9'), cy(.04, .3, .04, 0, 1.45, 0, GOLD)],
+    lighthouse: p => [rk(1, .3, 1, 0, .12, 0, '#8d8a80'), cy(.36, 1.7, .36, 0, 1.1, 0, '#fafafa', { top: .7 }), ...[.6, 1.2].map(y => cy(.37, .22, .37, 0, y, 0, '#e53935')), cy(.3, .25, .3, 0, 2.05, 0, '#ffe082', { glow: 1 }), co(.36, .25, .36, 0, 2.3, 0, '#e53935')],
+    geyser: p => [cy(1, .12, 1, 0, .06, 0, '#d8cfa8'), cy(.18, 1.7, .18, 0, .95, 0, '#eaf6ff', { top: .6 }), sp(.55, .45, .55, 0, 1.85, 0, '#ffffff'), sp(.35, .3, .35, .2, 1.6, .1, '#f2f8ff')],
+    volcano: p => [co(1, .75, 1, 0, .37, 0, p.a || '#6d5a4a', { seg: 10 }), co(.62, .5, .62, .12, .25, .1, '#5d4a3a', { seg: 8 }), cy(.22, .05, .22, 0, .74, 0, '#ff5722', { glow: 1 }), sp(.32, .3, .32, .05, 1.05, 0, '#b0aaa4'), sp(.22, .22, .22, .15, 1.3, .05, '#c9c4bf')],
+    obelisk: p => [bx(.6, .16, .6, 0, .08, 0, '#bdb6a6'), bx(.24, 2.2, .24, 0, 1.25, 0, p.a || '#ece7da', { top: .7 }), co(.2, .25, .2, 0, 2.47, 0, p.a || '#ece7da', { seg: 4, ry: .785 })],
+    fort: p => [...[[0, .5, 1.2, .14], [0, -.5, 1.2, .14], [.55, 0, .14, 1], [-.55, 0, .14, 1]].map(([x, z, w, d]) => bx(w, .35, d, x, .17, z, p.a || '#c2ae8c')), ...[-1, 1].flatMap(sx => [-1, 1].map(sz => cy(.26, .55, .26, sx * .55, .27, sz * .5, p.a || '#c2ae8c', { seg: 8 }))), bx(1, .02, .86, 0, .01, 0, '#9ccc65')],
+    ruins: p => [bx(1.3, .12, .9, 0, .06, 0, '#cbbd9f'), ...[-.45, -.15, .15, .45].flatMap((x, i) => [cy(.12, .75, .12, x, .5, -.3, '#e3d9c2'), cy(.12, [.5, .25, .6, .35][i], .12, x, .12 + [.5, .25, .6, .35][i] / 2, .3, '#e3d9c2')]), bx(1.05, .1, .16, 0, .92, -.3, '#e3d9c2'), rk(.2, .12, .2, .3, .17, .1, '#d6caa9')],
+    reef: p => [cy(1, .04, 1, 0, .02, 0, '#58d3e3', { seg: 16 }), ...[[-.3, .1, '#ff6f91'], [.2, -.2, '#ffc75f'], [.1, .3, '#9b5de5'], [-.1, -.35, '#f15bb5'], [.35, .15, '#00c9a7']].flatMap(([x, z, c]) => [sp(.22, .16, .22, x, .1, z, c), co(.08, .22, .08, x + .08, .14, z, c)])],
+    saltflat: p => [cy(1, .03, 1, 0, .015, 0, '#f4f7f9', { seg: 18 }), cy(.7, .032, .7, 0, .02, 0, '#dbe9f2', { seg: 18 }), bx(.06, .12, .04, .1, .08, 0, '#e53935'), sp(.05, .05, .05, .1, .16, 0, SKIN)],
+    crown: p => [cy(1, .08, 1, 0, .04, 0, '#cfd8dc', { seg: 16 }), ...Array.from({ length: 12 }, (_, i) => { const a = i / 12 * 6.283; return bx(.06, .9, .12, Math.cos(a) * .4, .5, Math.sin(a) * .4, '#f4f4f4', { ry: -a, rz: .18 * Math.cos(0), rx: 0 }); }), sp(.62, .5, .62, 0, .45, 0, '#8ec5e6')],
+    glacier: p => [rk(1.4, .5, .9, 0, .25, 0, '#e8f4ff'), rk(.8, .55, .6, .3, .5, .1, '#cfe8ff'), rk(.6, .4, .5, -.4, .45, -.1, '#f4fbff'), bx(1.5, .04, .4, 0, .02, .55, '#4fa3e0')],
+    nazca: p => [bx(1.4, .03, 1.4, 0, .015, 0, '#d9b27c'), ...[[0, 0, .9, .3], [0, .3, .5, -.9], [0, -.3, .5, .9], [-.4, 0, .4, 0], [.42, .1, .3, .6]].map(([x, z, l, r]) => bx(.03, .035, l, x, .02, z, '#f6e7c8', { ry: r }))],
+    rainbow: p => ['#e57373', '#ffb74d', '#fff176', '#81c784', '#64b5f6', '#9575cd'].map((c, i) => co(1 - i * .14, .7 - i * .1, 1 - i * .14, 0, .35 - i * .05 + i * .1, 0, c, { seg: 9 })),
+    moai: p => [bx(1.6, .12, .6, 0, .06, 0, '#8d8a80'), ...[-.5, 0, .5].flatMap(x => [bx(.3, .75, .28, x, .5, 0, '#7a7068'), bx(.32, .08, .3, x, .9, 0, '#9a5a3a'), bx(.1, .2, .06, x, .5, .16, '#6a6058')])],
+    dunes: p => [sp(1, .35, .7, -.2, 0, 0, '#e8c27a', { hemi: 1 }), sp(.8, .45, .6, .35, 0, .25, '#e0b46a', { hemi: 1 }), sp(.6, .3, .5, .1, 0, -.4, '#efcf8e', { hemi: 1 })],
+    hand: p => [bx(1.3, .06, 1, 0, .03, 0, '#f0d9a8'), ...[-.36, -.12, .12, .36].map((x, i) => cy(.13, .7 - Math.abs(i - 1.5) * .12, .13, x, .38, 0, '#e8e3d6', { top: .9 })), cy(.13, .4, .13, .52, .22, .1, '#e8e3d6', { rz: -.4 })],
+    glasspyr: p => [bx(1.6, .04, 1.6, 0, .02, 0, '#d9d2c2'), co(1, .65, 1, 0, .36, 0, '#9fd3ff', { seg: 4, ry: .785 }), co(.3, .2, .3, .55, .12, .4, '#9fd3ff', { seg: 4, ry: .785 })],
+    shard: p => [co(.7, 4.5, .7, 0, 2.25, 0, '#a9c8e0', { seg: 4, ry: .3 }), co(.72, 1.4, .72, 0, .7, 0, '#8db5d4', { seg: 4, ry: .3 })],
+    towerbridge: p => [bx(.4, .06, 3, 0, .4, 0, '#4f7fa8'), ...[-.55, .55].flatMap(z => [bx(.5, 1.3, .4, 0, .65, z, '#d8cbb0'), co(.3, .35, .3, 0, 1.45, z, '#5d6f80', { seg: 4, ry: .785 }), ...[-1, 1].map(s => co(.1, .3, .1, s * .2, 1.4, z + s * .15, '#5d6f80', { seg: 4 }))]), bx(.3, .08, 1.1, 0, 1.15, 0, '#4f7fa8')],
+    wheel: p => [to(1, 1, .1, 0, 1.1, 0, '#eeeeee', { tube: .04, seg: 24 }), ...Array.from({ length: 8 }, (_, i) => bx(.02, 1, .02, 0, 1.1, 0, '#cfd8dc', { rx: i * .393 })), ...Array.from({ length: 12 }, (_, i) => { const a = i / 12 * 6.283; return sp(.1, .08, .14, 0, 1.1 + Math.sin(a), Math.cos(a), '#9fd3ff'); }), bx(.1, 1.1, .1, 0, .55, .2, '#bbb', { rx: -.2 }), bx(.1, 1.1, .1, 0, .55, -.2, '#bbb', { rx: .2 })],
+    stones: p => [cy(1.2, .02, 1.2, 0, .01, 0, '#8bc34a', { seg: 16 }), ...Array.from({ length: 10 }, (_, i) => { const a = i / 10 * 6.283; return bx(.12, .4, .18, Math.cos(a) * .5, .2, Math.sin(a) * .5, '#9e9a92', { ry: -a }); }), bx(.5, .08, .14, 0, .44, .5, '#8e8a82')],
+    cliff: p => [rk(1, 1.4, .8, 0, .7, 0, '#7d7468'), rk(.7, .9, .6, .35, .45, .25, '#6d6458'), sp(.9, .18, .7, 0, 1.4, 0, '#6aa84f', { hemi: 1 })],
+    spires: p => [bx(1, .9, 1.6, 0, .45, 0, '#cbb894'), ...[[-.3, -.6, 2.6], [.3, -.6, 2.4], [-.3, .6, 2.5], [.3, .6, 2.7], [0, 0, 3.4]].map(([x, z, h]) => co(.26, h, .26, x, .9 + h / 2 - .2, z, '#d9c7a0', { seg: 8 }))],
+    pisa: p => { const o = []; for (let i = 0; i < 6; i++) o.push(cy(.5, .28, .5, Math.sin(.1) * (i * .3 + .14), .14 + i * .3, 0, i % 2 ? '#f4efe4' : '#e6dfcf', { seg: 14, rz: -.1 })); o.push(bx(1.3, .04, 1, 0, .02, 0, '#7cb342')); return o; },
+    windmill: p => [cy(.5, 1.2, .5, 0, .6, 0, '#8d6e63', { top: .6, seg: 8 }), co(.45, .35, .45, 0, 1.37, 0, '#5d4037', { seg: 8 }), ...[0, 1, 2, 3].map(i => bx(.08, 1.3, .03, 0, 1.2, .3, '#efe6d4', { rz: i * .785 * 2 + .3 }))],
+    canal: p => ['#c0392b', '#f39c12', '#2980b9', '#8e44ad', '#27ae60'].map((c, i) => bx(.4, .9 + (i % 2) * .25, .5, -.8 + i * .4, (.9 + (i % 2) * .25) / 2, 0, c)).concat([bx(2.1, .03, .4, 0, .015, .5, '#4fa3e0')]),
+    atomium: p => { const pts = [[0, 1.2, 0], [0, .2, 0], [.5, .7, .5], [-.5, .7, .5], [.5, .7, -.5], [-.5, .7, -.5], [0, .7, 0]]; return [...pts.map(([x, y, z]) => sp(.28, .28, .28, x, y, z, '#cfd8dc')), ...pts.slice(2, 6).map(([x, y, z]) => bx(.06, .06, .9, x / 2, y, z / 2, '#b0bec5', { ry: Math.atan2(x, z) })), cy(.06, 1, .06, 0, .7, 0, '#b0bec5')]; },
+    parthenon: p => [bx(1.7, .14, 1, 0, .07, 0, '#e0d6bf'), ...Array.from({ length: 8 }, (_, i) => [-.42, .42].map(z => cy(.1, .6, .1, -.7 + i * .2, .44, z, '#efe8d6'))).flat(), bx(1.7, .12, 1, 0, .8, 0, '#e0d6bf'), pr(1.7, .25, 1, 0, .98, 0, '#e8dfca', { ry: 1.5708 })],
+    bluedome: p => [bx(1, .7, 1, 0, .35, 0, '#fafafa'), sp(.6, .55, .6, 0, .72, 0, '#1e5fbf', { hemi: 1 }), bx(.6, .5, .6, .7, .25, .2, '#fafafa'), bx(.18, .3, .02, 0, .2, .51, '#1e5fbf')],
+    mosque: p => [bx(1.4, .55, 1.2, 0, .27, 0, p.a || '#f2ede2'), sp(.8, .7, .8, 0, .6, 0, p.c || '#4a8fc4', { hemi: 1 }), cy(.04, .25, .04, 0, 1.4, 0, GOLD), ...[-1, 1].flatMap(sx => [-1, 1].map(sz => cy(.1, 1.5, .1, sx * .75, .75, sz * .65, p.a || '#f2ede2'))), ...[-1, 1].flatMap(sx => [-1, 1].map(sz => co(.13, .25, .13, sx * .75, 1.62, sz * .65, p.c || '#4a8fc4')))],
+    balloon: p => [[0, 1.3, 0, '#e53935'], [.6, 1, .3, '#fdd835'], [-.5, .8, -.3, '#1e88e5'], [.1, .7, -.6, '#43a047']].flatMap(([x, y, z, c]) => [sp(.45, .55, .45, x, y, z, c), bx(.14, .12, .14, x, y - .45, z, '#8d6e63')]).concat([rk(1.6, .2, 1.4, 0, .1, 0, '#d7b98a')]),
+    terraces: p => [0, 1, 2, 3].flatMap(i => [cy(1 - i * .2, .12, 1 - i * .2, 0, .06 + i * .12, 0, '#f4f4f0', { seg: 12 }), cy(.9 - i * .2, .125, .9 - i * .2, 0, .065 + i * .12, 0, '#8fd8e8', { seg: 12 })]),
+    burj: p => [0, 1, 2, 3, 4, 5, 6].map(i => cy(.5 - i * .06, 1, .5 - i * .06, 0, .5 + i, 0, i % 2 ? '#b8c8d8' : '#cfdbe6', { seg: 6 })).concat([cy(.03, 1.5, .03, 0, 7.7, 0, '#dfe6ec')]),
+    soldiers: p => { const o = [bx(1.6, .04, 1.2, 0, .02, 0, '#b08a63')]; for (let i = 0; i < 5; i++) for (let j = 0; j < 4; j++) o.push(cy(.12, .3, .12, -.6 + i * .3, .19, -.45 + j * .3, '#a8754e'), sp(.09, .09, .09, -.6 + i * .3, .38, -.45 + j * .3, '#a8754e')); return o; },
+    karst: p => [[0, 0, 1.6], [.45, .3, 1.1], [-.4, .25, 1.3], [.2, -.4, .9], [-.3, -.35, 1.2]].map(([x, z, h]) => cy(.32, h, .32, x, h / 2, z, '#4f8a3f', { top: .7, seg: 8 })).concat([cy(1.3, .04, 1.3, 0, .02, 0, '#4fa3c4', { seg: 14 })]),
+    tokyotower: p => [...[-1, 1].flatMap(sx => [-1, 1].map(sz => bx(.1, 1.4, .1, sx * .3, .65, sz * .3, '#ff5a1f', { rx: -sz * .2, rz: sx * .2 }))), bx(.5, .12, .5, 0, 1.25, 0, '#fafafa'), co(.36, 2, .36, 0, 2.3, 0, '#ff5a1f', { seg: 4, ry: .785 }), bx(.28, .1, .28, 0, 2.1, 0, '#fafafa'), cy(.04, .5, .04, 0, 3.5, 0, '#fafafa')],
+    skytree: p => [co(.6, 5.5, .6, 0, 2.75, 0, '#e9eef2', { seg: 3, top: .25 }), cy(.4, .2, .4, 0, 3.6, 0, '#c9d6e0'), cy(.3, .15, .3, 0, 4.6, 0, '#c9d6e0'), cy(.06, 1, .06, 0, 5.8, 0, '#fafafa')],
+    shrine: p => [0, 1, 2, 3].flatMap(i => [-.3, .3].map(x => bx(.06, .6, .06, x, .3, -.6 + i * .4, '#e8441e')).concat([bx(.8, .06, .08, 0, .62, -.6 + i * .4, '#e8441e'), bx(.9, .05, .1, 0, .68, -.6 + i * .4, '#222')])).concat([bx(.9, .03, 1.7, 0, .015, 0, '#7cb342')]),
+    stupa: p => [bx(1.3, .2, 1.3, 0, .1, 0, '#efe6d4'), sp(.9, .8, .9, 0, .4, 0, p.a || '#f5c542', { hemi: 1 }), bx(.3, .2, .3, 0, .9, 0, p.a || '#f5c542'), co(.25, 1, .25, 0, 1.45, 0, p.a || '#f5c542', { seg: 10 })],
+    angkor: p => [bx(1.8, .2, 1.8, 0, .1, 0, '#9e9278'), bx(1.3, .25, 1.3, 0, .32, 0, '#a89c82'), ...[[0, 0, 1.2], [-.45, -.45, .8], [.45, -.45, .8], [-.45, .45, .8], [.45, .45, .8]].map(([x, z, h]) => co(.3, h, .3, x, .45 + h / 2, z, '#8f846c', { seg: 8 }))],
+    twins: p => [-.4, .4].flatMap(x => [cy(.4, 3.4, .4, x, 1.7, 0, '#c9d2da', { seg: 8 }), cy(.25, .6, .25, x, 3.7, 0, '#d9e0e6', { seg: 8 }), cy(.03, .7, .03, x, 4.3, 0, '#eee')]).concat([bx(.5, .06, .12, 0, 1.6, 0, '#9aa6b5')]),
+    hills: p => [[0, 0], [.6, .2], [-.5, .3], [.2, -.5], [-.3, -.4], [.55, -.35]].map(([x, z]) => sp(.4, .35, .4, x, 0, z, '#8d6e3f', { hemi: 1 })).concat([cy(1.5, .02, 1.5, 0, .01, 0, '#7cb342', { seg: 14 })]),
+    mudmosque: p => [bx(1.6, .6, 1, 0, .3, 0, '#b07a4a'), ...[-.6, 0, .6].map(x => bx(.3, 1, .3, x, .5, .45, '#a06a3a')), ...[-.6, 0, .6].map(x => co(.28, .3, .28, x, 1.15, .45, '#a06a3a', { seg: 4 })), ...[-.4, -.2, .2, .4].map(x => bx(.4, .03, .03, x, .7, .5, '#6d4c2f', { ry: 1.5708 }))],
+    rockarch: p => [rk(.4, 1.2, .5, -.6, .6, 0, '#b5653a'), rk(.4, 1.2, .5, .6, .6, 0, '#b5653a'), bx(1.6, .35, .5, 0, 1.25, 0, '#a85a30'), bx(1.8, .03, 1.2, 0, .015, 0, '#e2b77a')],
+    hut: p => [cy(.8, .5, .8, 0, .25, 0, '#a0703c', { seg: 10 }), co(1, .6, 1, 0, .8, 0, '#c9a560', { seg: 10 }), bx(.2, .3, .04, 0, .15, .4, '#4a2e17')],
+    baobab: p => [cy(.45, 1.4, .45, 0, .7, 0, '#9a7a5a', { top: .8 }), ...[0, 1.25, 2.5, 3.75, 5].map(a => bx(.06, .45, .06, Math.cos(a) * .25, 1.55, Math.sin(a) * .25, '#9a7a5a', { rz: Math.cos(a) * .5, rx: Math.sin(a) * .5 })), ...[0, 1.25, 2.5, 3.75, 5].map(a => sp(.3, .15, .3, Math.cos(a) * .4, 1.8, Math.sin(a) * .4, '#5aa64a'))],
+    themepark: p => [cy(2.2, .04, 2.2, 0, .02, 0, '#9ccc65', { seg: 20 }), ...R.castle({ a: '#f4e1f4', b: '#ff6fa8' }).map(q => { const r = q.slice(); for (const i of [1, 2, 3, 4, 5, 6]) r[i] *= .55; r[6] -= .35; return r; }),
+      ...R.coaster({}).map(q => { const r = q.slice(); for (const i of [1, 2, 3, 4, 5, 6]) r[i] *= .5; r[4] += .5; return r; }), ...R.wheel({}).map(q => { const r = q.slice(); for (const i of [1, 2, 3, 4, 5, 6]) r[i] *= .35; r[4] -= .55; r[6] += .5; return r; })],
+    polarbase: p => [bx(.8, .35, .5, -.3, .17, 0, '#e53935'), bx(.6, .3, .45, .45, .15, .2, '#ff7043'), sp(.4, .4, .4, .2, .1, -.4, '#eceff1', { hemi: 1 }), cy(.03, .7, .03, -.6, .35, -.3, '#ccc'), bx(1.8, .02, 1.4, 0, .01, 0, '#f4f8fb')],
+    storm: p => [to(1, 1, .2, 0, .5, 0, '#eceff1', { tube: .22, rx: 1.5708, seg: 18 }), to(.6, .6, .2, 0, .62, 0, '#cfd8dc', { tube: .16, rx: 1.5708, seg: 14 }), sp(.3, .25, .3, 0, .5, 0, '#90a4ae')],
     /* ---- world tour food & flavour ---- */
     croissant: p => [to(1, 1, .4, 0, .2, 0, '#d9a24a', { rx: 1.5708, tube: .22, arc: 3.6, seg: 8 })],
     pizza: p => [cy(1, .1, 1, 0, .05, 0, '#e8b04a', { seg: 3 }), cy(.85, .05, .85, 0, .11, .03, '#d9442e', { seg: 3 }), ...[[0, .1], [-.15, -.15], [.15, -.15]].map(([x, z]) => cy(.15, .04, .15, x, .14, z, '#a02020'))],
@@ -3592,6 +3733,11 @@ const MODEL = (() => {
     up_vacuum: ['ifunnel', {}], up_lucky: ['iclover', {}], up_payday: ['iclip', {}], up_wide: ['ieye', {}], up_head: ['iflag', {}],
   };
   const PER = { // per-chapter meanings of shared ids
+    // v5 Globe: filler looks and landmark looks (type lm_<look>)
+    'globe:boat': ['boat', { a: '#fafafa', b: '#1e88e5', cab: .5, d: 2.4 }], 'globe:hut': ['hut', {}], 'globe:farm': ['bld', { a: '#c8a46a', h: .35, fl: 1, roof: .3 }], 'globe:oasis': ['palm', {}],
+    'globe:rainforest': ['forest', { }], 'globe:dune': ['dunes', {}], 'globe:mountain': ['mountain', { h: .6 }], 'globe:icecap': ['glacier', {}], 'globe:storm': ['storm', {}], 'globe:range': ['mountain', { h: .4, seg: 7 }],
+    'globe:bigstorm': ['storm', {}], 'globe:hurricane': ['storm', {}], 'globe:supercell': ['storm', {}], 'globe:hat': ['tophat', { a: '#222' }], 'globe:seal': ['blob', { a: '#78909c', h: .7 }], 'globe:tent': ['tent', { a: '#e0c090' }],
+    'globe:lm_pool': ['pool', {}], 'globe:lm_rock': ['rock', { a: '#c1572e', h: .45 }], 'globe:lm_dome': ['geodome', {}], 'globe:lm_sails': ['sails', {}], 'globe:lm_bridge': ['gbridge', {}], 'globe:lm_spire': ['spire', {}], 'globe:lm_falls': ['falls', {}], 'globe:lm_palace': ['palace', {}], 'globe:lm_castle': ['castle', {}], 'globe:lm_mountain': ['mountain', {}], 'globe:lm_lighthouse': ['lighthouse', {}], 'globe:lm_stadium': ['stadium', {}], 'globe:lm_polarbear': ['quad', { a: '#fafafa', d: 1.9, lh: .55, ears: 1 }], 'globe:lm_skyscraper': ['tower', { hh: 7, n: 16, spire: 1.2 }], 'globe:lm_geyser': ['geyser', {}], 'globe:lm_dam': ['dam', {}], 'globe:lm_rocket': ['rocket', {}], 'globe:lm_volcano': ['volcano', {}], 'globe:lm_obelisk': ['obelisk', {}], 'globe:lm_fort': ['fort', {}], 'globe:lm_liberty': ['liberty', {}], 'globe:lm_steppyr': ['steppyr', {}], 'globe:lm_statue': ['statue', {}], 'globe:lm_ruins': ['ruins', {}], 'globe:lm_canyon': ['rockarch', {}], 'globe:lm_reef': ['reef', {}], 'globe:lm_church': ['church', {}], 'globe:lm_forest': ['forest', {}], 'globe:lm_ship': ['ship', { a: '#37474f', b: '#e53935', box: 1, d: 4.5 }], 'globe:lm_oldcar': ['car', { a: '#26c6da', d: 2.4 }], 'globe:lm_island': ['island', {}], 'globe:lm_pig': ['quad', { a: '#f8bbd0', d: 1.3, lh: .3, ears: 1 }], 'globe:lm_saltflat': ['saltflat', {}], 'globe:lm_christ': ['christ', {}], 'globe:lm_opera': ['opera', {}], 'globe:lm_crown': ['crown', {}], 'globe:lm_glacier': ['glacier', {}], 'globe:lm_machu': ['machu', {}], 'globe:lm_nazca': ['nazca', {}], 'globe:lm_rainbow': ['rainbow', {}], 'globe:lm_moai': ['moai', {}], 'globe:lm_dunes': ['dunes', {}], 'globe:lm_mesa': ['mesa', { a: '#b5653a' }], 'globe:lm_turtle': ['turtle', {}], 'globe:lm_gondola': ['gondola', {}], 'globe:lm_hand': ['hand', {}], 'globe:lm_penguin': ['blob', { a: '#263238', h: 1.6 }], 'globe:lm_eiffel': ['eiffel', {}], 'globe:lm_glasspyr': ['glasspyr', {}], 'globe:lm_bigben': ['bigben', {}], 'globe:lm_shard': ['shard', {}], 'globe:lm_towerbridge': ['towerbridge', {}], 'globe:lm_wheel': ['wheel', {}], 'globe:lm_stones': ['stones', {}], 'globe:lm_cliff': ['cliff', {}], 'globe:lm_spires': ['spires', {}], 'globe:lm_glass': ['glass', {}], 'globe:lm_colosseum': ['colosseum', {}], 'globe:lm_pisa': ['pisa', {}], 'globe:lm_windmill': ['windmill', {}], 'globe:lm_canal': ['canal', {}], 'globe:lm_atomium': ['atomium', {}], 'globe:lm_tower': ['tower', { hh: 3 }], 'globe:lm_peak': ['mountain', { h: 1.3, a: '#8a8f94', b: '#7a7f84' }], 'globe:lm_parthenon': ['parthenon', {}], 'globe:lm_bluedome': ['bluedome', {}], 'globe:lm_cabin': ['cabin', {}], 'globe:lm_igloo': ['igloo', {}], 'globe:lm_yacht': ['boat', { a: '#fafafa', cab: .4, d: 3 }], 'globe:lm_basil': ['basil', {}], 'globe:lm_train': ['train', {}], 'globe:lm_tiger': ['quad', { a: '#ef8f2a', b: '#3a2a1a', d: 2, lh: .6, ears: 1 }], 'globe:lm_reindeer': ['quad', { a: '#8d6e63', horn: '#ddd', d: 1.7, lh: .8 }], 'globe:lm_mosque': ['mosque', {}], 'globe:lm_balloon': ['balloon', {}], 'globe:lm_terraces': ['terraces', {}], 'globe:lm_burj': ['burj', {}], 'globe:lm_petra': ['petra', {}], 'globe:lm_crater': ['volcano', { a: '#8a6a4a' }], 'globe:lm_soldiers': ['soldiers', {}], 'globe:lm_karst': ['karst', {}], 'globe:lm_panda': ['quad', { a: '#fafafa', head: '#fafafa', leg: '#222', ears: 1, d: 1.6, lh: .4 }], 'globe:lm_skyline': ['skyline', {}], 'globe:lm_fuji': ['mountain', { h: .75, a: '#6a7fa8', b: '#5a6f98', seg: 11 }], 'globe:lm_tokyotower': ['tokyotower', {}], 'globe:lm_skytree': ['skytree', {}], 'globe:lm_shrine': ['shrine', {}], 'globe:lm_temple': ['temple', {}], 'globe:lm_pagoda': ['pagoda', {}], 'globe:lm_taj': ['taj', {}], 'globe:lm_arch': ['arch', {}], 'globe:lm_stupa': ['stupa', {}], 'globe:lm_angkor': ['angkor', {}], 'globe:lm_lantern': ['lantern', {}], 'globe:lm_twins': ['twins', {}], 'globe:lm_hills': ['hills', {}], 'globe:lm_lizard': ['lizard', { a: '#6d6a52' }], 'globe:lm_felucca': ['boat', { a: '#8d6e63', mast: 2.2, d: 2.4 }], 'globe:lm_mudmosque': ['mudmosque', {}], 'globe:lm_rockarch': ['rockarch', {}], 'globe:lm_hut': ['hut', {}], 'globe:lm_baobab': ['baobab', {}], 'globe:lm_lemur': ['quad', { a: '#9e9e9e', b: '#222', d: 1.2, lh: .4, ears: 1 }], 'globe:lm_giraffe': ['quad', { a: '#f2c14e', b: '#a0601a', spots: 1, neck: 2.2, lh: 1.6, d: 1.8 }], 'globe:lm_elephant': ['quad', { a: '#9e9e9e', trunk: 1, ears: 1, d: 2.2, lh: 1.2 }], 'globe:lm_gorilla': ['blob', { a: '#3a3a3a', h: 1.2 }], 'globe:lm_kangaroo': ['quad', { a: '#b5824e', d: 1.4, lh: .9, neck: .5, ears: 1 }], 'globe:lm_station': ['polarbase', {}], 'globe:lm_themepark': ['themepark', {}], 'globe:lm_everest': ['mountain', { h: 1.1, a: '#7b7f86', b: '#6b6f76', seg: 9 }], 'globe:lm_greatwall': ['greatwall', {}], 'globe:lm_pyramids': ['pyramids', {}], 'globe:lm_marina': ['marina', {}],
     'space:moon': ['moonflat', {}], 'space:moondust': ['planet', { a: '#bdbdbd', b: '#9e9e9e' }], 'space:pebble': ['rock', { a: '#8f8f8f' }], 'space:moonrock': ['rock', { a: '#9a9a9a', h: .7 }], 'space:boot': ['bootprint', {}],
     'space:camera': ['camera', {}], 'space:flag': ['usflag', {}], 'space:apolloflag': ['usflag', {}], 'space:seismo': ['seismo', {}], 'space:lunarrover': ['rover', {}], 'space:lander': ['lander', {}], 'space:crater': ['crater', {}], 'space:moonhill': ['hill', { a: '#9a9a9a' }], 'space:bigcrater': ['crater', {}],
     'space:junk': ['rock', { a: '#b0bec5', h: .5, b: '#ff7043' }], 'space:minimoon': ['planet', { a: '#a1887f', b: '#8d6e63' }], 'space:ceres': ['planet', { a: '#9e9e9e', b: '#757575' }], 'space:eris': ['planet', { a: '#eceff1', b: '#cfd8dc' }],
@@ -4186,7 +4332,9 @@ function star(x, y, r) {
   g.closePath(); g.fillStyle = '#ffd23f'; g.strokeStyle = '#7a4a00'; g.lineWidth = 1.5; g.fill(); g.stroke();
 }
 function drawMiniMap() {
-  const C = G.C, [X, Y, W, H] = miniRect(), img = miniImg(C);
+  const C = G.C, [X, Y, W, H] = miniRect();
+  if (C.miniGlobe) return C.miniGlobe(X, Y, W, H);
+  const img = miniImg(C);
   if (C.wrap) drawMapLayer(X, Y, W, H, G.x - C.W / 2, 0, C.W, C.H, img, 1);
   else drawMapLayer(X, Y, W, H, 0, 0, C.W, C.H, img, 0);
   g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 3; g.beginPath();
@@ -4698,7 +4846,7 @@ const UI = {
       <div style="font-size:22px;font-weight:900;margin:16px 0 6px">RESET</div>
       <div class="set-row" style="font-size:18px">World <span class="seg" id="rs-seg">${WN.map(n => `<button data-rs="${n}" class="${n === (UI.rsCh || 1) ? 'sel' : ''}">${n}</button>`).join('')}</span></div>
       <button class="btn sm red" id="b-rch"></button> <button class="btn sm red" id="b-rall"></button>
-      <div style="font-size:15px;opacity:.75;margin-top:16px">Credits: Metro Vancouver map data © OpenStreetMap contributors (ODbL), via Overture Maps. Music slots: see audio/manifest.js.</div>`;
+      <div style="font-size:15px;opacity:.75;margin-top:16px">Credits: Metro Vancouver and Stanley Park map data © OpenStreetMap contributors (ODbL), via Overture Maps. World map: Natural Earth (public domain). Music slots: see audio/manifest.js.</div>`;
     document.querySelectorAll('[data-set]').forEach(b => b.onclick = () => {
       const k = b.dataset.set; let v = b.dataset.v; if (k !== 'learn') v = +v;
       S.settings[k] = v; persist(); UI.settings(UI.setBack); syncSoundBtn();

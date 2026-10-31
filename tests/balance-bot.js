@@ -13,7 +13,7 @@ const { chromium } = require('playwright');
   for (const n of chs) {
     const r = await p.evaluate(([n, mins, sb, process_trace]) => {
       const { G, S } = HH; S.ch[n] = HH.normalize({}).ch[n]; S.ch[n].u = 1; HH.startChapter(n); G.mode = 'sim'; S.settings.sound = 0;
-      const C = G.C, dt = 1 / 30, out = [], beats = [], steps = []; G.eats = 0; G.big = 0; G.b0 = 0; G.e0 = 0; G.lastL = 0; G.rc = 0; const bigs = []; let tgt = null, retarget = 0, doneAt = null, lastBeat = G.st.beat;
+      const C = G.C, dt = 1 / 30, out = [], beats = [], steps = []; G.eats = 0; G.bigE = 0; G.b0 = 0; G.e0 = 0; G.lastL = 0; G.rc = 0; const bigs = []; let tgt = null, retarget = 0, doneAt = null, lastBeat = G.st.beat;
       let seed = n * 7919 + 13 + sb * 104729;
       const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
       const lv = [];
@@ -68,9 +68,9 @@ const { chromium } = require('playwright');
         HH.update(dt);
         if (G.cine) continue;
         if (G.st.beat !== lastBeat) { lastBeat = G.st.beat; beats.push(+(s / 1800).toFixed(2)); }
-        if (G.lvl !== G.lastL) { if (G.lastL) { steps.push(G.eats - (G.e0 || 0)); bigs.push(G.big - (G.b0 || 0)); } G.lastL = G.lvl; G.e0 = G.eats; G.b0 = G.big; }
+        if (G.lvl !== G.lastL) { if (G.lastL) { steps.push(G.eats - (G.e0 || 0)); bigs.push(G.bigE - (G.b0 || 0)); } G.lastL = G.lvl; G.e0 = G.eats; G.b0 = G.bigE; }
         if (doneAt === null && G.st.c) { doneAt = s / 1800; out.push(['world complete', +doneAt.toFixed(2), G.lvl]); break; }
-        const D = HH.holeD(), sp = D * (C.spd || 4.32) * (C.botSpd || 1), goal = HH.goals()[0], rg = HH.ringNow();
+        const D = HH.holeD(), sp = D * (C.spd || 4.32) * (C.botSpd || 1) * (C.spdAt ? C.spdAt(G.x, G.y) : 1), goal = HH.goals()[0], rg = HH.ringNow();
         const inRing = o => !rg || (o.x >= rg[0] && o.x <= rg[2] && o.y >= rg[1] && o.y <= rg[3]);
         if (s % 30 === 0) { const mv = Math.hypot(G.x - (G.px || 0), G.y - (G.py || 0)); G.px = G.x; G.py = G.y; if (mv < D * 0.2 && tgt) { tgt.skip = (tgt.skip || 0) + 1; tgt = null; G.wa = rnd() * 7; G.stuck = 30; G.wp = null; } }
         if (G.stuck > 0) { G.stuck--; tgt = { x: G.x + Math.cos(G.wa) * D * 5, y: G.y + Math.sin(G.wa) * D * 5, dead: 0 }; }
