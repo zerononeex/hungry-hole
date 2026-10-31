@@ -59,6 +59,13 @@ const { chromium } = require('playwright');
         else if (k === 'f') a.split(',').forEach(w => specOk(w, 'edu ' + E.n));
         else fails.push('edu unknown step ' + st);
       }
+      // v5.2: every Story objective stands inside the zone ring of its own beat (the hole is held in that ring; an objective
+      // outside it is a soft-lock: Part 17's border step once moved Lions Gate 4 km north, out of the Globe's Vancouver ring)
+      if (C.beats && C.rings) C.beats.forEach((id, i) => {
+        const rg = C.rings[Math.min(i, C.rings.length - 1)], o = auth.find(o => o.id === id);
+        if (!rg || !o) return;
+        if (!C.wrap && !(o.x >= rg[0] && o.x <= rg[2]) || !(o.y >= rg[1] && o.y <= rg[3])) fails.push(`objective ${i + 1} (${id}) stands outside its zone ring`);
+      });
       if (C.key === 'van') {
         const ids = ['scienceworld', 'aquarium', 'mermaid', 'steamclock', 'canadaplace', 'bcplace', 'ubc', 'sfu', 'nightmarket', 'ikea', 'grouse', 'cypress', 'peacearch', 'whiterock', 'whistler', 'yvr'];
         for (const id of ids) if (!auth.some(o => o.id === id)) fails.push('Ch3 POI missing: ' + id);
@@ -83,6 +90,7 @@ const { chromium } = require('playwright');
         } }
         if (!cars || bad) fails.push(`Globe: ${bad}/${cars} town vehicles off the street`);
         const lm = auth.filter(o => o.keep && o.cc && o.T.tags.includes('landmark')), per = {}; for (const o of lm) per[o.cc] = (per[o.cc] || 0) + 1;
+        for (const a of (C.AREAS || [])) per[a.cc] = (per[a.cc] || 0) + 1;   // v5.2 Part 17: the owner's natural places are painted, named areas
         for (const cc of ['CN', 'RU', 'CA', 'US']) if ((per[cc] || 0) < 10) fails.push(`Globe: ${cc} has only ${per[cc] || 0} landmarks (want ~10)`);
         const bigC = ['IN', 'BR', 'AU', 'JP', 'FR', 'IT', 'GB', 'DE', 'ES', 'MX', 'EG', 'TR', 'AR', 'ZA', 'ID'].filter(cc => (per[cc] || 0) < 4); if (bigC.length) fails.push('Globe: big countries under 4 landmarks: ' + bigC.join(' '));
         if (Object.keys(per).length < 150) fails.push('Globe: only ' + Object.keys(per).length + ' countries have a landmark');

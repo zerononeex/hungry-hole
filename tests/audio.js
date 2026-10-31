@@ -7,7 +7,7 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
 (async () => {
   const b = await chromium.launch();                                   // no --autoplay-policy bypass on purpose
   const p = await b.newPage({ viewport: { width: 1180, height: 820 } });
-  const errs = []; p.on('pageerror', e => errs.push('PAGEERR ' + e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
+  const errs = []; p.on('pageerror', e => errs.push('PAGEERR ' + e.message + (process.env.STACK ? e.stack : ''))); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
   // count every way the page could reach text-to-speech
   await p.addInitScript(() => {
     const n = window.__speech = { speak: 0, utter: 0, touch: 0 };
@@ -32,8 +32,8 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
   const menu = await waitTrack('menu.mp3');
   results.push(['back on the menu: menu.mp3 plays', menu.track === 'menu.mp3' && menu.playing && menu.level > 0, menu]);
 
-  // v5.14 music per world: each world keeps its own track: Home ch1, Vancouver ch2, Stanley Park ch3, Globe ch5, Space ch4 (v5.1 world order); ch6/ch7 retired
-  const MUS = { 1: 'ch1.mp3', 2: 'ch2.mp3', 3: 'ch3.mp3', 4: 'ch5.mp3', 5: 'ch4.mp3' }, chs = {};
+  // v5.14 music per world: each world keeps its own track: Home ch1, Vancouver ch2, Stanley Park ch3, Globe ch5, Space ch4 (v5.2 world order: 1 Home, 2 Stanley Park, 3 Vancouver, 4 Globe, 5 Space); ch6/ch7 retired
+  const MUS = { 1: 'ch1.mp3', 2: 'ch3.mp3', 3: 'ch2.mp3', 4: 'ch5.mp3', 5: 'ch4.mp3' }, chs = {};
   for (let n = 1; n <= 5; n++) { await p.evaluate(n => { HH.S.ch[n].u = 1; HH.startChapter(n); }, n); const d = await waitTrack(MUS[n]); chs[n] = d.track === MUS[n] && d.playing && d.level > 0; }
   results.push(['world changes: each of the five worlds plays its own track', Object.values(chs).every(Boolean), chs]);
 
@@ -70,7 +70,7 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     for (let n = 1; n <= 5; n++) S.ch[n].u = 1;
     HH.startChapter(1); G.lvl = 4; step(5); let e = 0; for (const o of G.vis.slice()) if (!o.dead && HH.canEat(o) && e < 40) { HH.eat(o); e++; } step(30); out.storyEaten = e;
     for (const n of [2, 4]) { HH.startChapter(n, 'ispy'); G.run.tg.forEach(t => t.o && HH.eat(t.o)); await wait(1300); HH.UI.closeModal && HH.UI.closeModal(); }
-    out.ispy = 'ch2+ch4';
+    out.ispy = 'ch3+ch5';
     let steps = 0;
     for (const n of [1, 5]) for (let s = 0; s < 3; s++) {
       S.edu[n] = { set: s, done: 0 }; HH.startChapter(n, 'edu'); step(2); const R = G.run;

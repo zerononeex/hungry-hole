@@ -3,10 +3,11 @@ const { chromium } = require('playwright');
 const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
 (async () => {
   const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1180, height: 820 } }); const p = await ctx.newPage();
-  const errs = []; p.on('pageerror', e => errs.push('PAGEERR ' + e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
+  const errs = []; p.on('pageerror', e => errs.push('PAGEERR ' + e.message + (process.env.STACK ? e.stack : ''))); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
   await p.goto(URL); await p.evaluate(() => localStorage.setItem('family-other-app', 'keep-me')); await p.reload(); await p.waitForTimeout(300);
   const results = [];
-  const T = async (name, fn) => { try { const r = await p.evaluate(fn); results.push([name, r.ok, r.info]); } catch (e) { results.push([name, false, e.message]); } };
+  const ONLY = process.env.ONLY && new RegExp(process.env.ONLY);   // (ONLY=regex runs just the matching named tests)
+  const T = async (name, fn) => { if (ONLY && !ONLY.test(name)) return; try { const r = await p.evaluate(fn); results.push([name, r.ok, r.info]); } catch (e) { results.push([name, false, e.message]); } };
   const STEP = `const step = n => { for (let i = 0; i < n; i++) { HH.G.now += 33; HH.G.t += 1 / 30; HH.update(1 / 30); } };`;
 
   await T('fits: tips in, falls, then is eaten', new Function(STEP + `
@@ -33,7 +34,7 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     return { ok: !HH.fits(bed, D) && !bed.dead && !bed.fall && lean === 0 && still && bed.wob > 0, info: { lvl: G.lvl, type: bed.k, tier: bed.t, ratio: +(D / bed.fw).toFixed(2), lean: +lean.toFixed(3), bumped: bed.wob > 0, still } };`));
 
   await T('no perpetual teeter (v5.1 Part 11): the Stanley Park picnic blanket lies flat and still under the starting hole', new Function(STEP + `
-    const { G, S } = HH; S.ch[3].u = 1; HH.startChapter(3, 'explore'); step(3);
+    const { G, S } = HH; S.ch[2].u = 1; HH.startChapter(2, 'explore'); step(3);
     const bl = G.vis.find(o => o.k === 'blanket'); if (!bl) return { ok: false, info: 'no blanket' };
     const q = [], Q = HH.V3 && null;
     for (let i = 0; i < 60; i++) { G.vx = (i % 2 ? -1 : 1) * 0.3; step(1); HH.poseOf(bl, HH.G.vis.includes(bl) && bl.md, 0, 0, HH.holeD() / 2); q.push((bl.lean || 0) + ',' + (bl.wobble || 0).toFixed(3)); }
@@ -139,7 +140,7 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     const R = G.run; G.helpOn = HH.MODES.edu.target(); const tgt = G.helpOn;
     for (let i = 0; i < 900; i++) { G.now += 33; G.t += 1 / 30; HH.update(1 / 30); }        // 30 s later the arrow is still there
     const stays = G.compass.length === 1 && G.compass[0].o === tgt; HH.eat(tgt); step(15); const gone = !G.compass.some(c => c.o === tgt);
-    const mi = G.C.edu.findIndex(E => E.s.some(x => x[0] === 'm')); S.edu[1] = { set: mi, done: 0 }; HH.startChapter(1, 'edu'); G.x = 22; G.y = 14; step(100);
+    const mi = G.C.edu.findIndex(E => E.s.some(x => x[0] === 'm')); S.edu[1] = { set: mi, done: 0 }; HH.startChapter(1, 'edu'); G.x = 22; G.y = 14; G.run.si = 0; HH.MODES.edu.startStep(); step(100);   // (v5.2: answers are dealt where the question is asked, then stay put)
     const C = G.C, ak = (x, y) => C.areaKey ? C.areaKey(x, y) : C.regionAt ? C.regionAt(x, y) : C.zoneAt(x, y);
     const here = ak(G.x, G.y), tiles = G.tiles.filter(t => !t.dead), local = tiles.every(t => ak(t.x, t.y) === here);
     const right = tiles.find(t => t.ok), lookSame = tiles.every(t => !t.look);
@@ -180,6 +181,148 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     const no = HH.bankerTransfer(1, 2, 99999);
     return { ok: ok1 && a[0] === 900 && a[1] === 110 && ok2 && b2[0] === 567 && b2[1] === 309 && !no && HH.bankerArrive(100) === 60, info: { after100: a, after333: b2, overdraftRefused: !no } };`));
 
+  // v5.2 Part 4 (owner bug: the B-E-D tile vanished as he got near it): a placed target persists until it is eaten.
+  // Story letter tiles, Educational answer tiles and I Spy targets: walk toward each one from another room / far away,
+  // then right up to it, and every uneaten target is still there, in the same place, and can be eaten.
+  await T('placed targets never vanish on approach (v5.2 Part 4): B-E-D tiles, sum answer tiles, I Spy targets', new Function(STEP + `
+    const { G, S } = HH, out = {}; let ok = true; const pos = o => o.x.toFixed(3) + ',' + o.y.toFixed(3);
+    const still = (list, tag) => { for (const o of list) if (!o.dead && (o.tile ? !G.tiles.includes(o) : !G.vis.includes(o))) { ok = false; out[tag] = 'gone'; } };
+    // 1. Story quest B-E-D in the Home
+    S.ch[1].u = 1; HH.startChapter(1); const C1 = G.C, qi = C1.Q.findIndex(q => q.k === 'q' && q.items.join('') === 'BED');
+    S.ch[1].act = [{ i: qi, p: 0 }]; HH.startChapter(1); step(2); const fl0 = G.fl;
+    const bed = 'BED'.split('').map(c => G.tiles.find(t => t.txt === c && !t.dead)); out.bedTiles = bed.every(Boolean);
+    if (!out.bedTiles) return { ok: false, info: out };
+    const p0 = bed.map(pos), far = [G.C.start[0], G.C.start[1]];
+    let eaten = 0;
+    for (const t of bed) {
+      for (const [x, y] of [far, [t.x + HH.holeD() * 2.5, t.y], [t.x + HH.holeD() * 1.2, t.y]]) { G.x = x; G.y = y; G.fl = fl0; G.vx = G.vy = 0; step(100); }
+      if (bed.some((b, i) => !b.dead && pos(b) !== p0[i])) { ok = false; out.moved = bed.map(pos); }
+      still(bed, 'bed');
+      for (let i = 0; i < 60 && !t.dead; i++) { G.x = t.x; G.y = t.y; G.fl = fl0; G.vx = G.vy = 0; step(1); }
+      if (t.dead) eaten++; else out['notEaten' + t.txt] = { at: pos(t), hole: pos(G), fl: G.fl, inTiles: G.tiles.includes(t), act: S.ch[1].act.map(a => a.i + ':' + a.p).join() };
+    }
+    out.bedEaten = eaten; if (eaten !== 3) ok = false;
+    // 2. Educational sum in the Home: the answer tiles stay put while you roam the rooms
+    const set = C1.edu.findIndex(e => e.s.some(x => x[0] === 'm')); S.edu[1] = { set, done: 0 }; HH.startChapter(1, 'edu'); step(2);
+    const mt = G.tiles.filter(t => !t.dead); const m0 = mt.map(pos);
+    for (const t of mt) for (const [x, y] of [far, [t.x + HH.holeD() * 2.5, t.y + .1]]) { G.x = x; G.y = y; G.vx = G.vy = 0; step(100); }
+    out.sumTiles = mt.length; if (!mt.length || mt.some((t, i) => t.dead || pos(t) !== m0[i] || !G.tiles.includes(t))) { ok = false; out.sumMoved = mt.map(pos); }
+    // 3. I Spy in Metro Vancouver: every target stays put and alive as the hole comes up to it, and is then eaten
+    S.ch[3].u = 1; HH.startChapter(3, 'ispy'); step(2); const R = G.run, tg = R.tg.map(t => t.o).filter(Boolean), t0 = tg.map(pos);
+    for (const o of tg) { const D = HH.holeD(); for (const [x, y] of [[o.x + D * 12, o.y], [o.x + D * 3, o.y], [o.x + D * 1.1, o.y]]) { G.x = x; G.y = y; G.vx = G.vy = 0; step(100); } }
+    out.ispyAlive = tg.filter((o, i) => R.tg[i].o === o && (R.tg[i].done || (!o.dead && (pos(o) === t0[i] || o.path || (o.T && o.T.mv))))   /* (a ferry or an orca keeps moving: it must stay alive, the same one) */).length;   // (eaten for the hunt counts: the hole was big enough)
+    if (out.ispyAlive !== tg.length || tg.length !== 5) { ok = false; out.ispy = R.tg.map((t, i) => [t.o && t.o.k, t.o === tg[i], !!t.done, t.o && !!t.o.dead, t.o && pos(t.o) === t0[i], t.o && !!t.o.fall]); }
+    let got = 0; for (const t of R.tg) { if (!t.done) HH.eat(t.o); if (t.done) got++; } out.ispyEaten = got; if (got !== 5) ok = false;
+    return { ok, info: out };`));
+
+  await T('corner minimap zoom (v5.2 Part 6): 25% by default and following the hole; 25/50/100 chosen on the big map, remembered in the save', new Function(STEP + `
+    const { G, S } = HH; S.ch[3].u = 1; HH.startChapter(3); step(2);
+    const def = S.settings.mini, r0 = HH.miniRect(); G.bigmap = { zi: 0 }; const [X, Y, W] = HH.bigRect();
+    const steer0 = G.joy; HH.mapTap(X + W - 240 + 66 + 31, Y - 20); const after50 = S.settings.mini, saved = JSON.parse(localStorage.getItem('hungry-hole-data-v1')).settings.mini;
+    HH.mapTap(X + W - 240 + 132 + 31, Y - 20); const full = S.settings.mini, r1 = HH.miniRect();
+    HH.mapTap(X + W - 240 + 31, Y - 20); G.bigmap = null; const back = S.settings.mini;
+    const tapMini = HH.mapTap(r0[0] + 20, r0[1] + 20), opened = !!G.bigmap; G.bigmap = null;
+    const ok = def === 0.25 && r0[2] === 190 && after50 === 0.5 && saved === 0.5 && full === 1 && r1[2] !== 190 && back === 0.25 && tapMini && opened && G.joy === steer0;
+    return { ok, info: { def, after50, saved, full, back, miniFrame: r0.slice(2), fullFrame: r1.slice(2).map(Math.round), tapOpensMap: opened } };`));
+
+  await T('ADJUST SPEED (v5.2 Part 14) and base speed x2 (Part 7): the Exploration dial slows travel, is session-only, never saved, no effect in Story', new Function(STEP + `
+    const { G, S } = HH; S.ch[2].u = 1; const ls0 = localStorage.getItem('hungry-hole-data-v1');
+    const run = () => { G.x = G.C.start[0]; G.y = G.C.start[1]; G.vx = G.vy = 0; const x0 = G.x; G.joy = { x0: 0, y0: 0, x: 70, y: 0 }; step(30); G.joy = null; return G.x - x0; };
+    HH.startChapter(2, 'explore'); step(2); const v100 = run(), lab0 = document.getElementById('spdval').textContent;
+    for (let i = 0; i < 3; i++) document.getElementById('b-slower').click();
+    const lab = document.getElementById('spdval').textContent, vSlow = run();
+    for (let i = 0; i < 9; i++) document.getElementById('b-slower').click(); const floor = document.getElementById('spdval').textContent;
+    HH.startChapter(2, 'story'); step(2); document.getElementById('b-slower').click(); const vStory = run(), storyLab = document.getElementById('spdval').textContent;
+    HH.persist(); const ls1 = JSON.parse(localStorage.getItem('hungry-hole-data-v1')), leaked = JSON.stringify(ls1).includes('exSpd');
+    G.exSpd = 1; document.getElementById('spdval').textContent = '100%'; HH.startChapter(1); step(1);
+    const ok = HH.BASE_X === 2 && lab0 === '100%' && lab === '35%' && Math.abs(vSlow / v100 - 0.35) < 0.08 && floor === '10%' && !leaked && vStory > v100 * 0.5 && storyLab === '10%';
+    return { ok, info: { BASE_X: HH.BASE_X, lab0, lab, ratio: +(vSlow / v100).toFixed(2), floor, vStory: +vStory.toFixed(2), v100: +v100.toFixed(2), leaked } };`));
+
+  await T('Globe sky (v5.2 Part 15): no UFO filler and no saucer-like storms; exactly two hidden UFOs in fixed seeded spots; clouds and coins at high altitude', new Function(STEP + `
+    const { G, S, CH } = HH; S.ch[4].u = 1; HH.startChapter(4, 'explore'); step(1); const C = G.C;
+    const ufos = G.auth.filter(o => o.k === 'ufo'), spots = ufos.map(o => Math.round(o.x) + ',' + Math.round(o.y)).join(' ');
+    HH.startChapter(4, 'explore'); step(1); const spots2 = G.auth.filter(o => o.k === 'ufo').map(o => Math.round(o.x) + ',' + Math.round(o.y)).join(' ');
+    const kinds = {}; let coinsHi = 0, cellsHi = 0;
+    for (let t = 1; t <= C.N; t++) { const cs = C.LC[t], nx = Math.round(C.W / cs), ny = Math.round(C.H / cs);
+      for (let i = 0; i < 400; i++) { const a = HH.genCell(t, Math.floor(Math.random() * nx), Math.floor(Math.random() * ny)); if (t >= 8) cellsHi++;
+        for (const o of a) { if (o.coin || o.k === 'coin') { if (t >= 8) coinsHi++; continue; } if (t >= 8) kinds[o.k] = (kinds[o.k] || 0) + 1; if (o.k === 'ufo') kinds.UFO_FILLER = 1; } } }
+    const noStorm = !Object.keys(C.T).some(k => /storm|hurricane|supercell/.test(k));
+    const hiOk = Object.keys(kinds).every(k => /^cloud|range|mountain|iceberg|icecap/.test(k));
+    HH.startChapter(1); step(1);
+    return { ok: ufos.length === 2 && spots === spots2 && !kinds.UFO_FILLER && noStorm && hiOk && coinsHi > 0, info: { ufos: ufos.length, spots, same: spots === spots2, hiKinds: kinds, coinsHi, cellsHi, noStorm } };`));
+
+  await T('Globe says where you are (v5.2 Part 13): the country name alone in yellow at the bottom; nothing over the ocean', new Function(STEP + `
+    const { G, S } = HH; S.ch[4].u = 1; HH.startChapter(4, 'explore'); step(1); const C = G.C, out = {};
+    for (const [nm, lo, la] of [['ca', -106.6, 52.1], ['jp', 139.7, 35.7], ['eg', 31.2, 30.0], ['us', -98, 39], ['ocean', -150, 0]]) {
+      [G.x, G.y] = C.P(lo, la); G.cam.x = G.x; G.cam.y = G.y; step(2); HH.render(); out[nm] = G.here; }
+    HH.startChapter(1); step(1);
+    const ok = out.ca === 'Canada' && out.jp === 'Japan' && out.eg === 'Egypt' && out.us === 'United States' && out.ocean === null;
+    return { ok, info: out };`));
+
+  await T('Globe geography layers (v5.2 Part 12): every country bordered; capitals starred; names inside borders; tiny/mid/giant tiers; Europe never a wall of text', new Function(STEP + `
+    const { G, S } = HH; S.ch[4].u = 1; HH.startChapter(4, 'explore'); step(1); const C = G.C;
+    const at = (lo, la, sz) => { HH.setHoleD(C.sizes[sz]); [G.x, G.y] = C.P(lo, la); G.cam.x = G.x; G.cam.y = G.y; G.cam.z = 0; step(3); HH.render(); const L = G.mapLabels || [];
+      const k = n => L.filter(l => l.kind === n).length, ov = L.some((a, i) => L.some((b, j) => j > i && a.kind === 'country' && b.kind === 'country' && a.b[0] < b.b[2] && a.b[2] > b.b[0] && a.b[1] < b.b[3] && a.b[3] > b.b[1]));
+      return { tier: C.labelTier(HH.holeD()), cap: k('capital'), ctry: k('country'), cont: k('continent'), overlap: ov, names: L.map(l => l.s) }; };
+    const tinyAt = at(2.33, 48.869, 2), [px, py] = C.P(2.33, 48.869), TL = C.labelSet({ z: G.cam.z, x0: px - 2, x1: px + 2, y0: py - 2, y1: py + 2 }, 0), tiny = { tier: tinyAt.tier, cap: TL.filter(l => l.kind === 'capital').length, ctry: TL.filter(l => l.kind === 'country').length, cont: TL.filter(l => l.kind === 'continent').length }, mid = at(2.42, 48.80, 8), giant = at(15, 50, 12);
+    const paris = mid.names.includes('★ Paris');
+    // every country has a drawn border (its polygons), and a name placed inside it
+    const cl = Object.keys(C.countries), noPoly = cl.filter(cc => !C.regionPos(cc)), sov = Object.keys(window.HH_AN.c), inside = sov.map(cc => { const c = C.labelAt(cc); return c && C.inCountry(cc, c[0], c[1]) ? 1 : cc; }), outside = inside.filter(v => v !== 1);
+    const inPct = inside.filter(v => v === 1).length / inside.length;
+    HH.startChapter(1); step(1);
+    const ok = cl.length >= 195 && sov.every(cc => C.regionPos(cc)) && inPct === 1 && paris && tiny.tier === 0 && tiny.cap === 1 && tiny.cont === 0 && mid.cont === 0 && mid.cap > 0 && mid.ctry >= 0 && giant.cap === 0 && giant.cont > 0 && giant.ctry > 0 && giant.ctry <= 24 && !giant.overlap && !mid.overlap;
+    return { ok, info: { countries: cl.length, sovereign: sov.length, noPolyTerritories: noPoly, namesInside: +inPct.toFixed(3), outside, paris, tiny: [tiny.tier, tiny.cap, tiny.ctry, tiny.cont], mid: [mid.tier, mid.cap, mid.ctry, mid.cont], giant: [giant.tier, giant.cap, giant.ctry, giant.cont, giant.overlap] } };`));
+
+  await T('fences are chains of sections (v5.2 Parts 10-11): the front yard fence and Second Beach Pool\'s picket fence go one section at a time; the front gate stands open; the pool has its seal slide and two water slides', new Function(STEP + `
+    const { G, S } = HH; S.ch[1].u = 1; HH.startChapter(1, 'explore'); step(1); const out = {};
+    const live = c => G.auth.filter(o => o.chain === c && !o.dead && !o.fall);
+    const F = live('frontfence'), n0 = F.length, sec = F.find(o => Math.abs(o.yaw - Math.PI / 2) < .01 && o.x > 5);
+    HH.setHoleD(sec.fw * 1.05); G.fl = 0; G.x = sec.x; G.y = sec.y + .4; G.vx = G.vy = 0; step(60);
+    out.front = { sections: n0, afterOne: live('frontfence').length, gate: !!G.auth.find(o => o.k === 'gate' && o.nosolid), trampoline: !!G.auth.find(o => o.k === 'trampoline'), tree: !!G.auth.find(o => o.k === 'fronttree') };
+    for (const o of live("frontfence")) { HH.setHoleD(o.fw * 1.1); G.x = o.x; G.y = o.y + (o.y > 40 ? .4 : 0); G.vx = G.vy = 0; step(40); }
+    out.front.allEaten = live("frontfence").length;
+    S.ch[2].u = 1; HH.startChapter(2, 'explore'); step(1);
+    const P = live('poolfence'), p0 = P.length, ps = P[Math.floor(P.length / 2)];
+    HH.setHoleD(ps.fw * 1.05); G.x = ps.x; G.y = ps.y; G.vx = G.vy = 0; step(60);
+    out.pool = { sections: p0, afterOne: live('poolfence').length, slides: G.auth.filter(o => /^(sealslide|poolslide2?)$/.test(o.k)).map(o => o.label) };
+    HH.startChapter(1); step(1);
+    const ok = n0 >= 15 && out.front.afterOne < n0 && out.front.afterOne >= n0 - 3 && out.front.gate && out.front.trampoline && out.front.tree && out.front.allEaten === 0
+      && p0 >= 40 && out.pool.afterOne < p0 && out.pool.afterOne >= p0 - 3 && out.pool.slides.length === 3 && out.pool.slides.includes('the seal slide');
+    return { ok, info: out };`));
+
+  await T('real height (v5.2 Parts 8-9): the Home stairs are a true climb with 12 visible steps and are never eaten; the lot stays flat; Stanley Park and Metro Vancouver have their real hills', new Function(STEP + `
+    const { G, S } = HH; S.ch[1].u = 1; HH.startChapter(1, 'explore'); step(1); const C = G.C, out = {};
+    const st = C.rooms.find(r => r[0] === 'stair')[3], ym = (st[1] + st[3]) / 2, h0 = [], grd = new Set();
+    for (let i = 0; i <= 20; i++) { const x = st[0] + .02 + (st[2] - st[0] - .04) * i / 20; h0.push(+C.h0At(x, ym).toFixed(2)); }
+    for (let i = 0; i <= 240; i++) grd.add(C.hAt(st[0] + (st[2] - st[0]) * i / 240, ym).toFixed(2));
+    out.climb = { bottom: h0[0], top: h0[20], rising: h0.every((v, i) => !i || v >= h0[i - 1]) };
+    out.treads = [...grd].filter(v => [...Array(13).keys()].some(k => Math.abs(v - C.floorH * k / 12) < .005)).length;
+    G.fl = 0; out.flat = [C.hAt(5, 40), C.hAt(5, 8), C.hAt(9, 30)].every(v => v === 0);
+    // the hole really rises: drive up the run and watch the ground under it
+    HH.setHoleD(.2); G.x = st[0] + .15; G.y = ym; G.vx = G.vy = 0; step(2); HH.render(); const a = HH.TER.h0;
+    G.x = st[2] - .15; G.y = ym; step(2); HH.render(); out.rode = [+a.toFixed(2), +HH.TER.h0.toFixed(2), G.fl];
+    // never eaten: a hole bigger than the house leaves the stair fixtures alone
+    const fx = G.auth.filter(o => o.fixture), n0 = fx.length; HH.setHoleD(9); for (const o of fx.slice(0, 4)) { G.fl = 0; G.x = o.x; G.y = o.y; step(30); }
+    out.fixtures = [n0, G.auth.filter(o => o.fixture && !o.dead && !o.fall).length];
+    // Stanley Park: the high ground is real (about 80 m), and a hill eaten flattens with everything on it, kept in the save
+    S.ch[2].u = 1; HH.startChapter(2, 'explore'); step(1); let P = G.C;
+    out.parkTop = Math.round(P.hAt(1760, 1880)); out.parkHills = P.HILLS.length;
+    const hl = P.HILLS.slice().sort((a, b) => a.fw - b.fw).find(o => o.fw > 8 && P.zoneAt(o.x, o.y)), [hx, hy, R, base, top] = hl.hill;
+    const before = +P.hAt(hx, hy).toFixed(1);
+    HH.setHoleD(hl.fw * .5); G.x = hx; G.y = hy; G.vx = G.vy = 0; step(40); out.tooSmall = !hl.dead && !hl.fall;
+    HH.setHoleD(hl.fw * 1.3); G.x = hx; G.y = hy; step(1); const onIt = G.vis.filter(q => !q.keep && !q.deco && !q.terr && !q.coin && q.fw < hl.fw && Math.hypot(q.x - hx, q.y - hy) < R * .6 && !q.dead);
+    step(120); HH.render();
+    out.hill = { label: hl.label, before, top: +top.toFixed(1), base, after: +P.hAt(hx, hy).toFixed(1), eaten: !!hl.dead, onIt: onIt.length, onItGone: onIt.filter(q => q.dead || q.fall).length };
+    // in a story run an eaten hill is kept in the world's eaten set, so it stays flat after a reload
+    HH.startChapter(2); step(1); P = G.C; const h2 = P.HILLS.find(o => o.id === hl.id); HH.eat(h2); out.hill.inSave = !!G.st.eaten[hl.id];
+    HH.persist(); HH.startChapter(1); step(1); HH.startChapter(2); step(2); HH.render(); out.hill.afterReload = +G.C.hAt(hx, hy).toFixed(1);
+    S.ch[3].u = 1; HH.startChapter(3, 'explore'); step(1); out.grouse = Math.round(G.C.hAt(...G.C.P(-123.0815, 49.3805))); out.vanHills = G.C.HILLS.length;
+    HH.startChapter(1); step(1);
+    const ok = out.climb.bottom < .05 && Math.abs(out.climb.top - C.floorH) < .1 && out.climb.rising && out.treads >= 12 && out.flat && out.rode[1] - out.rode[0] > 2 && out.rode[2] === 1
+      && out.fixtures[0] >= 4 && out.fixtures[1] === out.fixtures[0] && out.parkTop > 60 && out.parkHills >= 5 && out.tooSmall && out.hill.eaten && out.hill.inSave
+      && out.hill.after <= out.hill.base + 1 && out.hill.before > out.hill.base + 5 && out.hill.afterReload <= out.hill.base + 1 && out.hill.onItGone === out.hill.onIt && out.grouse > 600 && out.vanHills > 50;
+    return { ok, info: out };`));
+
   await T('upgrade buy spends the chapter wallet only', new Function(`
     const { S } = HH; S.ch[1].w = 100; S.ch[2].w = 77; S.ch[1].up[0] = 0;
     const c = HH.upCost(1, 1), ok = HH.buyUpgrade(1, 0);
@@ -216,11 +359,11 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     const save = { v: 1, settings: { sound: 0, voice: 1, learn: 'full', grade: 3 }, last: 3, journey: 0, ch, passport: {}, learn: {} };
     localStorage.setItem('hungry-hole-data-v1', JSON.stringify(save)); return true; });
   await p.goto(URL); await p.waitForTimeout(400);
-  const v2r = await p.evaluate(() => { const { G, S } = HH; const out = { w1: S.ch[1].w, pts1: S.ch[1].pts, sound: S.settings.sound, w2: S.ch[2].w, board2: S.ch[2].board.filter(Boolean).length };
-    HH.startChapter(2); for (let i = 0; i < 30; i++) { G.now += 33; G.t += 1 / 30; HH.update(1 / 30); }
+  const v2r = await p.evaluate(() => { const { G, S } = HH; const out = { w1: S.ch[1].w, pts1: S.ch[1].pts, sound: S.settings.sound, w2: S.ch[3].w, board2: S.ch[3].board.filter(Boolean).length };
+    HH.startChapter(3); for (let i = 0; i < 30; i++) { G.now += 33; G.t += 1 / 30; HH.update(1 / 30); }
     out.ch2 = [Math.round(G.x), Math.round(G.y), G.lvl]; out.inMap = G.x >= 0 && G.x <= G.C.W && G.y >= 0 && G.y <= G.C.H; out.vis = G.vis.length;
     out.retired4 = S.retired[4] && S.retired[4].check.join('/'); HH.startChapter(1); out.ch1done = S.ch[1].c; out.worlds = Object.keys(S.ch).join(','); return out; });
-  results.push(['v2 save loads and plays (old Vancouver is World 2, retired chapter kept aside)', v2r.w1 === 321 && v2r.pts1 === 1234 && v2r.sound === 0 && v2r.w2 === 50 && v2r.board2 === 5 && v2r.inMap && v2r.vis > 20 && v2r.retired4 === '40/3/0' && v2r.ch1done === 1 && v2r.worlds === '1,2,3,4,5', v2r]);
+  results.push(['v2 save loads and plays (old Vancouver is World 3 since v5.2, retired chapter kept aside)', v2r.w1 === 321 && v2r.pts1 === 1234 && v2r.sound === 0 && v2r.w2 === 50 && v2r.board2 === 5 && v2r.inMap && v2r.vis > 20 && v2r.retired4 === '40/3/0' && v2r.ch1done === 1 && v2r.worlds === '1,2,3,4,5', v2r]);
 
   // a v3-shaped save: wallets, upgrades, boards, eaten landmarks and completed chapters survive
   await p.goto(URL.replace(/index\.html.*$/, 'README.md'));
@@ -229,9 +372,9 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     ch[3].eaten = { scienceworld: 1 };
     localStorage.setItem('hungry-hole-data-v1', JSON.stringify({ v: 1, settings: { sound: 1, voice: 1, learn: 'full', grade: 2 }, last: 3, journey: 0, ch, passport: { FR: 1 }, learn: { math: 4 } })); });
   await p.goto(URL); await p.waitForTimeout(400);
-  const v3r = await p.evaluate(() => { const { G, S } = HH; HH.startChapter(2); const st = S.ch[2];
-    return { w: [S.ch[1].w, S.ch[2].w], up: S.ch[1].up.join(''), board: S.ch[2].board.filter(Boolean).length, done: [S.ch[1].c, S.ch[2].c], unlocked3: S.ch[3].u, passport: S.passport.FR, math: S.learn.math,
-      sciEatenStays: !G.auth.some(o => o.id === 'scienceworld'), atStart: Math.round(G.x) === Math.round(G.C.start[0]), mv: st.mv, voiceDropped: !('voice' in S.settings) }; });
+  const v3r = await p.evaluate(() => { const { G, S } = HH; HH.startChapter(3); const st = S.ch[3];
+    return { w: [S.ch[1].w, S.ch[3].w], up: S.ch[1].up.join(''), board: S.ch[3].board.filter(Boolean).length, done: [S.ch[1].c, S.ch[3].c], unlocked3: S.ch[2].u, passport: S.passport.FR, math: S.learn.math,
+      sciEatenStays: !G.auth.some(o => o.id === 'scienceworld'), atStart: Math.round(G.x) === Math.round((G.C.storyStart || G.C.start)[0]), mv: st.mv, voiceDropped: !('voice' in S.settings) }; });
   results.push(['v3 save migrates (wallets, upgrades, boards, eaten landmarks, completed chapters kept)', v3r.w[0] === 701 && v3r.w[1] === 703 && v3r.up === '3210000001' && v3r.board === 14 && v3r.done.join() === '1,1' && v3r.unlocked3 === 1 && v3r.passport === 1 && v3r.math === 4 && v3r.sciEatenStays && v3r.atStart && v3r.mv === 5 && v3r.voiceDropped, v3r]);
 
   // v5 ground rule: a v4 save that carries progress in the RETIRED worlds (4 Wilderness, 7 Chaos, plus old 2) loads; the
@@ -247,15 +390,15 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     localStorage.setItem('hungry-hole-data-v1', JSON.stringify(save)); return save; });
   await p.goto(URL); await p.waitForTimeout(400);
   const chk = () => p.evaluate(() => { const { S } = HH, c = S.ch;
-    return { worlds: Object.keys(c).join(','), w: [1, 2, 3, 4, 5].map(n => c[n].w), up: [1, 2, 4, 5].map(n => c[n].up.join('')), board: [1, 2, 4, 5].map(n => c[n].board.filter(Boolean).length),
-      done: [1, 2, 4, 5].map(n => c[n].c), u3: c[3].u, eaten2: Object.keys(c[2].eaten).sort().join(','), ispy2: S.ispy[2], edu2: S.edu[2], wins4: S.ispy[4] && S.ispy[4].wins,
+    return { worlds: Object.keys(c).join(','), w: [1, 2, 3, 4, 5].map(n => c[n].w), up: [1, 3, 4, 5].map(n => c[n].up.join('')), board: [1, 3, 4, 5].map(n => c[n].board.filter(Boolean).length),
+      done: [1, 3, 4, 5].map(n => c[n].c), u3: c[2].u, eaten2: Object.keys(c[3].eaten).sort().join(','), ispy2: S.ispy[3], edu2: S.edu[3], wins4: S.ispy[4] && S.ispy[4].wins,
       retired: Object.keys(S.retired).sort().join(','), r4: JSON.stringify(S.retired[4]), r7: JSON.stringify(S.retired[7]), passport: Object.keys(S.passport).sort().join(','), learn: S.learn, music: S.settings.music, last: S.last,
       other: localStorage.getItem('family-other-app') }; });
   const m1 = await chk();
   const play = await p.evaluate(() => { const { G, S } = HH, out = {}; for (const n of [1, 2, 3, 4, 5]) { S.ch[n].u = 1; HH.startChapter(n); for (let i = 0; i < 10; i++) { G.now += 33; G.t += 1 / 30; HH.update(1 / 30); } out[n] = G.C.n === n && G.vis.length > 0; } HH.G.mode = 'menu'; HH.persist(); return out; });
   await p.reload(); await p.waitForTimeout(400);
   const m2 = await chk();
-  const keep = m1.worlds === '1,2,3,4,5' && m1.w.join() === '111,333,0,555,666' && m1.up.join() === '1100000001,3100000000,5100000002,6100000000' && m1.board.join() === [1, 3, 5, 6].map(n => Array(40).fill(0).filter((_, i) => !((i + n) % 4)).length).join()
+  const keep = m1.worlds === '1,2,3,4,5' && m1.w.join() === '111,0,333,555,666' && m1.up.join() === '1100000001,3100000000,5100000002,6100000000' && m1.board.join() === [1, 3, 5, 6].map(n => Array(40).fill(0).filter((_, i) => !((i + n) % 4)).length).join()
     && m1.done.join() === '1,1,1,1' && m1.u3 === 1 && m1.eaten2 === 'canadaplace,scienceworld' && m1.ispy2 && m1.ispy2.wins === 6 && m1.ispy2.pos === 2 && m1.edu2 && m1.edu2.set === 2 && !m1.wins4
     && m1.retired === '2,4,7' && m1.r4 === JSON.stringify(v4save.ch[4]) && m1.r7 === JSON.stringify(v4save.ch[7]) && m1.passport === 'FR,JP' && m1.learn.math === 7 && m1.music === 0 && m1.last === 1 && m1.other === 'keep-me';
   const stable = JSON.stringify(Object.assign({}, m1, { u3: 0, last: 0 })) === JSON.stringify(Object.assign({}, m2, { u3: 0, last: 0 }))   // (playing moved 'last world played');
@@ -281,11 +424,36 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     && s1.wins.join() === '5,4' && s1.edu.join() === '3,1' && s1.last === 5 && s1.u.join() === '1,1' && s1.w51 === 1 && s1.passport === 1 && JSON.stringify(s1) === JSON.stringify(s2);
   results.push(['v5 save -> v5.1 world order (4 = Globe, 5 = Space): each world keeps its own progress, moved once, stable after reload', swapOk, swapOk ? s1 : { s1, s2 }]);
 
+  // v5.2 owner request: the pickers read Home · Stanley Park · Metro Vancouver · Globe · Space. A v5.1 save moves its
+  // Vancouver (old 2) and Stanley Park (old 3) progress across once: wallets, upgrades, boards, eaten sets, ladders, I Spy decks, lessons.
+  await p.goto(URL.replace(/index\.html.*$/, 'README.md'));
+  await p.evaluate(() => {
+    const ch = {}; for (let n = 1; n <= 5; n++) ch[n] = { u: n <= 3 ? 1 : 0, c: n <= 2 ? 1 : 0, x: 10 * n, y: 10 * n, lvl: n, xp: 0, pts: 100 * n, pc: 0, w: 2000 + n, cf: 0, check: [n, 0, 0],
+      board: Array(40).fill(0).map((_, i) => i < n ? 1 : 0), act: [], qi: 0, up: [n, 0, 0, 0, 0, 0, 0, 0, 0, 0], eaten: { ['e' + n]: 1 }, bm: 0, exitOk: 0, beat: n, mv: 5 };
+    ch[2].eaten = { steamclock: 1, chinagate: 1 }; ch[3].eaten = { aquarium: 1 };
+    localStorage.setItem('hungry-hole-data-v1', JSON.stringify({ v: 1, w5: 1, w51: 1, settings: { sound: 1, music: 1, learn: 'full', grade: 2 }, last: 2, journey: 0, ch, passport: {}, learn: { math: 3 },
+      ispy: { 2: { deck: [1, 2], pos: 1, wins: 7 }, 3: { deck: [5], pos: 0, wins: 2 } }, edu: { 2: { set: 4, done: 6 }, 3: { set: 1, done: 1 } }, retired: {} }));
+  });
+  await p.goto(URL); await p.waitForTimeout(400);
+  const per = n => ['w', 'lvl', 'pts', 'beat', 'c'].map(k => HH.S.ch[n][k]).concat([HH.S.ch[n].up.join(''), HH.S.ch[n].board.filter(Boolean).length, Object.keys(HH.S.ch[n].eaten).sort().join('+')]).join('|');
+  const sv52 = () => p.evaluate(per => { const f = new Function('n', 'return (' + per + ')(n)'); const { S } = HH;
+    return { van: f(3), park: f(2), keys: [2, 3].map(n => HH.CH[n].key).join(), mus: [2, 3].map(n => HH.CH[n].mus).join(), ispy: [2, 3].map(n => S.ispy[n] && S.ispy[n].wins).join(), edu: [2, 3].map(n => S.edu[n] && S.edu[n].set).join(),
+      u: [2, 3].map(n => S.ch[n].u).join(), last: S.last, w52: S.w52, other: localStorage.getItem('family-other-app') }; }, per.toString());
+  const t1 = await sv52(); await p.evaluate(() => HH.persist()); await p.reload(); await p.waitForTimeout(400); const t2 = await sv52();
+  await p.evaluate(() => { for (let n = 1; n <= 5; n++) HH.S.ch[n].u = 1; HH.UI.chapters('story'); }); await p.waitForTimeout(300);
+  const pick = await p.evaluate(() => document.body.innerText.match(/The Home|Stanley Park|Metro Vancouver|The Globe|Space/g) || []);
+  const order = pick.filter((v, i) => pick.indexOf(v) === i).join(' · ');
+  const swap52 = t1.van === '2002|2|200|2|1|2000000000|2|chinagate+steamclock' && t1.park === '2003|3|300|3|0|3000000000|3|aquarium' && t1.keys === 'park,van' && t1.mus === 'ch3.mp3,ch2.mp3'
+    && t1.ispy === '2,7' && t1.edu === '1,4' && t1.u === '1,1' && t1.last === 3 && t1.w52 === 1 && JSON.stringify(t1) === JSON.stringify(t2) && order === 'The Home · Stanley Park · Metro Vancouver · The Globe · Space';
+  results.push(['v5.1 save -> v5.2 world order (2 = Stanley Park, 3 = Metro Vancouver): each world keeps its own data and song, moved once, stable after reload, pickers in the new order', swap52, swap52 ? { t1, order } : { t1, t2, order }]);
+  await p.evaluate(() => HH.UI.main());
+
   // v5.1 Part 13: the Globe has no top or bottom edge. Hold the stick straight up from northern Canada: the hole goes
   // over the North Pole and comes down the far side at Russian longitudes, with no jump on the sphere or on screen.
   for (const [pole, lon0, lat0] of [['N', -100, 80], ['S', 30, -80]]) {
     const r = await p.evaluate(new Function('a', 'const [pole, lon0, lat0] = a; ' + STEP + `
       const { G, S } = HH; S.ch[4].u = 1; HH.startChapter(4, 'explore'); const C = G.C; G.paused = true;
+      G.exSpd = 0.5;   // v5.2: base speed doubled; the dial halves it back so each frame covers the v5.1 distance (the screen-kink metric is per frame: at double the per-frame step, plain perspective near the screen edge reads as a kink)
       HH.setHoleD(C.sizes[6]); const D = HH.holeD(); [G.x, G.y] = C.P(lon0, lat0); G.cam.x = G.x; G.cam.y = G.y; step(5);
       const up = pole === 'N' ? -120 : 120; G.joy = { x0: 600, y0: 500, x: 600, y: 500 + up };
       const sph = (x, y) => { const [lo, la] = C.ll(((x % C.W) + C.W) % C.W, y); const f = la * Math.PI / 180, l = lo * Math.PI / 180; return [Math.cos(f) * Math.cos(l), Math.cos(f) * Math.sin(l), Math.sin(f)]; };
@@ -313,7 +481,7 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
         if (![a, b, c].every(on)) continue; seen++; const sp = Math.hypot(c[0] - b[0], c[1] - b[1]), acc = Math.hypot(c[0] - 2 * b[0] + a[0], c[1] - 2 * b[1] + a[1]); kink = Math.max(kink, acc - 0.25 * sp); } };
       tr.forEach(check); const pSeen = seen; check(hole);
       const peak = pole === 'N' ? Math.max(...lats) : Math.min(...lats);
-      const yawHeld = G.camYaw; G.joy = null; G.vx = G.vy = 0; step(150); const yawAfter = G.camYaw;
+      const yawHeld = G.camYaw; G.joy = null; G.vx = G.vy = 0; step(150); const yawAfter = G.camYaw; G.exSpd = 1;
       const lonOk = Math.abs(((end[0] - (lon0 + 180)) % 360 + 540) % 360 - 180) < 0.2;
       const ok = G.poleN === 1 && stepOk && Math.abs(peak) > 89.9 && lonOk && Math.abs(end[1] - lat0) < 0.5 && pSeen > 0 && kink < 3 && Math.abs(Math.abs(yawHeld) - Math.PI) < 1e-6 && yawAfter === 0;
       return { ok, info: { pole, from: [lon0, lat0], end: end.map(v => +v.toFixed(3)), peakLat: +peak.toFixed(4), stepsKmAtFold: sF.map(v => +v.toFixed(3)), screenKinkPx: +kink.toFixed(2), probeFramesOnScreen: pSeen, yawHeld: +yawHeld.toFixed(3), yawAfterLift: yawAfter } };`), [pole, lon0, lat0]).catch(e => ({ ok: false, info: e.message }));

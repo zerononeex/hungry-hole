@@ -781,3 +781,175 @@ Space's ambient scatter was cut by half (spec addendum 13). The longer run was a
 | W3 Stanley Park | 8.5 | 0.13 0.24 0.62 3.99 6.07 7.17 7.97 8.41 8.48 8.54 |
 | W4 The Globe | 10.0 | 0.37 1.08 1.29 1.57 2.52 5.03 6.18 7.85 8.84 9.24 9.7 10 |
 | W5 Space | 8.0 | 0.11 0.35 0.39 0.48 0.85 4 6.7 7.43 8.01 |
+
+# v5.2 — the Globe becomes a school, plus the fix batch (spec v5.15 addenda 14–31)
+
+## P1–P2 Canada Place and the SeaBus
+- Metro Vancouver's Story run now starts at Canada Place. Exploration keeps its old start (the Kitsilano / False Creek side), because the addendum names Story.
+- The SeaBus is the game's own twin-hull catamaran. It runs Waterfront Station ↔ Lonsdale Quay and rests at each terminal.
+
+## P3 World order
+- The order is now 1 Home, 2 Stanley Park, 3 Metro Vancouver, 4 Globe, 5 Space.
+- Saves are moved once by `migrate52`, marked `w52`. Each world keeps its wallet, upgrades, eaten set, beat, I Spy and Educational progress, and its song: Home `ch1`, Metro Vancouver `ch2`, Stanley Park `ch3`, Space `ch4`, Globe `ch5`. No audio file or manifest changed.
+- `tests/behaviour.js` has a v5.1 → v5.2 migration test.
+
+## P4 Hunt targets never vanish
+- **Root cause:** `relocateTiles` re-dealt the tiles every 3 s whenever the hole was in another room or area, or more than 9 hole-widths from all of them. That is the owner's vanishing B-E-D tile.
+- Tiles are now moved only if they are off the map.
+- The self-heal revives a removed target in place.
+- Tiles are never placed under furniture.
+- A win popup never fires into a later run.
+
+## P5 Quest stack
+- The quest column is 268 px wide, with tighter rows and a 12 px text floor.
+- The I Spy, Educational and Exploration cards are slimmer too.
+
+## P6 Minimap
+- The corner minimap defaults to a 25% window that follows the hole. 25 / 50 / 100 is chosen on the big map.
+- The choice is kept in `S.settings.mini` inside the one save key. No new storage key was added.
+- The Globe's minimap stays the turning mini-globe, which is already centred on the hole.
+
+## P7 Speed ×2
+- `BASE_X = 2` doubles the base speed in every world. The pace table is below.
+- The pole-crossing test now drives with the Exploration dial at 0.5. That keeps each frame's step at the v5.1 distance, which the test's screen-kink metric is calibrated for. At ×2, the perspective acceleration near the screen edge alone went past the 25% tolerance. With instrumentation on, there was no fold discontinuity.
+
+## P12 Globe borders and labels
+- Labels are drawn in screen space. Text painted on the ground under 2 world units rounded away, and buildings covered it.
+- Tiers are set by hole diameter:
+
+  | Hole diameter | Labels shown |
+  | --- | --- |
+  | tiny (< 0.5 units) | capitals and countries |
+  | mid (< 100) | capitals and countries |
+  | giant | countries (thinned) and continents, no capitals |
+
+- **Density rule:** greedy by country interior size, with screen boxes and 2.6× the font size of air at the giant tier. Europe at max size shows 23 names; the test cap is 24, with no overlaps.
+- **Name points:** each name sits at the pole of inaccessibility, from a distance transform of the country raster.
+- **Missing polygons:** five sovereign states had no polygon in the 1:50m data (Vatican, Monaco, Nauru, Tuvalu, Maldives). They get small round outlines at their real spots.
+- **Border cells:** `ccAt` now asks the exact polygons on a border cell. Before, anti-aliased raster blends read as a third country (the Faroe Islands showed up in Czechia).
+
+## P13 Country readout
+- The yellow name at the bottom is the plain map name without "the".
+- A few names are shortened: "United States", "UK", "UAE", "DR Congo".
+- Nothing shows over open sea.
+
+## P14 Exploration speed
+- The ADJUST SPEED dial sits under ADJUST SIZE, with steps of 10 / 20 / 35 / 50 / 70 / 100%.
+- It is session-only (`G.exSpd`). It resets on reload and is not saved.
+
+## P15 UFOs out
+- **Finding:** the Globe never scattered the `ufo` type. What read as UFOs were the storm, big storm, hurricane and giant storm system models: stacked white rings round a dome look like a saucer.
+- They are replaced size for size by clouds, so the high tiers keep the same food:
+
+  | Cloud | Size |
+  | --- | --- |
+  | big cloud | 55 |
+  | cloud bank | 140 |
+  | giant cloud | 350 |
+  | sea of clouds | 900 |
+
+- Two real UFOs remain as a hidden treat (`ufo1` / `ufo2`, about 8 units, placed by the build's seeded rng).
+- Coins at tier 7 and up now spawn in every Globe zone at a 30% cell rate (`C.coinHi`), over ocean and land alike.
+
+## P16 Animals
+- `tools/bake-animals.py` and `tools/animal_families.py` produce `data/globe-animals.js`: 195 countries × 8, 735 species, 55 families, zero unmapped.
+- Species map to families by ordered regex rules with word boundaries. A stallion is not a lion, a Carpathian Brown Bear is not a carp, a peafowl is not an owl, a hedgehog is not a hog, and Dorcas is not an orca.
+- New shapes: ape, roo, koala, bat, monotreme.
+- **Sizing:** animals are sized relative to the hole when they spawn. The flagship animal is ×1.25 and has 3× the spawn weight.
+- **Streaming:** 40 are kept round the hole. Each stays inside its own country's land, shore, coastal sea (within roaming range of its spawn), or lakes and rivers, by habitat.
+- **When they show:** they are hidden at the giant tier (hole ≥ 100 units), where they would be sub-pixel. They are also off in co-op, because each iPad would roll its own.
+- They are eatable and never saved.
+
+## P17 Landmarks: the owner's roster
+- All 2,358 places in `world_195_countries_famous_landmarks.xlsx` (195 countries, 10-15 each) are geocoded by hand in `tools/landmarks/geo-*.txt` (spreadsheet order, one "lat lon" per place) and baked by `tools/bake-landmarks.py` into `data/globe-landmarks52.js`. The bake checks every point against the Globe's own 1:50m country polygons: 1,866 fall inside as given; 355 coastal or border places sit a hair outside the simplified outline and are stepped onto their own country's side; 118 water places (reefs, bays, lakes, island groups) stay in their sea; 19 islands and atolls too small for the map get small round island outlines in their country (Kiribati, Micronesia, Seychelles' Aldabra, San Andrés, Fernando de Noronha...). Anything more than 0.4 deg inside another country stops the bake. One listing is on the far side of a border in reality (Radom National Park, listed under South Sudan, lies just inside Sudan); it is shown on South Sudan's side of the border, since the owner's list is the roster.
+- Natural features (997: national parks, reefs, canyons, falls, lakes, mountains, deserts, beaches, caves...) are painted soft areas with their names (land ones clipped to land, water ones over the water), never point models. Built places (1,361) are landmark models in the game's own art (palace, church, mosque, temple, castle, fort, tower, bridge, statue, ruins...). City parks (Stanley Park, Central Park) are small areas; national parks and reserves are big ones.
+- The hand-made objective ladder (Mount Fuji, Tokyo Tower, Tokyo Skytree, Tower Bridge, the Pyramids, Niagara...) is kept: an owner entry that names one of those IS that landmark (same model, same objective size). The 360 old anonymous picks are gone: the owner's list replaces them.
+- No IP: the eight theme parks are "a theme park" (the game's fairytale castle park); brand and film names are plain words (a brewery museum, a rum distillery, a big seaside resort, a grand hotel, Phang Nga Bay, a batik workshop, a candle workshop).
+- Labels: area names show below the giant tier with the same density rule as country names; built landmarks keep their name plates.
+- Tests: `tests/globe-school.js` checks the whole roster is on the Globe (no missing place, no brand name), every built landmark and land area stands in its own country, and the spot-checks (Japan: Mount Fuji, Tokyo Tower, Tokyo Skytree; UK: Buckingham Palace, Tower Bridge; Canada: Stanley Park; Egypt: Pyramids of Giza) within 0.08 deg of the real place. `tests/data.js` counts the named areas as landmarks for its per-country minimums.
+- Found on the way: a v5.1 edit had put the back yard's two shrubs and the birdbath inside a code comment, so they had vanished from the Home (and I Spy's birdbath target with them). Restored.
+
+## P10 The front yard
+- Fence on the street side and both lot edges, in 1.2 m sections (22), with the garden gate standing open where the concrete front path meets the sidewalk. The gate is a thin open leaf beside the gap and never blocks.
+- Flowers along both sides of the path (26), a trampoline, four more bushes, a second tree out front (the apple tree out back is unchanged). The gnome and planter moved to make room.
+- `tests/reachability.js` now also floods from the sidewalk at the smallest size and requires the front door to be reached through the gate, with nothing standing on the path. Passes.
+
+## P11 Second Beach Pool and the fence rule
+- A white picket fence runs all the way round the pool, 4 m out from the water, in 2.4 m sections (one gap is the way in, on the side facing the picnic start; no section stands in water). Three slides sit on the deck between the water and the fence: the seal slide (a slide with a big grey seal at the top, an objective-ready keep object) and two water slides.
+- The fence rule: every fence is a chain of sections, each its own object eaten at its own size. That covers the new front fence, the pool fence, and the Home's back fence, which was a wall and is now sections (its open gate kept). Metro Vancouver's fences were already 2.4 m single sections. The deck railing is a railing, not a fence, and stays a wall.
+- Test (`behaviour.js`, "fences are chains of sections"): one section at a time goes, the rest stay; the whole front run can be eaten; the gate is open; the pool has 3 slides including the seal slide.
+- Found on the way, the same comment-swallow bug as the birdbath: a trailing comment had eaten code on the same line; fixed, and both cases are now one statement per line.
+
+## P18 Stanley Park's apron
+- Past Stanley Park's map edges the ground is now painted from Metro Vancouver's own baked map (same OpenStreetMap source), aligned by the two worlds' projections: English Bay and Burrard Inlet to the north and west (with the real North Shore beyond), the West End, downtown, Coal Harbour and False Creek to the south and east. The beige placeholder street grid is gone (kept only as a fallback if the Vancouver map data were missing). Scenery in the apron follows the same map: city buildings only on land, nothing on the water. Screenshots 53/54 refreshed.
+
+## P8 + P9 Real height
+- One mechanism for both: a world may give `hAt(x, y)`, its ground height. Everything is drawn relative to the ground under the hole, so the hole always sits at the centre and, as it climbs, the land below visibly falls away (and comes up to meet it going down). The ground is a grid, dense round the hole and coarse toward the horizon; its heights come from a height map of the painted region, read in the ground's vertex shader, with slope shading from the same sun as the models. Objects stand on the ground under them; things falling into the hole slide down from their height. Worlds without `hAt` (the Globe, Space) keep the two-triangle flat plane. Height is never an obstacle: movement and reachability are unchanged.
+- **P9 Home stairs.** The main floor and the deck stand 2.7 m above the lower floor and the yards. Each stair run is 12 real steps in the ground itself (treads and risers you can see, the risers shaded), with solid side walls the full height of the run. The hole and camera glide up the run (continuous), the steps pass under it. Stair fixtures are scenery: never eaten at any size. The lot stays flat. The floor switch at the middle of a run is unchanged; at that moment the other storey appears at its true height (above you going up, below you going down).
+- **P8 Hills.** Real ground height for Stanley Park (20 m grid; the park's high ground is about 80 m) and Metro Vancouver (200 m grid; Grouse about 1,100 m on this grid) from the public Terrain Tiles (Mapzen / AWS open data: SRTM, GMTED, NED and others), baked by `tools/bake-elevation.py` into `data/elevation.js` (670 KB). Each summit with enough prominence (10 m in the park, 100 m in Metro Vancouver) is a hill: Stanley Park 7, Metro Vancouver 301, named where a known peak is close (Mount Garibaldi, Whistler Mountain, Mount Strachan, Crown Mountain, Mount Fromme, Golden Ears, the Stawamus Chief, Burnaby Mountain...). A hill is a keep-object you roll over (never solid) until the hole is a fifth of the hill's full width (its summit dome); then it is eaten whole: the ground sinks to the hill's base as it falls, everything standing on it goes with it, and it stays flat (kept in the world's eaten set in story runs, restored on reload). The big North Shore mountains stay landscape at Metro Vancouver's largest size; the old cone-shaped mountain models are gone wherever the real ground now stands. The Home stays flat.
+- Tests (`behaviour.js`, "real height"): the stair run climbs 0 to 2.7 m with 12 tread levels, the hole really rises riding it, stair fixtures survive a 9 m hole, the lot is flat; Stanley Park's high ground is real, a hill rolls under a small hole, is eaten whole by a big one (ground at its base afterwards, all 78 things on it gone), and stays flat after a reload; Grouse stands over 600 m.
+- Perf: CPU per frame is unchanged (about 1–3 ms; the height map is rebuilt only with a ground repaint or while a hill sinks). Headless fps here (SwiftShader, no GPU) is 14–15 in the two hilly worlds against about 17 before, from the denser ground grid; the Globe is unchanged at about 12.
+
+## Found while testing (fixed)
+- **Globe soft-lock (from Part 17).** The step that keeps every landmark on its own side of a border moved the Lions Gate Bridge (it stands over the First Narrows) about 4 km north, outside the Vancouver zone ring of the Globe's 4th objective; the hole is held inside that ring, so Story stalled at objective 3/12 (the pace bot sat at size 4 for 40 minutes). The objective ladder's hand-placed landmarks are now never moved. `tests/data.js` gained a check for every world: each Story objective stands inside the zone ring of its own beat (it fails on the old code).
+- **A stale "last good spot" from another world.** Stanley Park's and Metro Vancouver's invisible border put the hole back on the last in-bounds spot, which was kept across worlds; switching world could throw the hole to the other world's coordinates (it is what blanked screenshots 53/54 into a plain green field). Cleared on every world load.
+- **The camera under the upper storey.** Past the middle of a stair run the floor flips and the upper storey is drawn at its true height, which was above a small hole's low camera (you saw the upstairs from underneath). While on the upper half of a run the camera now lifts to clear the storey and its furniture, and settles back at the top.
+
+## P7 pace: the owner's call
+Speed ×2 makes every Story run shorter. The owner chose (in this thread, 31 Oct) to keep ×2 and the new pace rather than slow growth or drop the speed change, so the 8–15 minute window is superseded for v5.2. For the record, the same build at ×1 lands Home 9.4, Stanley Park 8.3, Metro Vancouver 8.3, Space 8.3 minutes: the speed change is the whole difference.
+
+## P19 Co-op hardening
+Kakashi's runs went 18/19, 16/19 and 17/19. The same three failures showed up here before the fix: 17/19 and 18/19, sometimes 19/19.
+
+**Root cause 1 (the test harness, behind all three signatures).** `tests/coop.js` relays messages between the two pages, and it did so with one `page.evaluate` per message, chained in order. Each evaluate has to wait for the page's main thread. With SwiftShader drawing two 3D pages, that wait is often 50–300 ms, and messages flow at about 25 a second each way.
+- So the queue backed up. I instrumented it: messages waited 206 ms on average and up to 2.7 s, and up to 6.4 s on a loaded machine.
+- Meanwhile the tests read results after a fixed 0.6–1 s sleep, so they read stale positions, a bonus not yet arrived, and an answer not yet credited. This matches all three signatures, and it explains why the failures came and went with machine load.
+- **Fix:** the relay now delivers whatever has piled up in one evaluate, in order, which is how a data channel streams. The tests for those three now wait for the result with a deadline (3–4 s) instead of a fixed sleep.
+- After the fix, the wire waits about 11 ms on average, at most about 300 ms. The run prints these numbers at the end (`wire: … queue wait …`).
+
+**Root cause 2 (the game: partner position freshness).** The partner's hole eased toward its last streamed spot by a fixed fraction per frame: `k = dt × 12`, with `dt` capped at 0.05 s.
+- At a few frames a second, which is a slow iPad or a heavy scene, the partner trailed behind for seconds.
+- It now eases by wall time, `1 − e^(−12·t)`, on both the host and the guest, so it settles in about 0.3 s at any frame rate.
+
+**Root cause 3 (the game: Educational credits for the guest).** The guest's flood guard dropped any learning credit that arrived within 250 ms of the last one. Two right answers delivered together by a network burst counted once.
+- The guard is now "at most 4 credits in any second". Junk and flood messages are still dropped; the "wire is never trusted" test is unchanged and passes.
+
+**I Spy bonus timing:** no game defect was found. The bonus rides the next state message (every 100 ms). It was late only because of root cause 1.
+
+**Acceptance.** These are the actual runs:
+
+| Run | Conditions | Result | Wire wait (avg / max) |
+| --- | --- | --- | --- |
+| 1 | three runs back to back | 19/19 | 11 / 265 ms |
+| 2 | three runs back to back | 19/19 | 10 / 277 ms |
+| 3 | three runs back to back | 19/19 | 12 / 299 ms |
+| 4 | with the balance bot running alongside | 19/19 | 15 / 462 ms |
+
+## v5.2 results (tests at hand-off)
+| Suite | Result |
+| --- | --- |
+| `tests/data.js` | PASS ×5, no errors (new: every Story objective inside its own zone ring) |
+| `tests/behaviour.js` | 38/38 (new: v5.1 → v5.2 world order, targets never vanish, fences are chains of sections, real height) |
+| `tests/globe-school.js` (new) | 6/6: animals roster and spot-checks, animals in the world, landmark roster, landmarks in their countries, spot-checks |
+| `tests/coop.js` | 19/19 in five runs (three back to back, one with the pace bot running alongside, one in the final suite) |
+| `tests/reachability.js` | 100% in all five worlds; Home deck → backyard at the smallest size; front path sidewalk → gate → front door clear |
+| `tests/audio.js` | 9/9 (each world its own song in the new order) |
+| `tests/ui-flow.js` | clean, 0 console errors |
+| `tests/screens.js` | refreshed, 0 console errors. 53/54 now show the real surround; new 66–77 (stairs mid-climb, front yard, Second Beach Pool, a Stanley Park hill, North Shore mountains, Canada Place Story start, the SeaBus, Europe borders and names, Paris at capital size, East Africa areas, Australia's animals, Japan's landmarks) |
+| `tests/perf.js` | GPU-less headless (SwiftShader), exits non-zero as it always has here: Vancouver 14.9, Stanley Park 14.6, Globe 11.9 fps; CPU 1.4–2.7 ms a frame. v5.1 measured 18.6 / 22.8 / 14.6–16.2 on the same kind of machine: the denser ground grid for real height and the Globe's labels, areas and animals cost GPU fill here. The 50 fps target still needs a real iPad. |
+
+### Pace bot, v5.2 at speed ×2 (`node tests/balance-bot.js 1,2,3,4,5 40`, sim-minutes; kept by the owner's call, see P7)
+| World | Finish | Objectives eaten at (min) |
+| --- | --- | --- |
+| W1 The Home | 7.2 | 1.26 1.83 2.78 4.2 5.02 6.26 6.89 7.23 |
+| W2 Stanley Park | 4.5 | 0.08 0.15 0.46 2.2 3.24 3.82 4.2 4.44 4.48 4.52 |
+| W3 Metro Vancouver | 4.7 | 1.88 2.19 2.52 2.64 3.27 3.71 4.2 4.66 4.72 4.74 |
+| W4 The Globe | 5.1 (after the Lions Gate fix; before it, stuck at 3/12) | 0.19 0.5 0.6 0.73 1.21 2.53 3.13 3.98 4.48 4.66 4.89 5.08 |
+| W5 Space | 4.3 | 0.07 0.2 0.23 0.3 0.59 2.24 3.67 4 4.3 |
+
+At ×1 (same build, for comparison): Home 9.4, Stanley Park 8.3, Metro Vancouver 8.3, Space 8.3.
+
+### Not verified, said plainly
+- Co-op still has not been tried on two real iPads or the live PeerJS broker (unchanged from v5.1).
+- Frame rate on a real iPad: the headless numbers above have no GPU.
+- At Metro Vancouver's maximum size in the north-west corner the Coast Mountains rise steeply round the hole (screenshot 51); it is the real ground, but worth a look on the iPad.

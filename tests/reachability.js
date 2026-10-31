@@ -95,20 +95,29 @@ const { chromium } = require('playwright');
           const i = Math.floor(x / .2), j = Math.floor(y / .2); let ok = false; for (let u = -1; u <= 1 && !ok; u++) for (let v = -1; v <= 1 && !ok; v++) if (S.seen[S.id(i + u, j + v, 0)]) ok = true;
           if (ok) hit++; else if (miss2.length < 5) miss2.push([+x.toFixed(1), +y.toFixed(1)]);
         }
+        // v5.2 Part 10: the front path: from the sidewalk through the open gate to the front door at the smallest size, with
+        // nothing standing on the path (the fence, bushes, flowers and trampoline all keep off it)
+        const fr = rm('front'), wk = rm('walk'), F2 = flood(0.2, 3, (wk[1] + wk[3]) / 2, 0);
+        let door = false; for (let u = -1; u <= 1; u++) for (let v = 0; v <= 2; v++) if (F2.seen[F2.id(Math.floor(3 / .2) + u, Math.floor((fr[1] + .1) / .2) + v, 0)]) door = true;
+        const onPath = bxs.filter(([bx, by, hw, hd, yaw]) => { const ex = Math.abs(hw * Math.cos(yaw)) + Math.abs(hd * Math.sin(yaw)); return bx + ex > 2.6 && bx - ex < 3.4 && by > fr[1] && by < fr[3]; })
+          .map(b => (G.auth.find(o => o.x === b[0] && o.y === b[1]) || { k: '?' }).k);
+        if (!door) out.fails.push('front path: the sidewalk does not reach the front door through the gate at the smallest size');
+        if (onPath.length) out.fails.push('front path blocked by: ' + onPath.join(','));
+        out.front = door && !onPath.length ? 'sidewalk -> gate -> front door clear' : 'BLOCKED';
         solidOn = false; G.vis = vis0;
         // and the foot of the deck stairs is clear: no furniture on the run or within 1 m of its bottom end
         const ds = rm('dstair'), foot = [ds[0] - .3, ds[1] - 1, ds[2] + .3, ds[3]];
         const blockers = bxs.filter(([bx, by, hw, hd, yaw]) => { const ex = Math.abs(hw * Math.cos(yaw)) + Math.abs(hd * Math.sin(yaw)), ey = Math.abs(hw * Math.sin(yaw)) + Math.abs(hd * Math.cos(yaw));
           return bx + ex > foot[0] && bx - ex < foot[2] && by + ey > foot[1] && by - ey < foot[3]; }).map(b => (G.auth.find(o => o.x === b[0] && o.y === b[1]) || { k: '?' }).k);
         if (blockers.length) out.fails.push('deck stairs foot blocked by: ' + blockers.join(','));
-        out.deck = { holeD: +HH.holeD().toFixed(3), backyard: hit + '/' + tot + (blockers.length ? '' : ', stair foot clear') };
+        out.front = out.front; out.deck = { holeD: +HH.holeD().toFixed(3), backyard: hit + '/' + tot + (blockers.length ? '' : ', stair foot clear') };
         if (!tot || hit < tot) out.fails.push(`deck -> backyard at the smallest size: ${hit}/${tot} backyard spots reached, e.g. ${JSON.stringify(miss2)}`);
       }
       HH.setRingOff && HH.setRingOff(0);
       return out;
     }, n);
     ok = ok && !r.fails.length;
-    console.log(`W${r.n} ${r.name}: max hole ${r.max.holeD} cell ${r.max.cell} reachable ${r.max.reached}/${r.max.playable} (${r.max.pct}%)${r.rect ? ` rectangle ${r.rect.cells - r.rect.dead}/${r.rect.cells} playable` : ''}${r.deck ? ` deck->backyard at ${r.deck.holeD} m: ${r.deck.backyard}` : ''} ${r.fails.length ? 'FAIL\n   ' + r.fails.join('\n   ') : 'PASS'}`);
+    console.log(`W${r.n} ${r.name}: max hole ${r.max.holeD} cell ${r.max.cell} reachable ${r.max.reached}/${r.max.playable} (${r.max.pct}%)${r.rect ? ` rectangle ${r.rect.cells - r.rect.dead}/${r.rect.cells} playable` : ''}${r.deck ? ` deck->backyard at ${r.deck.holeD} m: ${r.deck.backyard}` : ''}${r.front ? `; front path: ${r.front}` : ''} ${r.fails.length ? 'FAIL\n   ' + r.fails.join('\n   ') : 'PASS'}`);
   }
   console.log('errors:', JSON.stringify(errs.slice(0, 5))); await b.close();
   process.exit(ok && !errs.length ? 0 : 1);

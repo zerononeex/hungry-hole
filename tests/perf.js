@@ -1,11 +1,11 @@
 // Perf probe (v5): average fps over 6 s in the heaviest spot of each big world at 1180x820, hole steered in a circle:
-// Vancouver downtown by Canada Place, Stanley Park's West End streets, and the Globe's Vancouver street start.
+// Vancouver downtown by Canada Place (W3), Stanley Park's West End streets (W2; v5.2 world order), and the Globe's Vancouver street start.
 // node tests/perf.js   (target >= 50 fps in headless Chromium; prints the numbers for DECISIONS.md)
 const { chromium } = require('playwright');
 const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
 const SPOTS = [
-  ['W2 Vancouver downtown', `const { G, S } = HH; S.ch[2].u = 1; HH.startChapter(2, 'explore'); const o = G.auth.find(o => o.id === 'canadaplace'); G.x = o.x; G.y = o.y + 120; HH.setHoleD(6);`],
-  ['W3 Stanley Park West End', `const { G, S } = HH; S.ch[3].u = 1; HH.startChapter(3, 'explore'); const p = G.C.P(-123.1395, 49.2885); G.x = p[0]; G.y = p[1]; HH.setHoleD(4);`],
+  ['W3 Vancouver downtown', `const { G, S } = HH; S.ch[3].u = 1; HH.startChapter(3, 'explore'); const o = G.auth.find(o => o.id === 'canadaplace'); G.x = o.x; G.y = o.y + 120; HH.setHoleD(6);`],
+  ['W2 Stanley Park West End', `const { G, S } = HH; S.ch[2].u = 1; HH.startChapter(2, 'explore'); const p = G.C.P(-123.1395, 49.2885); G.x = p[0]; G.y = p[1]; HH.setHoleD(4);`],
   ['W4 Globe street start', `const { G, S } = HH; S.ch[4].u = 1; HH.startChapter(4, 'explore'); G.x = G.C.start[0]; G.y = G.C.start[1]; HH.setHoleD(.05);`],
 ];
 (async () => {
