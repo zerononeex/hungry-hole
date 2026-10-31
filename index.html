@@ -317,7 +317,7 @@ const MT = {
   mailbox: [.5, 1.2], hydrant: [.4, .8], bin: [.6, 1.05], doghouse: [1, 1], bbq: [1.2, 1.1], person: [.5, 1.7], jogger: [.5, 1.7], kid: [.4, 1.2],
   stroller: [.9, 1], bench: [1.6, .8], picnic: [2, .8], fence: [2.4, 1.8], tent: [2.2, 1.3], umbrella: [2.4, 2.3], motorbike: [2.1, 1.1],
   shed: [3, 2.6], swingset: [3.5, 2.2], slide: [3.5, 2.2], trampoline: [3.6, .9], car: [4.4, 1.5], police: [4.8, 1.5], familycar: [5, 1.8],
-  fountain: [5, 2.5], yardtree: [6, 8], streettree: [6, 9], lamp: [.6, 6], pine: [5, 12], ambulance: [6, 2.7], van: [5.2, 2.2], truck: [7, 3], bus: [12, 3.2],
+  fountain: [5, 2.5], yardtree: [6, 8], streettree: [6, 9], lamp: [.6, 6], stopsign: [.75, 2.4], pine: [5, 12], ambulance: [6, 2.7], van: [5.2, 2.2], truck: [7, 3], bus: [12, 3.2],
   carousel: [10, 5], firetruck: [10, 3.2], house: [12, 8], house2: [12, 7], myhouse: [16, 8.5], bigtruck: [16, 4],
 };
 
@@ -343,6 +343,31 @@ function segDist(px, py, ax, ay, bx, by) {
 }
 function lineDist(px, py, p) { let m = 1e18; for (let i = 0; i < p.length - 2; i += 2) m = Math.min(m, segDist(px, py, p[i], p[i + 1], p[i + 2], p[i + 3])); return m; }
 const fmt = n => Math.floor(n).toLocaleString('en-US');
+/* v5 street furniture (A3): road crossings found from the road segments of one patch (X crossings and T junctions
+   between different roads), then four streetlights on the corners, and now and then a stop sign or a bin.
+   segs: [ax, ay, bx, by, width, roadId] in metres. Returns [{x, y, tx, ty, w}] with one road's direction. */
+function crossingsOf(segs) {
+  const out = [], near = (x, y) => out.some(c => Math.abs(c.x - x) < 9 && Math.abs(c.y - y) < 9);
+  for (let i = 0; i < segs.length; i++) {
+    const [ax, ay, bx, by, wa, la] = segs[i], ux = bx - ax, uy = by - ay, lu = Math.hypot(ux, uy) || 1;
+    for (let j = i + 1; j < segs.length; j++) {
+      const [cx, cy, dx2, dy2, wb, lb] = segs[j]; if (la === lb) continue;
+      const vx = dx2 - cx, vy = dy2 - cy, den = ux * vy - uy * vx;
+      let px = null, py;
+      if (Math.abs(den) > 1e-6) { const t = ((cx - ax) * vy - (cy - ay) * vx) / den, u = ((cx - ax) * uy - (cy - ay) * ux) / den; if (t >= -.02 && t <= 1.02 && u >= -.02 && u <= 1.02) { px = ax + ux * t; py = ay + uy * t; } }
+      if (px === null) for (const [ex, ey] of [[ax, ay], [bx, by]]) if (segDist(ex, ey, cx, cy, dx2, dy2) < 2) { px = ex; py = ey; break; }
+      if (px === null) for (const [ex, ey] of [[cx, cy], [dx2, dy2]]) if (segDist(ex, ey, ax, ay, bx, by) < 2) { px = ex; py = ey; break; }
+      if (px !== null && Math.abs(ux * vy - uy * vx) / (lu * (Math.hypot(vx, vy) || 1)) > .35 && !near(px, py)) out.push({ x: px, y: py, tx: ux / lu, ty: uy / lu, w: Math.max(wa, wb) });
+    }
+  }
+  return out;
+}
+function furnishCrossing(c, put) {
+  const o = c.w / 2 + 2.2, nx = -c.ty, ny = c.tx, h = hash4(Math.round(c.x), Math.round(c.y), 3, 7);
+  for (const [a, b] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) put('lamp', c.x + c.tx * o * a + nx * o * b, c.y + c.ty * o * a + ny * o * b, Math.atan2(c.tx, c.ty));
+  if (h % 3 === 0) put('stopsign', c.x + c.tx * (o + 1.5) + nx * (o - .6), c.y + c.ty * (o + 1.5) + ny * (o - .6), Math.atan2(c.tx, c.ty));
+  if (h % 5 === 1) put('bin', c.x - c.tx * (o + 2) - nx * (o - .3), c.y - c.ty * (o + 2) - ny * (o - .3), 0);
+}
 function fmtSize(m) {
   if (m < 1) return (m * 100).toFixed(m < 0.1 ? 1 : 0) + ' cm';
   if (m < 1000) return m.toFixed(m < 10 ? 1 : 0) + ' m';
@@ -541,7 +566,7 @@ const CH = [null];
     teapot: 'kitchen', jar: 'kitchen', can: 'kitchen,garage', grape: 'kitchen', bottle: 'kitchen,garage,bath', cupcake: 'kitchen,living',
     toothbrush: 'bath', toothpaste: 'bath', soap: 'bath,util', shampoo: 'bath', rduck: 'bath,nursery', sponge: 'bath,kitchen,util', towel: 'bath,util,gym', lipstick: 'bath,bed,closet',
     soldier: 'bed,living', toycar: 'bed,nursery,living', teddy: 'bed,nursery', dino: 'bed,living,nursery', robot: 'bed,living', yoyo: 'bed,living', book: 'bed,living,nursery,hall',
-    pencil: 'bed,living', eraser: 'bed', crayon: 'bed,nursery,living', shoe: 'hall,closet,bed', hat: 'closet,hall', backpack: 'bed,hall', glasses: 'bed,living', phone: 'bed,living,kitchen',
+    pencil: 'bed,living', eraser: 'bed', crayon: 'bed,nursery,living', shoe: 'hall,closet,bed', hat: 'closet,hall,bed', backpack: 'bed,hall', glasses: 'bed,living', phone: 'bed,living,kitchen',
     rattle: 'nursery', remote: 'living', pacifier: 'nursery', block: 'nursery,living', bottleb: 'nursery,kitchen', diaper: 'nursery',
     dumbbell: 'gym', bandw: 'gym', ball: 'gym,yard', bottlew: 'gym', battery: 'garage,util,living', screw: 'garage', toolbox: 'garage', bucket: 'garage,yard,util',
     basket: 'util,bed', leaf: 'yard,deck,alley,path,street', flower: 'yard', butterfly: 'yard,deck,path', ant: 'yard,path,deck,street,alley', pebble: 'yard,path,alley,street',
@@ -805,6 +830,15 @@ const CH = [null];
     }
     return M;
   }
+  const XC = new Map();                // road crossings per 250 m hash cell (found once, on first need)
+  function xingsNear(x, y) {
+    const m = map(), c = Math.floor(x / HC), q = Math.floor(y / HC), key = c * 4096 + q;
+    let a = XC.get(key); if (a) return a;
+    const h = m.hash.get(key) || [], segs = [];
+    for (let i = 0; i < h.length; i += 2) { const L = m.lines[h[i]]; if (L.k < 1 || L.k > 5) continue; const p = L.p, t = h[i + 1]; segs.push([p[t * 2], p[t * 2 + 1], p[t * 2 + 2], p[t * 2 + 3], L.w, h[i]]); }
+    a = crossingsOf(segs).filter(o => Math.floor(o.x / HC) === c && Math.floor(o.y / HC) === q);
+    XC.set(key, a); return a;
+  }
   const isWater = (x, y) => { const m = map(), i = Math.floor(x / m.WC), j = Math.floor(y / m.WC); return i >= 0 && j >= 0 && i < m.MW && j < m.MH ? m.wm[j * m.MW + i] === 1 : x < 0 && y > 60000; };
   const clsAt = (x, y) => { const m = map(), i = clamp(Math.floor(x / m.CELL), 0, m.GW - 1), j = clamp(Math.floor(y / m.CELL), 0, m.GH - 1); return m.grid[j * m.GW + i]; };
   /* nearest road segment within r metres: {d, fx, fy, nx, ny (unit normal toward the point), tx, ty, w, k} */
@@ -913,7 +947,7 @@ const CH = [null];
     types: {
       hat: ['top hat', 1], manhole: ['manhole cover', 1], drain: ['storm drain', 1], cup: ['coffee cup', 1], can: ['pop can', 1], newspaper: ['newspaper box', 1, { pl: 'newspaper boxes' }],
       leaf: ['maple leaf', 1, { pl: 'maple leaves' }], flower: ['tulip', 1], shell: ['shell', 1], mushroom: ['mushroom', 1], corn: ['corn plant', 1], log: ['driftwood log', 1],
-      cone: ['traffic cone', 1], hydrant: ['fire hydrant', 1], lamp: ['lamppost', 1], light: ['traffic light', 1], bench: ['bench', 1, { pl: 'benches' }],
+      cone: ['traffic cone', 1], hydrant: ['fire hydrant', 1], lamp: ['lamppost', 1], stopsign: ['stop sign', 1], light: ['traffic light', 1], bench: ['bench', 1, { pl: 'benches' }],
       squirrel: ['squirrel', 1, { mv: 'w' }], duck: ['duck', 1, { mv: 'w' }], chicken: ['chicken', 1, { mv: 'w' }], umbrella: ['beach umbrella', 1], luggage: ['suitcase', 1],
       person: ['person', 1, { mv: 'w', pl: 'people' }], jogger: ['jogger', 1, { mv: 'w' }], kid: ['kid', 1, { mv: 'w' }], bin: ['garbage bin', 1], bike: ['bike', 1],
       dog: ['dog', 1, { mv: 'w' }], raccoon: ['raccoon', 1, { mv: 'w' }], seal: ['seal', 1, { mv: 'w' }], kayak: ['kayak', 1, { mv: 'w' }], boulder: ['boulder', 1],
@@ -940,9 +974,9 @@ const CH = [null];
       bridge: ['bridge', 1], peak: ['mountain', 1], borderpost: ['border crossing', 1], obstower: ['observatory', 1], hospital: ['hospital', 1],
     },
     zones: {
-      core: { d: 1.3, bd: 3.2, at, t: 'streettree:5,manhole:4,drain,cup:2,can,newspaper:2,cone,person:6,bike,bin,lamp,light,car:4,taxi:2,bus:.6,van,shop:3,midrise:3,highrise:4,office:4,glass:3,hotel:1' },
-      com: { d: 1, bd: 3, at, t: 'streettree:6,manhole:3,drain:2,cup:2,can:2,newspaper,cone,person:4,bike,bin,hydrant:.5,lamp,light:.5,car:5,taxi,bus:.4,van,foodtruck:.3,shop:5,lowrise:2,midrise:2,supermarket:.6,gas:.6,hotel:.4,office:.6' },
-      res: { d: .9, bd: 4, at, t: 'manhole:3,drain:2,cup,can,leaf:3,flower:2,squirrel:2,raccoon:.5,person:3,jogger,kid,dog:2,bike,bin:2,hydrant:.5,lamp:.6,streettree:14,car:4,van,house:12,house2:8,townhouse:3,lowrise:2,shop,church:.3' },
+      core: { d: 1.3, bd: 3.2, at, t: 'streettree:5,manhole:4,drain,cup:2,can,newspaper:2,cone,person:6,bike,bin,light,car:4,taxi:2,bus:.6,van,shop:3,midrise:3,highrise:4,office:4,glass:3,hotel:1' },
+      com: { d: 1, bd: 3, at, t: 'streettree:6,manhole:3,drain:2,cup:2,can:2,newspaper,cone,person:4,bike,bin,hydrant:.5,light:.5,car:5,taxi,bus:.4,van,foodtruck:.3,shop:5,lowrise:2,midrise:2,supermarket:.6,gas:.6,hotel:.4,office:.6' },
+      res: { d: .9, bd: 4, at, t: 'manhole:3,drain:2,cup,can,leaf:3,flower:2,squirrel:2,raccoon:.5,person:3,jogger,kid,dog:2,bike,bin:2,hydrant:.5,streettree:14,car:4,van,house:12,house2:8,townhouse:3,lowrise:2,shop,church:.3' },
       campus: { d: 1, bd: 3, at, t: 'cup:2,leaf:2,person:5,bike:3,lamp,bin,streettree:9,lowrise:2,midrise:2,campusbld:4' },
       ind: { d: .8, bd: 3, at, t: 'streettree:2,drain:2,can,cone:3,person,bin,truck:3,van:2,car:2,bigtruck:2,warehouse:5,factory:3,tank:2,containers:2' },
       park: { d: .9, at, t: 'hat:.05,leaf:4,flower:3,mushroom,squirrel:3,duck,person:2,jogger:2,dog,bike,raccoon,bench:2,bigtree:9,streettree:4' },
@@ -959,6 +993,13 @@ const CH = [null];
       xind: { d: .4, deco: 1, coin: 0, at: atX, t: 'warehouse:3,factory:2,truck' },
     },
     zoneAt, outside, hud: snowHud,
+    // four streetlights on every street crossing, a stop sign or a bin now and then (v5 A3); streamed with the nearby cells
+    cellExtra(t, gx, gy, cs, out) {
+      const C = this; if (t !== C.T.lamp.t) return;
+      const x0 = gx * cs, y0 = gy * cs, x1 = x0 + cs, y1 = y0 + cs;
+      for (const c of xingsNear(x0, y0)) if (c.x >= x0 && c.x < x1 && c.y >= y0 && c.y < y1)
+        furnishCrossing(c, (k, x, y, yaw) => { const z = zoneAt(x, y); if (z && z !== 'water' && z !== 'beach') out.push(mkObj(C, k, x, y, { zn: z, yaw })); });
+    },
     collide() {
       if (inPlay(G.x, G.y)) { G.okX = G.x; G.okY = G.y; return; }
       if (G.okX === undefined) return;
@@ -1177,6 +1218,18 @@ const CH = [null];
   const clsAt = (x, y) => { const a = raster(), i = clamp(Math.floor(x / CELL), 0, RW - 1), j = clamp(Math.floor(y / CELL), 0, RH - 1); return a[j * RW + i]; };
   const zoneHere = (x, y) => ZN[clsAt(x, y)];
   const isWater = (x, y) => { const z = zoneHere(x, y); return z === 'water' || z === 'lake' || z === 'marina' || z === 'pool'; };
+  // road crossings (streets and main roads), found per 150 m patch on first need
+  const XS = 150, XSEG = new Map(), XC = new Map();
+  [['main', 14], ['street', 10]].forEach(([k, w], ri) => (D.roads[k] || []).forEach((l, li) => { for (let i = 0; i < l.length - 2; i += 2) {
+    const sg = [l[i], l[i + 1], l[i + 2], l[i + 3], w, ri * 1e5 + li];
+    for (let c = Math.floor(Math.min(sg[0], sg[2]) / XS); c <= Math.floor(Math.max(sg[0], sg[2]) / XS); c++) for (let q = Math.floor(Math.min(sg[1], sg[3]) / XS); q <= Math.floor(Math.max(sg[1], sg[3]) / XS); q++) {
+      const key = c * 4096 + q; let a = XSEG.get(key); if (!a) XSEG.set(key, a = []); a.push(sg); } } }));
+  function xingsNear(x, y) {
+    const c = Math.floor(x / XS), q = Math.floor(y / XS), key = c * 4096 + q;
+    let a = XC.get(key); if (a) return a;
+    a = crossingsOf(XSEG.get(key) || []).filter(o => Math.floor(o.x / XS) === c && Math.floor(o.y / XS) === q);
+    XC.set(key, a); return a;
+  }
   const [AQX, AQY] = P(-123.1310, 49.3003), AQW = 84, AQD = 56, AQT = 1.2, AQG = 10;
   const inAqua = (x, y) => Math.abs(x - AQX) < AQW / 2 && Math.abs(y - AQY) < AQD / 2;
   const zoneAt = (x, y) => x < 0 || y < 0 || x > W || y > H || !inPlay(x, y) ? null : inAqua(x, y) ? 'aqua' : zoneHere(x, y) === 'field' ? 'lawn' : zoneHere(x, y);
@@ -1266,7 +1319,7 @@ const CH = [null];
       minitrain: ['the miniature train', 1, { m: [14, 1.8] }],
       kayak: ['kayak', 1, { mv: 'w' }], canoe: ['canoe', 1], sailboat: ['sailboat', 1, { mv: 'w' }], speedboat: ['speedboat', 1, { mv: 'w' }], yacht: ['motor yacht', 1, { mv: 'w' }], seaplane: ['float plane', 1],
       // the park's furniture
-      bench: ['bench', 1, { pl: 'benches', m: [1.8, .9] }], lamp: ['lamppost', 1, { m: [.4, 4.5] }], bin: ['garbage bin', 1], hydrant: ['fire hydrant', 1], fountain2: ['drinking fountain', 1, { m: [.6, 1] }],
+      bench: ['bench', 1, { pl: 'benches', m: [1.8, .9] }], lamp: ['lamppost', 1, { m: [.4, 4.5] }], stopsign: ['stop sign', 1, { m: [.75, 2.4] }], bin: ['garbage bin', 1], hydrant: ['fire hydrant', 1], fountain2: ['drinking fountain', 1, { m: [.6, 1] }],
       picnic: ['picnic table', 1, { m: [2, .8] }], slide: ['slide', 1, { m: [2.5, 2] }], swings: ['swing set', 1, { m: [4, 2.4] }], toilets: ['washroom', 1, { m: [8, 3.5] }], art: ['statue', 1, { m: [1.5, 2.5] }],
       log: ['driftwood log', 1], boulder: ['boulder', 1], bush: ['bush', 1, { pl: 'bushes' }], streettree: ['street tree', 1, { tags: 'tree', sway: 1, m: [5, 9] }],
       bigtree: ['western red cedar', 1, { tags: 'tree', m: [9, 40] }], pine: ['Douglas fir', 1, { tags: 'tree', m: [6, 30] }], oak: ['maple tree', 1, { tags: 'tree', sway: 1, m: [8, 14] }],
@@ -1303,6 +1356,13 @@ const CH = [null];
       xres: { d: .4, deco: 1, coin: 0, at: atX, t: 'streettree:3,car:2,person:2' }, xforest: { d: .4, deco: 1, coin: 0, at: atX, t: 'bigtree:6,pine:4' }, xlawn: { d: .3, deco: 1, coin: 0, at: atX, t: 'oak:2,bush,person' },
     },
     zoneAt, outside,
+    // four streetlights on every street crossing, a stop sign or a bin now and then (v5 A3); streamed with the nearby cells
+    cellExtra(t, gx, gy, cs, out) {
+      const C = this; if (t !== C.T.lamp.t) return;
+      const x0 = gx * cs, y0 = gy * cs, x1 = x0 + cs, y1 = y0 + cs;
+      for (const c of xingsNear(x0, y0)) if (c.x >= x0 && c.x < x1 && c.y >= y0 && c.y < y1)
+        furnishCrossing(c, (k, x, y, yaw) => { const z = zoneAt(x, y); if (z && !isWater(x, y)) out.push(mkObj(C, k, x, y, { zn: z, yaw })); });
+    },
     collide(r) {
       if (!aqOpen()) for (const w of AQWALLS) pushRect(r, w);       // the Aquarium's walls are absolute until it fits
       if (inPlay(G.x, G.y)) { G.okX = G.x; G.okY = G.y; return; }
@@ -1326,7 +1386,7 @@ const CH = [null];
       for (let i = 0; i < 14; i++) { const a = rng() * 6.28, r = 1.4 + rng() * 2.5; add(rng() < .5 ? 'ant' : rng() < .5 ? 'seed' : 'berry', bx + Math.cos(a) * r, by + Math.sin(a) * r, { yaw: rng() * 6 }); }
       // the real benches, lamps, bins, fountains, washrooms, artworks and trees
       each('bench', (x, y) => inside(x, y) && add('bench', x, y, { yaw: rng() * 6.28 }));
-      each('lamp', (x, y) => inside(x, y) && add('lamp', x, y, {}));
+      each('lamp', (x, y) => inside(x, y) && !xingsNear(x, y).some(c => Math.hypot(c.x - x, c.y - y) < 16) && add('lamp', x, y, {}));   // (crossings get their own four)
       each('bin', (x, y) => inside(x, y) && add('bin', x, y, {}));
       each('hydrant', (x, y) => inside(x, y) && add('hydrant', x, y, {}));
       each('fountain', (x, y) => inside(x, y) && add('fountain2', x, y, {}));
@@ -2431,6 +2491,7 @@ function genCell(t, cx, cy) {
     if (C.objInit) C.objInit(ob);
     out.push(ob);
   }
+  if (C.cellExtra) C.cellExtra(t, gx, gy, cs, out);                // street furniture on the road crossings (v5)
   const rc = rng();
   if (rc < 0.3) {
     const x = (gx + rng()) * cs, y = (gy + rng()) * cs, z = zoneOf(C, x, y);
@@ -3231,6 +3292,7 @@ const MODEL = (() => {
     counter: p => [bx(1, 1.3, 2.4, 0, .65, 0, p.a || '#dcd6c8'), bx(1.1, .1, 2.5, 0, 1.35, 0, p.b || '#f0ebe0')],
     piano: p => [bx(1, 1.5, 2.4, 0, .9, 0, '#141414'), bx(.5, .1, 2.2, .7, 1.05, 0, '#fff'), ...legs4(1, 2.4, .5, '#141414')],
     door: p => [bx(.15, 2, 1, 0, 1, 0, p.a || '#8a5a32'), sp(.12, .12, .12, .12, 1, .35, GOLD)],
+    stopsign: p => [cy(.08, 2.1, .08, 0, 1.05, 0, '#9e9e9e'), cy(.9, .08, .9, 0, 2.1, 0, '#d32f2f', { seg: 8, rx: 1.5708 }), cy(.75, .085, .75, 0, 2.1, 0, '#fafafa', { seg: 8, rx: 1.5708 }), cy(.68, .09, .68, 0, 2.1, 0, '#d32f2f', { seg: 8, rx: 1.5708 })],
     lamppost: p => [cy(.25, 4, .25, 0, 2, 0, p.a || '#2d3436'), bx(.9, .25, .5, 0, 4.1, .2, p.a || '#2d3436'), sp(.4, .3, .4, 0, 3.9, .3, '#ffe066'), cy(.6, .2, .6, 0, .1, 0, p.a || '#2d3436')],
     /* ---- vehicles ---- */
     car: p => { const L = p.d || 2.2, a = p.a; return [bx(1, .38, L, 0, .36, 0, a), bx(.88, .34, L * .5, 0, .72, -L * .05, p.b || WIN), bx(.9, .06, L * .48, 0, .91, -L * .05, a), ...wheels(1, -L * .32, L * .32, .36), ...(p.top ? [bx(.4, .16, .28, 0, 1, -L * .05, p.top)] : [])]; },
@@ -3685,7 +3747,7 @@ const MODEL = (() => {
     house: ['house', { v: [{ a: '#f4e1c1', b: '#c0392b' }, { a: '#cfe3f0', b: '#455a64' }, { a: '#f8d7a8', b: '#6d4c41' }] }], house2: ['house', { d: 1.6, v: [{ a: '#e3f0d0', b: '#2e7d32' }, { a: '#f6e7a1', b: '#8d6e63' }] }],
     // Ch3 metro vancouver
     manhole: ['disc', { a: '#5b5f66', b: '#45484e', h: .06 }], drain: ['slab', { a: '#44474d', b: '#1d1f22', h: .06, d: 1.3 }], cup: ['can', { a: '#fafafa', b: '#e53935', h: 1.3, c: '#fff' }], can: ['can', { a: '#e53935', b: '#fafafa', h: 1.5 }],
-    shell: ['shell', {}], corn: ['corn', {}], newspaper: ['slab', { a: '#eeeeee', b: '#9e9e9e', h: .12, d: 1.4 }], cone: ['cone', {}], hydrant: ['hydrant', {}], lamp: ['lamppost', {}], light: ['trafficlight', {}],
+    shell: ['shell', {}], corn: ['corn', {}], newspaper: ['slab', { a: '#eeeeee', b: '#9e9e9e', h: .12, d: 1.4 }], cone: ['cone', {}], hydrant: ['hydrant', {}], lamp: ['lamppost', {}], stopsign: ['stopsign', {}], light: ['trafficlight', {}],
     squirrel: ['quad', { a: '#a0622a', d: 1.2, lh: .3, ears: 1 }], chicken: ['bird', { a: '#fafafa', head: '#fafafa', beak: '#fdd835' }], luggage: ['luggage', { v: [{ a: '#2d6a9f' }, { a: '#c0392b' }] }], raccoon: ['quad', { a: '#7d7d7d', head: '#555', d: 1.4, lh: .35, ears: 1 }],
     seal: ['fish', { a: '#6d6d6d', d: 2.2, h: .8 }], kayak: ['canoe', { a: '#fdd835' }], sheep: ['quad', { a: '#f4f4f4', head: '#333', d: 1.5 }], pig: ['quad', { a: '#f8bbd0', d: 1.6, lh: .4 }], goat: ['quad', { a: '#e0d6c8', horn: '#999', d: 1.5 }],
     taxi: ['car', { a: '#fbc02d', top: '#222' }], skytrain: ['train', { a: '#f4f4f4', b: '#2d7dd2', d: 5 }], cow: ['quad', { a: '#fafafa', b: '#222', spots: 1, horn: '#ddd', d: 2 }], horse: ['quad', { a: '#8d5a3a', d: 2, lh: .9, neck: .4, mane: '#3a2a1a' }],

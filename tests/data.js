@@ -69,6 +69,25 @@ const { chromium } = require('playwright');
         q[0].tgt = 1; if (!HH.labelOn(q[0])) fails.push('a targeted Ch3 POI shows no label'); q[0].tgt = 0;
         if (auth.some(o => /langley/i.test(o.label || '') || /langley/i.test(o.nm || ''))) fails.push('Langley is out of bounds but appears');
       }
+      // v5 placement constitution (A3): the Home's type -> room whitelist holds for every zone list and every placed thing
+      if (C.allow) {
+        for (const [z, Z] of Object.entries(C.Z)) for (const L of Z.t) if (L) for (const [k] of (L.items || L)) if (!C.okIn(k, z)) fails.push(`whitelist: ${k} is listed in ${z} (${C.cat[z]})`);
+        for (const o of auth) { if (o.k === 'coin' || o.path) continue; const r = C.roomAt(o.x, o.y, o.fl || 0); if (r && r[2] !== -1 && !C.okIn(o.k, r[0])) fails.push(`whitelist: ${o.id || o.k} placed in ${r[0]}`); }
+      }
+      // v5 Globe: cars park on the street grid, every country on the map has a landmark or capital, theme parks carry no names
+      if (C.key === 'globe') {
+        let bad = 0, cars = 0; const [sx, sy] = C.start;
+        for (let t = 1; t <= 2; t++) { const cs = C.LC[t]; for (let i = -12; i <= 12; i++) for (let j = -12; j <= 12; j++) for (const o of HH.genCell(t, Math.floor(sx / cs) + i, Math.floor(sy / cs) + j)) {
+          if (!['car', 'bus', 'truck'].includes(o.k) || o.zn !== 'city') continue; cars++;
+          const dx = Math.abs(o.x - Math.round(o.x / .3) * .3), dy = Math.abs(o.y - Math.round(o.y / .3) * .3); if (Math.min(dx, dy) > .02) bad++;
+        } }
+        if (!cars || bad) fails.push(`Globe: ${bad}/${cars} town vehicles off the street`);
+        const lm = auth.filter(o => o.keep && o.cc && o.T.tags.includes('landmark')), per = {}; for (const o of lm) per[o.cc] = (per[o.cc] || 0) + 1;
+        for (const cc of ['CN', 'RU', 'CA', 'US']) if ((per[cc] || 0) < 10) fails.push(`Globe: ${cc} has only ${per[cc] || 0} landmarks (want ~10)`);
+        const bigC = ['IN', 'BR', 'AU', 'JP', 'FR', 'IT', 'GB', 'DE', 'ES', 'MX', 'EG', 'TR', 'AR', 'ZA', 'ID'].filter(cc => (per[cc] || 0) < 4); if (bigC.length) fails.push('Globe: big countries under 4 landmarks: ' + bigC.join(' '));
+        if (Object.keys(per).length < 150) fails.push('Globe: only ' + Object.keys(per).length + ' countries have a landmark');
+        if (lm.some(o => o.k === 'lm_themepark' && o.label !== 'a theme park')) fails.push('Globe: a theme park is named');
+      }
       // v3: every type resolves to a 3D recipe with a footprint (w x d) and a real height
       let models = 0;
       for (const k of Object.keys(C.T)) {
