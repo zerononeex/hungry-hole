@@ -733,3 +733,5 @@ This addendum supersedes v2/v3/v3.1 wherever they conflict. Everything below is 
 (4) **THE HOUSE IS ALIVE** (his examples): kettle steaming on the stove, TV on, a toy car circling, a toy train running, the nursery mobile turning, a Roomba roaming, a hair dryer on. Room programme: the plan's rooms (it does have two living rooms and two kitchens — confirmed) with two conversions — one bedroom is a NURSERY, one room is a GYM.
 (5) **COLLISION FOLLOWS REAL OPEN SPACE** (refines v4.2's blanket no-under rule): an object's footprint is its actual contact points; where a model has genuine open clearance (between chair/table legs), the hole may slide through the gap; where the body reaches the ground, it's solid until eatable. Walls stay absolute.
 (6) **THE FAR VIEW:** at big zooms the lot sits in a living backdrop — mountains, blue sky, drifting clouds — scenery you can see but never enter ("you don't clip into the air").
+
+**v5.5 addendum (owner, Metro Vancouver): TREES ON SIDEWALKS PRETTY MUCH EVERYWHERE** — the v5.1 street-tree rule, strengthened: tree-lined sidewalks are the citywide default in Ch3, not a garnish on a few streets.
