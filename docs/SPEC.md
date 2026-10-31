@@ -592,3 +592,57 @@ to a stop. Where you touched must not matter — only the drag vector does. Touc
 start on DOM buttons/menus never spawn it. Screen-up must move the hole straight up the
 screen at the same visual speed as sideways (tilt-compensated). One control scheme only:
 the old move-to-point behaviour is deleted, not kept as an option.
+
+# SPEC v4 ADDENDUM — OWNER FEEDBACK BATCH (22 items, 2026-10-30)
+
+This addendum supersedes v2/v3/v3.1 wherever they conflict. Everything below is an owner ruling from the v3 playtest unless marked as a Kakashi judgment call (those are flagged in DECISIONS.md at build time if the build proves one unworkable — never silently changed).
+
+## A. Controls & flow
+1. **Floating joystick** — implement the v3.1 controls note in full (it is part of this build; the separate v3.1 prompt is superseded).
+2. **No zoom-out transitions anywhere** — chapter end OR chapter entry. Chapter complete → celebration card → **MAIN MENU**. Entering a chapter starts directly in the world. (The in-game camera pull-back as the hole grows is NOT a transition and stays.)
+3. **Upgrades mid-run** — an UPGRADES button on the in-game HUD (the main-menu one stays). Opening it pauses the run; closing returns to the exact run state.
+4. **Quest Board** — solid OPAQUE panel (like the Upgrades screen), in-game HUD hidden while it is open, compact grid: all 40 quests visible, tight rows and gaps.
+
+## B. Challenge & progression
+5. **Chapter gate = REACH THE CHAPTER'S TARGET SIZE** (its final size tier). Reaching it completes the chapter and unlocks the next; celebration → main menu (A2).
+6. **The 3-item checklist no longer gates anything.** It stays as an optional bonus layer (coins + completion marks). Passport stamps (Ch5) stay as collectibles. Tiny Quests stay 40 per chapter — optional coin income.
+7. **Slower growth, real challenge.** v3's growth need (×0.20 of v2) was too fast — the owner balloons in size and upgrades never matter. Retune so a chapter's size journey takes a kid roughly **8–15 minutes of honest play** (balance-bot time-to-target-size reported per chapter; sanity window, tune until inside it). NO fail states anywhere (standing rule): challenge comes from journey length and scarcer food, never punishment.
+8. **Upgrades must matter.** Strengthen effects so a maxed upgrade is unmistakable (esp. Growth, Speed, Magnet Aura, Vacuum Reach). Coin income drops with the density cut (C11) — rebalance prices so a chapter's upgrades are earnable across its full journey + quests, not in the first minute.
+
+## C. World generation — scale, placement, density (ALL chapters)
+9. **Real relative scale** — one metre table for the whole game (per-type real heights/footprints): a person ≈1.7 m tall, a street tree 6–12 m, a car ≈4.4 m long. A person is never bigger than a tree.
+10. **Logical placement, never uniform random scatter** — cars on roads, people on sidewalks/paths, trees lining sidewalks and streets, about one fire hydrant per two blocks, room-appropriate contents indoors (the toaster and the fridge are in the kitchen), biome-appropriate clusters outdoors.
+11. **Density cut** — loose filler scatter reduced by roughly two-thirds to three-quarters vs v3, in every chapter. Placed/authored items carry the world. Coin scatter is reduced with it (see B8).
+
+## D. Map edges
+12. Past every playable boundary the **same world continues visually** — desert stays desert south of the desert; outside the house you see its exterior, yard and street. You just can't go there. **No "edge of the map" messages.** A faint transparent fence is allowed where a boundary would otherwise be invisible — subtle, builder's call per chapter.
+
+## E. Chapter changes
+13. **Ch1 THE HOUSE — one floor, TWENTY rooms.** Stairs and the multi-floor layout are GONE. 20 distinct named rooms, each with room-appropriate contents (C10). The back door still leads to the family's backyard (chapter flavour); completion is by size (B5).
+14. **Ch2 — FIVE BY FIVE blocks** (25 blocks). Houses as placed rows along streets (fewer per block than v2 — density rule C11), every backyard enterable, the park stays. The hero house's own backyard is BIGGER than in v3, fenced on its property lines (fences are scenery, eatable at size, as before).
+15. **Ch3 METRO VANCOUVER — new boundaries** (supersede v2/v3 geography): SOUTH stops at the border — Richmond, YVR, Delta, Surrey, White Rock; nothing south of it. All of Vancouver incl. Downtown + Stanley Park. North Shore: West Van, North Van, Grouse Mountain, **Cypress Mountain (new)**. NORTH up the Sea-to-Sky through Squamish to **Whistler (northern stop)**. EAST: Burnaby + SFU, New Westminster, Port Moody, Coquitlam, Port Coquitlam, **Golden Ears Bridge (new)**, **Pitt Meadows = far east. LANGLEY IS OUT.** Highway 1 + the SkyTrain lines stay. Real names + roughly real relative positions (standing rule). The checklist (10 manholes · airplane at YVR · THE White Rock) is unchanged as a bonus layer.
+16. **Ch4 THE WILDERNESS — one map, a biome journey:** FOREST → GREENLANDS → DESERT → OCEAN → ANTARCTIC ICE. Campers, RVs, igloos (ice zone), many animal types per biome, ocean animals in the water. Start **ant-scale** — ants and tiny insects are the first foods. The dam stays as a landmark on a river in the green stretch; whales stay in the ocean.
+17. **Ch5 WORLD TOUR — the globe stays** (wrap-around world); keep and polish the mini-globe tracker.
+18. **Ch6 SPACE — add the ISS and a Mars rover** as real items (real human space stuff belongs to the real solar system). Ch7's fictional pools must NOT use them.
+
+## F. Doors & reachability (owner-found bugs)
+19. **Doors obey the fit rule.** A door is eatable only when the hole genuinely fits it — the same fit/wobble rules as every object, no support-loss shortcut. A tiny hole still slides UNDER a closed door (standing rule). Between under-gap size and door-fit size the door blocks — therefore every room/area must contain enough food to grow to its exit's requirement. Encode as data tests: per-room growth sufficiency + full-map reachability at max size, every chapter.
+20. **Reachability audit.** In v3 the owner could not reach the left part of the Ch1 map at max size. An automated reachability test across every chapter's layout at max hole size must pass; fix whatever it finds.
+
+## G. Education layer fix
+21. **Find-the-answer: the correct tile looks IDENTICAL to the decoys** — no glow or highlight on the right answer. Wrong picks keep shake + speak (never punitive). (Sequence hunts keep their next-tile glow — a deliberate scaffold, unchanged.)
+
+## H. New modes — the menu offers STORY / I SPY / EDUCATIONAL
+22. **I SPY** — pick any chapter unlocked in Story. Fresh run at starting size; the chapter's upgrades apply. **Five targets per run**, drawn from the chapter's I Spy pool and PLACED in the world (special spawns allowed and expected: a DINOSAUR in Ch4, a HAT placeable in any chapter, Ch3 targets from real landmarks/neighbourhoods — e.g. Chinatown — plus everyday items). Target cards (picture + name, spoken aloud) tick off as eaten; a too-big target must be grown into. All five → win card + a coin bonus into that chapter's wallet. Replay re-rolls five new targets. Targets must be reachable and eatable at the chapter's max size (data test).
+23. **EDUCATIONAL** — ALL chapters unlocked always; upgrades apply; fresh run at starting size. Curriculum target sets per chapter: Ch5 GEOGRAPHY ("find France" — completed by eating the named country's landmark/flag object; "I spy the Egyptian pyramids"); Ch1 HOUSE KNOWLEDGE (fetch lists of three — "a toaster, a fridge, and a bunk bed"); Ch6 PLANETS ("absorb Jupiter") + the ISS/rover; Ch2 FETCH + COLOURS ("get the YELLOW fire extinguisher" — recoloured variants spawn for the task). **MATH RULE: number/answer targets only ever spawn inside the player's current district/biome — never across the map.** HELP: quest menu → "Help me find it" → a persistent arrow at the screen edge points to the current target UNTIL it is eaten (owner's call: the arrow never fades). Targets are spoken aloud (existing speech). Completing a set → celebration + the next set is offered.
+
+## I. Upgrades screen art
+24. **The 10 upgrade icons become 3D** — small low-poly models from the same recipe system and materials as the game world (bolt, expanding arrows, star, coin, magnet, funnel, clover + coins, clipboard, eye, flag), rendered ONCE to textures at load (performance) and shown in the cards. The flat SVG icons are deleted.
+
+## J. Audio — STEP 0 of the build (the owner generates the tracks himself)
+25. **Before any game code**: write ALL music + needed-SFX generation prompts to `docs/AUDIO_PROMPTS.md` AND print them in the session output. Music: Pixar-like, instrumental, NO vocals/lyrics, seamless loops, ~2–3 minutes each — a menu theme (warm, whimsical, upbeat) + one per chapter: Ch1 homey/cosy, Ch2 sunny suburban cheer, Ch3 bright city adventure, Ch4 soft peaceful nature, Ch5 globe-trotting adventure, Ch6 space (long strings, slow wonder), Ch7 grand cosmic awe (kid-friendly). Each prompt carries: generator-ready style text, instruments, tempo/energy, the loop instruction, and negatives (no vocals, no sudden loud hits). SFX prompts ONLY for new sounds the new features need (the owner approved the existing synth SFX): I Spy target-found fanfare, I Spy win jingle, Educational correct chime, help-arrow ping, target-size-reached celebration.
+26. **Wiring**: the game loads `audio/menu.mp3`, `audio/ch1.mp3` … `audio/ch7.mp3` (plus the named SFX files) IF PRESENT and loops them per screen/chapter; with files absent the game runs silent-but-complete, no errors. Add a MUSIC on/off toggle in Settings (the existing sound toggle stays for SFX). Do NOT generate audio files yourself. The hand-off lists which audio files are still missing.
+
+## K. Saves & tests
+27. **v3 (and v2) saves MUST load**: wallets, upgrade levels, quest boards and eaten landmarks persist; a chapter completed under the old checklist rule stays completed/unlocked. New mode data lives in the same save. Key stays `hungry-hole-data-v1` — NEVER rename it; never read/write any other app's keys.
+28. **Tests**: data (every type has a model + plausible real scale per C9; I Spy/Educational pools valid per chapter; per-room growth sufficiency per F19), behaviour (joystick, door rule incl. under-gap, size-gate unlock + menu return, HUD upgrades pause/resume, I Spy lifecycle incl. re-roll, Educational help arrow + local-math rule, save migration from v3 and v2 shapes), pace REPORT (bot time-to-target-size per chapter vs the B7 window), reachability (F20), ui-flow/screens with zero console errors, screenshots per chapter + per mode.
