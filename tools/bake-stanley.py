@@ -74,7 +74,7 @@ def inbox(g):
 D = {'proj': [LON0, LAT0, KX, KY], 'W': W, 'H': H}
 
 # ---- water and land cover ----
-water, lakes = [], []
+water, lakes, pools = [], [], []
 for r in rows('water'):
     g = shapely.from_wkb(r['geometry'])
     if not inbox(g) or g.geom_type not in ('Polygon', 'MultiPolygon'):
@@ -84,9 +84,10 @@ for r in rows('water'):
     elif r['subtype'] in ('lake', 'pond') or r['class'] in ('lagoon', 'reflecting_pool'):
         lakes.append(g)
     elif r['class'] == 'swimming_pool':
-        lakes.append(g)
+        pools.append(g)
 D['water'] = enc_polys([unary_union(water)], 2)
 D['lakes'] = enc_polys(lakes, 1)
+D['pools'] = enc_polys(pools, .5, 2)
 cover = {'forest': [], 'beach': [], 'grass': [], 'rock': []}
 trees = []
 for r in rows('land'):

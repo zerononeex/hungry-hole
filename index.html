@@ -182,6 +182,7 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
 </div>
 <script src="three.min.js"></script>
 <script src="data/ch3-osm.js"></script>
+<script src="data/stanley.js"></script>
 <script src="audio/manifest.js"></script>
 <script>
 'use strict';
@@ -895,10 +896,10 @@ const CH = [null];
   }
   CH.push({
     n: 2, key: 'van', mus: 'ch3.mp3', name: 'Metro Vancouver', short: 'Vancouver', c1: '#2d9cdb', c2: '#145a86', bgc: '#cfd8b8', rim: '#6ad1ff', metric: 1,
-    W, H, start: P(-123.1185, 49.2835), cost: 1.8, need: 280, pv: 0.6, view: 13, agridSize: 900, bld: BLD, tries: t => t >= 5 ? 16 : 4,
+    W, H, start: P(-123.1185, 49.2835), cost: 1.8, need: 25, needP: 1.6, xpk: 3, spd: 3.6, pv: 0.6, view: 13, agridSize: 900, bld: BLD, tries: t => t >= 5 ? 16 : 4,
     fill: .3, fillKeep: new Set(['streettree', 'bigtree', ...BLD]),           // v5 density: filler cut 70%, trees and streets of buildings stay
-    // the objective ladder (story): Gastown → Stanley Park → Chinatown → the North Shore → Richmond → the whole region
-    beats: ['steamclock', 'mermaid', 'chinagate', 'harbourctr', 'grouse', 'scienceworld', 'cannery', 'aquarium', 'bcplace', 'canadaplace'],
+    // the objective ladder (story): Gastown → Chinatown → Coal Harbour → the North Shore → Richmond → the whole region
+    beats: ['steamclock', 'chinagate', 'cauldron', 'harbourctr', 'grouse', 'scienceworld', 'cannery', 'aquarium', 'bcplace', 'canadaplace'],
     rings: (() => { const r = (a, b, c, d) => [...P(a, b), ...P(c, d)], dt = r(-123.165, 49.318, -123.085, 49.268), ns = r(-123.19, 49.40, -123.0, 49.245), rm = r(-123.275, 49.40, -122.9, 49.10);
       return [dt, dt, ns, ns, ns, ns, rm, rm, null, null]; })(),
     sizes: [0, 1.5, 2.5, 4.5, 8, 14, 25, 45, 80, 140, 250, 450],
@@ -1132,249 +1133,507 @@ const CH = [null];
   });
 })();
 
-/* ---------- WORLD 3: STANLEY PARK (placeholder until built) ---------- */
-/*@STANLEY@*/
-/* ---------- CHAPTER 4: THE WILDERNESS — one journey, true scale: FOREST → GREENLANDS → DESERT → OCEAN → ANTARCTIC ICE ----------
-   You start ant-sized at a forest campsite (1 unit = 1 metre); water is scenery, never food. */
+/* ---------- WORLD 3: STANLEY PARK — the real park from OpenStreetMap (baked into data/stanley.js), true scale ----------
+   Inside the red line from the owner's boundary map: the whole park, a ring of water around it, the south half of the
+   Lions Gate Bridge, Coal Harbour to the gas station, and the West End strip west of Cardero Street. Past the line the
+   city, the North Shore and the water carry on as scenery behind invisible barriers. You start ant-sized on a picnic
+   blanket on Ceperley Meadow. Water is never food; totem poles are scenery. Map data (c) OpenStreetMap contributors
+   (ODbL), via Overture Maps. */
 (() => {
-  const W = 26000, H = 7000;
-  const wob = (y, a) => Math.sin(y / 700 + a) * 180 + Math.sin(y / 230 + a * 2) * 50;
-  const EDGE = [3500, 9000, 14000, 14600, 20500, 21300];              // forest | meadow | desert | beach | ocean | ice water | ice
-  const RIVER = [6400, -200, 6550, 900, 6300, 1800, 6500, 2400, 6700, 3300, 6450, 4300, 6600, 5300, 6350, 6200, 6500, 7200];
-  const LAKES = [[2300, 1900, 260], [6550, 1700, 420], [800, 5600, 180]], OASIS = [11500, 4200, 120];
-  const DAM = [6500, 2400];
-  const REEF = (i, j) => hash4(i, j, 4, 7) % 9 === 0 && Math.hypot(i * 650 + 325 - 17500, j * 650 + 325 - 3500) > 700;
-  const isReef = (x, y) => { const i = Math.floor(x / 650), j = Math.floor(y / 650); return REEF(i, j) && Math.hypot(x - i * 650 - 325, y - j * 650 - 325) < 230; };
-  const inC = (x, y, c) => Math.hypot(x - c[0], y - c[1]) < c[2];
-  function biome(x, y) {
-    const e = EDGE.map((v, i) => v + wob(y, i));
-    return x < e[0] ? 'forest' : x < e[1] ? 'meadow' : x < e[2] ? 'desert' : x < e[3] ? 'beach' : x < e[4] ? 'ocean' : x < e[5] ? 'icewater' : 'ice';
+  const D = window.HH_SP || { proj: [-123.172, 49.326, 72620, 111200], W: 5011, H: 5449, water: [], lakes: [], pools: [], forest: [], beach: [], grass: [], rock: [], park: [], lawn: [],
+    field: [], court: [], golf: [], play: [], marina: [], garden: [], res: [], com: [], roads: { hwy: [], main: [], street: [], bike: [], foot: [] }, bld: [], pts: {}, parking: [], piers: [], pierl: [] };
+  const [LON0, LAT0, KX, KY] = D.proj, W = D.W, H = D.H, Q = Math.PI / 2;
+  const P = (lon, lat) => [(lon - LON0) * KX, (LAT0 - lat) * KY];
+  const inv = (x, y) => [x / KX + LON0, LAT0 - y / KY];
+  const poly = a => { const o = []; for (let i = 0; i < a.length; i += 2) o.push(...P(a[i], a[i + 1])); return o; };
+  // the red line (traced from the boundary map; the West End edge follows Cardero Street)
+  const BOUND = poly([-123.14183, 49.28315, -123.1440, 49.2800, -123.1570, 49.2828, -123.1650, 49.2900, -123.1682, 49.3000, -123.1672, 49.3080, -123.1612, 49.3140,
+    -123.1500, 49.3172, -123.1400, 49.3184, -123.1300, 49.3162, -123.1200, 49.3112, -123.1100, 49.3062, -123.1078, 49.3010, -123.1108, 49.2965, -123.1170, 49.2930,
+    -123.1240, 49.2906, -123.12864, 49.29183, -123.12993, 49.29102, -123.13125, 49.29016, -123.13337, 49.28869, -123.1355, 49.28734, -123.13761, 49.28593, -123.13974, 49.28452]);
+  const inPlay = (x, y) => inPoly(x, y, BOUND);
+  /* ---- the land-use raster (3 m cells), painted once from the baked polygons ---- */
+  const ZN = ['res', 'water', 'lake', 'pool', 'beach', 'forest', 'lawn', 'court', 'golf', 'play', 'parking', 'garden', 'marina', 'road', 'path', 'field', 'com'];
+  const CELL = 3; let RA = null, RW = 0, RH = 0;
+  const ringPath = (g, rings) => { for (const r of rings) { g.moveTo(r[0], r[1]); for (let i = 2; i < r.length; i += 2) g.lineTo(r[i], r[i + 1]); g.closePath(); } };
+  const fillAll = (g, list) => { g.beginPath(); for (const p of list) ringPath(g, p); g.fill('evenodd'); };
+  const strokeAll = (g, list, w) => { g.lineWidth = w; g.beginPath(); for (const l of list) { g.moveTo(l[0], l[1]); for (let i = 2; i < l.length; i += 2) g.lineTo(l[i], l[i + 1]); } g.stroke(); };
+  function raster() {
+    if (RA) return RA;
+    RW = Math.ceil(W / CELL); RH = Math.ceil(H / CELL);
+    const c = document.createElement('canvas'); c.width = RW; c.height = RH; const g = c.getContext('2d');
+    const col = i => `rgb(${i * 12 + 6},0,0)`;
+    g.fillStyle = col(0); g.fillRect(0, 0, RW, RH); g.setTransform(1 / CELL, 0, 0, 1 / CELL, 0, 0); g.lineCap = g.lineJoin = 'round';
+    const L = (k, i) => { g.fillStyle = col(i); fillAll(g, D[k] || []); };
+    L('com', 16); L('res', 0); L('park', 6); L('grass', 6); L('forest', 5); L('lawn', 6); L('garden', 11); L('field', 15); L('golf', 8); L('court', 7); L('play', 9);
+    L('parking', 10); L('beach', 4); L('rock', 4); L('water', 1); L('lakes', 2); L('pools', 3); L('marina', 12);
+    g.strokeStyle = col(14); strokeAll(g, D.roads.foot, 2.5); strokeAll(g, D.roads.bike, 3.5);
+    g.strokeStyle = col(13); strokeAll(g, D.roads.street, 8); strokeAll(g, D.roads.main, 11); strokeAll(g, D.roads.hwy, 15);
+    const d = g.getImageData(0, 0, RW, RH).data; RA = new Uint8Array(RW * RH);
+    for (let i = 0; i < RA.length; i++) RA[i] = clamp(Math.round((d[i * 4] - 6) / 12), 0, ZN.length - 1);
+    return RA;
   }
-  function zoneHere(x, y) {
-    let b = biome(x, y);
-    if (b === 'meadow' || b === 'forest') { if (lineDist(x, y, RIVER) < 22) return 'river'; for (const l of LAKES) if (inC(x, y, l)) return 'lake'; }
-    if (b === 'desert' && inC(x, y, OASIS)) return 'lake';
-    if (b === 'desert' && Math.hypot(x - OASIS[0], y - OASIS[1]) < 600) return 'oasis';
-    if (b === 'forest' && Math.hypot(x - 700, y - 3500) < 60) return 'camp';
-    if (b === 'ocean' && isReef(x, y)) return 'reef';
-    if (b === 'ice' && Math.hypot(x - 23500, y - 3500) < 250) return 'station';
-    return b;
+  const clsAt = (x, y) => { const a = raster(), i = clamp(Math.floor(x / CELL), 0, RW - 1), j = clamp(Math.floor(y / CELL), 0, RH - 1); return a[j * RW + i]; };
+  const zoneHere = (x, y) => ZN[clsAt(x, y)];
+  const isWater = (x, y) => { const z = zoneHere(x, y); return z === 'water' || z === 'lake' || z === 'marina' || z === 'pool'; };
+  const [AQX, AQY] = P(-123.1310, 49.3003), AQW = 84, AQD = 56, AQT = 1.2, AQG = 10;
+  const inAqua = (x, y) => Math.abs(x - AQX) < AQW / 2 && Math.abs(y - AQY) < AQD / 2;
+  const zoneAt = (x, y) => x < 0 || y < 0 || x > W || y > H || !inPlay(x, y) ? null : inAqua(x, y) ? 'aqua' : zoneHere(x, y) === 'field' ? 'lawn' : zoneHere(x, y);
+  const outside = (x, y) => { if (x < 0 || y < 0 || x > W || y > H) return null; const z = zoneHere(x, y); return z === 'water' || z === 'marina' || z === 'lake' || z === 'pool' ? null : z === 'forest' ? 'xforest' : z === 'res' || z === 'com' || z === 'road' ? 'xres' : 'xlawn'; };
+  /* ---- road segment hash (cars on roads, people on sidewalks, cyclists on the paths) ---- */
+  const HC = 60; let RH2 = null;
+  function roadHash() {
+    if (RH2) return RH2; RH2 = new Map();
+    for (const [k, w] of [['hwy', 15], ['main', 11], ['street', 8], ['bike', 3.5], ['foot', 2.5]]) for (const l of D.roads[k]) for (let t = 0; t < l.length - 2; t += 2) {
+      const c0 = Math.floor(Math.min(l[t], l[t + 2]) / HC), c1 = Math.floor(Math.max(l[t], l[t + 2]) / HC), r0 = Math.floor(Math.min(l[t + 1], l[t + 3]) / HC), r1 = Math.floor(Math.max(l[t + 1], l[t + 3]) / HC);
+      for (let c = c0; c <= c1; c++) for (let r = r0; r <= r1; r++) { const key = c * 4096 + r; let h = RH2.get(key); if (!h) RH2.set(key, h = []); h.push([l, t, w, k]); }
+    }
+    return RH2;
   }
-  const zoneAt = (x, y) => x < 0 || y < 0 || x > W || y > H ? null : zoneHere(x, y);
-  const outside = (x, y) => { const z = zoneHere(clamp(x, -1e5, W + 1e5), clamp(y, 0, H)); return { forest: 'xforest', meadow: 'xmeadow', desert: 'xdesert', beach: 'xbeach', ice: 'xice' }[z] || null; };
-  const WET = new Set(['fish', 'salmon', 'tropfish', 'blowfish', 'jelly', 'octopus', 'turtle', 'dolphin', 'shark', 'orca', 'whale', 'bluewhale', 'canoe', 'kayak', 'sailboat', 'fishboat', 'buoy', 'krill', 'seaweed', 'coral', 'wreck', 'starfish', 'beaver', 'duck']);
-  // logical placement: water things in the water, land things on land, campers by the fire
-  function at(k, x, y) {
-    const z = zoneHere(x, y), wet = z === 'river' || z === 'lake' || z === 'ocean' || z === 'reef' || z === 'icewater';
-    if (k === 'seal' || k === 'penguin' || k === 'crab' || k === 'starfish' || k === 'shell' || k === 'duck' || k === 'beaver' || k === 'heron') return [x, y];
-    return wet === WET.has(k) ? [x, y] : null;
+  function nearRoad(x, y, r, kinds) {
+    const h = roadHash(); let best = null, bd = r;
+    for (let c = Math.floor((x - r) / HC); c <= Math.floor((x + r) / HC); c++) for (let q = Math.floor((y - r) / HC); q <= Math.floor((y + r) / HC); q++) for (const [l, t, w, k] of h.get(c * 4096 + q) || []) {
+      if (kinds && !kinds.includes(k)) continue;
+      const ax = l[t], ay = l[t + 1], vx = l[t + 2] - ax, vy = l[t + 3] - ay, l2 = vx * vx + vy * vy || 1, f = clamp(((x - ax) * vx + (y - ay) * vy) / l2, 0, 1), fx = ax + vx * f, fy = ay + vy * f, d = Math.hypot(x - fx, y - fy);
+      if (d < bd) { bd = d; const ln = Math.sqrt(l2); best = { d, fx, fy, tx: vx / ln, ty: vy / ln, w, k }; }
+    }
+    if (best) { let nx = -best.ty, ny = best.tx; if ((x - best.fx) * nx + (y - best.fy) * ny < 0) { nx = -nx; ny = -ny; } best.nx = nx; best.ny = ny; }
+    return best;
   }
-  const BIOME = { forest: 'Forest', camp: 'Forest', lake: 'Forest', river: 'Greenlands', meadow: 'Greenlands', desert: 'Desert', oasis: 'Desert', beach: 'Ocean', ocean: 'Ocean', reef: 'Ocean', icewater: 'Antarctic ice', ice: 'Antarctic ice', station: 'Antarctic ice' };
+  /* ---- logical placement (spec A3): cars on roads, parked cars in lots, people on paths, boats on water ---- */
+  const WET = new Set(['duck', 'swan', 'fish', 'seal', 'orca', 'kayak', 'canoe', 'sailboat', 'speedboat', 'yacht', 'heron', 'floatie', 'otter', 'goose']);
+  const SHORE = new Set(['heron', 'goose', 'duck', 'otter', 'seal']);
+  const CARS = new Set(['car', 'taxi', 'van']), WALKERS = new Set(['person', 'jogger', 'kid', 'dog']);
+  function at(k, x, y, rng) {
+    const z = zoneHere(x, y);
+    if (CARS.has(k)) {
+      if (z === 'parking') return [x, y, rng() < .5 ? 0 : Math.PI];
+      const r = nearRoad(x, y, 20, ['street', 'main']); if (!r) return null;
+      const off = r.w / 2 - 1.2;                                   // parked at the kerb
+      return [r.fx + r.nx * off, r.fy + r.ny * off, Math.atan2(r.tx, r.ty)];
+    }
+    if (WALKERS.has(k) && (z === 'res' || z === 'com' || z === 'road')) {
+      const r = nearRoad(x, y, 20, ['street', 'main', 'hwy']); if (!r) return null;
+      const off = r.w / 2 + 1.5 + rng() * 1.5, px = r.fx + r.nx * off, py = r.fy + r.ny * off;   // on the sidewalk
+      return isWater(px, py) ? null : [px, py, Math.atan2(r.tx, r.ty)];
+    }
+    if (SHORE.has(k)) return [x, y];
+    return isWater(x, y) === WET.has(k) ? [x, y] : null;
+  }
+  const atX = (k, x, y, rng) => at(k, x, y, rng);
+  const START = P(-123.1489, 49.2946);                               // the picnic blanket on Ceperley Meadow
+  const RG = [['Ceperley Meadow', -123.1495, 49.2935], ['Second Beach', -123.1508, 49.2948], ['Lost Lagoon', -123.1414, 49.2958], ['Third Beach', -123.1568, 49.3040],
+    ['Prospect Point', -123.1414, 49.3140], ['Beaver Lake', -123.1391, 49.3040], ['Brockton Point', -123.1172, 49.3004], ['Coal Harbour', -123.1290, 49.2940], ['West End', -123.1380, 49.2880]];
+  function regionAt(x, y) { let b = null, bd = 1e18; for (const r of RG) { const [px, py] = P(r[1], r[2]), d = Math.hypot(px - x, py - y); if (d < bd) { bd = d; b = r[0]; } } return b; }
+  // the Aquarium: an open-top hall you can walk into through its front doors (walls stop you until you can eat it)
+  const AQWALLS = [[AQX - AQW / 2, AQY - AQD / 2, AQW, AQT], [AQX - AQW / 2, AQY - AQD / 2, AQT, AQD], [AQX + AQW / 2 - AQT, AQY - AQD / 2, AQT, AQD],
+    [AQX - AQW / 2, AQY + AQD / 2 - AQT, AQW / 2 - AQG / 2, AQT], [AQX + AQG / 2, AQY + AQD / 2 - AQT, AQW / 2 - AQG / 2, AQT]];
+  let aqHall = null;
+  const aqOpen = () => !aqHall || aqHall.dead || holeD() > aqHall.fw * 1.02;
+  function pushRect(r, [x, y, w, h]) {
+    const cx = clamp(G.x, x, x + w), cy = clamp(G.y, y, y + h), ddx = G.x - cx, ddy = G.y - cy, d = Math.hypot(ddx, ddy);
+    if (d >= r) return;
+    if (d > 1e-6) { G.x = cx + ddx / d * r; G.y = cy + ddy / d * r; return; }
+    const l = G.x - x, rr = x + w - G.x, t = G.y - y, b = y + h - G.y, m = Math.min(l, rr, t, b);
+    if (m === l) G.x = x - r; else if (m === rr) G.x = x + w + r; else if (m === t) G.y = y - r; else G.y = y + h + r;
+  }
   CH.push({
-    n: 3, key: 'park', mus: 'ch4.mp3', name: 'Stanley Park', short: 'Stanley Park', c1: '#8bc34a', c2: '#33691e', bgc: '#4f8a3c', rim: '#8ef08e', metric: 1,
-    W, H, start: [700, 3530], cost: 2.4, need: 235, view: 13,
-    sizes: [0, .008, .016, .032, .065, .13, .26, .5, 1, 2, 4, 8, 16, 32, 64],
-    tagN: { tree: 'tree', whale: 'whale' },
-    regionAt: (x, y) => BIOME[zoneHere(x, y)] || 'Forest', regionName: r => r, areaKey: (x, y) => BIOME[zoneHere(x, y)] || 'Forest',
-    regionPos: r => ({ Forest: [1800, 3500], Greenlands: [6000, 3500], Desert: [11500, 3500], Ocean: [17500, 3500], 'Antarctic ice': [23500, 3500] })[r],
+    n: 3, key: 'park', mus: 'ch4.mp3', name: 'Stanley Park', short: 'Stanley Park', c1: '#8bc34a', c2: '#33691e', bgc: '#5aa9e6', rim: '#8ef08e', metric: 1,
+    W, H, start: START, cost: 2, need: 100, needP: 1.4, xpk: 3, spd: 1.7, pv: .9, view: 13, agridSize: 120, tries: t => t >= 6 ? 10 : 4, fill: .1, fillKeep: new Set(['bigtree', 'pine', 'oak', 'cedar', 'streettree']),
+    sizes: [0, .04, .09, .2, .45, 1, 2.2, 5, 11, 25, 55, 120, 200],
+    tagN: { tree: 'tree' }, regionAt, regionName: r => r, areaKey: regionAt, P, inv, inPlay, isWater,
+    regionPos: rg => { const r = RG.find(r => r[0] === rg); return r && P(r[1], r[2]); },
+    walls3d: { rects: AQWALLS, h: 7 }, wallsGone: () => aqOpen(),
     types: {
-      ant: ['ant', 1], seed: ['seed', 1], crumb: ['cookie crumb', 1], aphid: ['aphid', 1], gnat: ['gnat', 1, { mv: 'w' }], krill: ['krill', 1, { pl: 'krill' }],
-      ladybug: ['ladybug', 1], beetle: ['beetle', 1], berry: ['blueberry', 1, { pl: 'blueberries' }], pebble: ['pebble', 1], spider: ['spider', 1], bee: ['bee', 1, { mv: 'w' }],
-      acorn: ['acorn', 1], cricket: ['cricket', 1], grasshopper: ['grasshopper', 1], marshmallow: ['marshmallow', 1], gem: ['gem', 1], snail: ['snail', 1], scorpion: ['scorpion', 1],
-      pinecone: ['pine cone', 1], butterfly: ['butterfly', 1, { mv: 'w' }], mushroom: ['mushroom', 1], worm: ['worm', 1], frog: ['frog', 1], mouse: ['mouse', 1, { pl: 'mice' }],
-      feather: ['feather', 1], shell: ['shell', 1], flower: ['daisy', 1, { pl: 'daisies' }], lantern: ['lantern', 1], mug: ['camping mug', 1], starfish: ['starfish', 1, { pl: 'starfish' }],
-      lizard: ['lizard', 1], crab: ['crab', 1, { mv: 'w' }], tropfish: ['tropical fish', 1, { mv: 'w', pl: 'tropical fish' }], fish: ['fish', 1, { mv: 'w', pl: 'fish' }], skull: ['cow skull', 1],
-      jelly: ['jellyfish', 1, { mv: 'w', pl: 'jellyfish' }], blowfish: ['pufferfish', 1, { mv: 'w', pl: 'pufferfish' }], gopher: ['gopher', 1], squirrel: ['squirrel', 1, { mv: 'w' }],
-      rabbit: ['rabbit', 1, { mv: 'w' }], seaweed: ['kelp', 1], sandcastle: ['sandcastle', 1], backpack: ['backpack', 1], salmon: ['salmon', 1, { mv: 'w', pl: 'salmon' }],
-      penguin: ['penguin', 1, { mv: 'w' }], fern: ['fern', 1], tumbleweed: ['tumbleweed', 1], cactus: ['cactus', 1, { pl: 'cactuses' }], vulture: ['vulture', 1], hat: ['top hat', 1],
-      fox: ['fox', 1, { mv: 'w', pl: 'foxes' }], beaver: ['beaver', 1], duck: ['duck', 1, { mv: 'w' }], octopus: ['octopus', 1, { pl: 'octopuses' }], snake: ['snake', 1], coyote: ['coyote', 1, { mv: 'w' }],
-      heron: ['heron', 1], camper: ['camper', 1, { mv: 'w' }], snowman: ['snowman', 1, { pl: 'snowmen' }], iceblock: ['ice block', 1], flag: ['flag', 1], buoy: ['buoy', 1], coral: ['coral', 1],
-      campfire: ['campfire', 1], turtle: ['sea turtle', 1, { mv: 'w' }], haybale: ['hay bale', 1], bush: ['bush', 1, { pl: 'bushes' }], seal: ['seal', 1, { mv: 'w' }], deer: ['deer', 1, { mv: 'w', pl: 'deer' }],
-      picnic: ['picnic table', 1], sled: ['sled', 1], tent: ['tent', 1], dolphin: ['dolphin', 1, { mv: 'w' }], wolf: ['wolf', 1, { mv: 'w', pl: 'wolves' }], bear: ['bear', 1, { mv: 'w' }],
-      horse: ['wild horse', 1, { mv: 'w' }], bison: ['bison', 1, { mv: 'w', pl: 'bison' }], camel: ['camel', 1, { mv: 'w' }], moose: ['moose', 1, { mv: 'w', pl: 'moose' }], snowmobile: ['snowmobile', 1],
-      igloo: ['igloo', 1], canoe: ['canoe', 1], boulder: ['boulder', 1], shark: ['shark', 1, { mv: 'w' }], jeep: ['jeep', 1], campervan: ['camper van', 1], rv: ['RV', 1],
-      saguaro: ['giant cactus', 1, { pl: 'giant cactuses' }], log: ['log', 1], orca: ['orca', 1, { mv: 'w' }], cabin: ['log cabin', 1], palm: ['palm tree', 1, { tags: 'tree', sway: 1 }],
-      pine: ['pine tree', 1, { tags: 'tree' }], oak: ['oak tree', 1, { tags: 'tree', sway: 1 }], fishboat: ['fishing boat', 1], dino: ['dinosaur skeleton', 1, { m: [12, 5] }], windmill: ['windmill', 1],
-      whale: ['humpback whale', 1, { tags: 'whale', mv: 'w' }], bluewhale: ['blue whale', 1, { tags: 'whale', mv: 'w' }], bigtree: ['giant redwood', 1, { tags: 'tree' }],
-      wreck: ['shipwreck', 1], station: ['research station', 1], iceberg: ['iceberg', 1], dam: ['dam', 1], mesa: ['mesa', 1],
+      // the picnic (ant scale)
+      ant: ['ant', 1], crumb: ['cookie crumb', 1], seed: ['seed', 1], berry: ['blueberry', 1, { pl: 'blueberries' }], chip: ['potato chip', 1, { m: [.04, .005] }],
+      cookie: ['cookie', 1], sandwich: ['sandwich', 1, { m: [.13, .05] }], apple: ['apple', 1, { m: [.08, .08] }], juice: ['juice box', 1, { m: [.06, .1] }], cup: ['paper cup', 1],
+      basket: ['picnic basket', 1, { m: [.45, .35] }], blanket: ['picnic blanket', 1, { m: [2, .02] }], napkin: ['napkin', 1, { m: [.2, .005] }],
+      // little park things
+      leaf: ['maple leaf', 1, { pl: 'maple leaves' }], acorn: ['acorn', 1], pinecone: ['pine cone', 1], feather: ['feather', 1], pebble: ['pebble', 1], shell: ['shell', 1], flower: ['daisy', 1, { pl: 'daisies' }],
+      ladybug: ['ladybug', 1], butterfly: ['butterfly', 1, { mv: 'w' }], snail: ['snail', 1], mushroom: ['mushroom', 1], fern: ['fern', 1], beetle: ['beetle', 1], spider: ['spider', 1],
+      ball: ['ball', 1], frisbee: ['frisbee', 1], crab: ['crab', 1, { mv: 'w' }], sandcastle: ['sandcastle', 1], umbrella: ['beach umbrella', 1], towel: ['beach towel', 1, { m: [1.6, .01] }],
+      floatie: ['pool floatie', 1, { m: [.9, .2] }], flag: ['golf flag', 1, { m: [.4, 2] }], net: ['tennis net', 1, { m: [12, 1] }],
+      // animals
+      squirrel: ['squirrel', 1, { mv: 'w' }], raccoon: ['raccoon', 1, { mv: 'w' }], duck: ['duck', 1, { mv: 'w' }], swan: ['swan', 1, { mv: 'w' }], goose: ['Canada goose', 1, { mv: 'w', pl: 'Canada geese', m: [.9, .8] }],
+      heron: ['great blue heron', 1, { m: [1, 1.1] }], coyote: ['coyote', 1, { mv: 'w', m: [1.1, .6] }], otter: ['river otter', 1, { mv: 'w', m: [1.1, .3] }],
+      seal: ['harbour seal', 1, { mv: 'w' }], orca: ['orca', 1, { mv: 'w' }], fish: ['fish', 1, { mv: 'w', pl: 'fish' }], jelly: ['jellyfish', 1, { pl: 'jellyfish', m: [.4, .5] }],
+      penguin: ['penguin', 1, { mv: 'w', m: [.5, .7] }], turtle: ['sea turtle', 1, { m: [1, .4] }], octopus: ['octopus', 1, { pl: 'octopuses', m: [1, .5] }],
+      // people and wheels
+      person: ['person', 1, { mv: 'w', pl: 'people' }], jogger: ['jogger', 1, { mv: 'w' }], kid: ['kid', 1, { mv: 'w' }], dog: ['dog', 1, { mv: 'w' }], cyclist: ['cyclist', 1, { m: [1.8, 1.8] }],
+      bike: ['parked bike', 1], hat: ['top hat', 1], car: ['car', 1], taxi: ['taxi', 1, { pl: 'taxis' }], van: ['van', 1], tourbus: ['tour bus', 1, { pl: 'tour buses', m: [12, 3.4] }], horsecart: ['horse-drawn tour', 1, { m: [9, 2.6] }],
+      minitrain: ['the miniature train', 1, { m: [14, 1.8] }],
+      kayak: ['kayak', 1, { mv: 'w' }], canoe: ['canoe', 1], sailboat: ['sailboat', 1, { mv: 'w' }], speedboat: ['speedboat', 1, { mv: 'w' }], yacht: ['motor yacht', 1, { mv: 'w' }], seaplane: ['float plane', 1],
+      // the park's furniture
+      bench: ['bench', 1, { pl: 'benches', m: [1.8, .9] }], lamp: ['lamppost', 1, { m: [.4, 4.5] }], bin: ['garbage bin', 1], hydrant: ['fire hydrant', 1], fountain2: ['drinking fountain', 1, { m: [.6, 1] }],
+      picnic: ['picnic table', 1, { m: [2, .8] }], slide: ['slide', 1, { m: [2.5, 2] }], swings: ['swing set', 1, { m: [4, 2.4] }], toilets: ['washroom', 1, { m: [8, 3.5] }], art: ['statue', 1, { m: [1.5, 2.5] }],
+      log: ['driftwood log', 1], boulder: ['boulder', 1], bush: ['bush', 1, { pl: 'bushes' }], streettree: ['street tree', 1, { tags: 'tree', sway: 1, m: [5, 9] }],
+      bigtree: ['western red cedar', 1, { tags: 'tree', m: [9, 40] }], pine: ['Douglas fir', 1, { tags: 'tree', m: [6, 30] }], oak: ['maple tree', 1, { tags: 'tree', sway: 1, m: [8, 14] }],
+      // the West End
+      house: ['house', 1, { tags: 'house' }], townhouse: ['row of townhouses', 1, { pl: 'rows of townhouses' }], lowrise: ['apartment building', 1], midrise: ['mid-rise apartments', 1, { pl: 'mid-rise apartments' }],
+      highrise: ['condo tower', 1], shop: ['corner store', 1], gas: ['gas station', 1, { m: [25, 6] }],
+      // the famous places
+      mermaid: ['Girl in a Wetsuit', 1, { m: [2, 3] }], figurehead: ['the Empress of Japan figurehead', 1, { m: [3, 4] }], hollowtree: ['the Hollow Tree', 1, { m: [5, 12] }],
+      lighthouse: ['lighthouse', 1, { m: [6, 10] }], gun: ['the Nine O\'Clock Gun', 1, { m: [4, 2] }], jubilee: ['the Jubilee Fountain', 1, { m: [8, 4] }], arch: ['Lumberman\'s Arch', 1, { m: [14, 8] }],
+      teahouse: ['the Teahouse', 1, { m: [25, 8] }], pavilion: ['the Stanley Park Pavilion', 1, { m: [30, 9] }], rowclub: ['the Vancouver Rowing Club', 1, { m: [40, 12] }],
+      rvyc: ['the Royal Vancouver Yacht Club', 1, { m: [45, 10] }], aquahall: ['the Vancouver Aquarium', 1, { m: [84, 7] }], aquatank: ['aquarium tank', 1, { m: [9, 1.4] }],
+      deadman: ['Deadman\'s Island', 1, { m: [170, 18] }], waterpark: ['the water park', 1, { m: [20, 3] }], siwash: ['Siwash Rock', 1, { m: [12, 15] }], totem: ['totem pole', 1, { m: [1.4, 12] }],
+      inukshuk: ['the Inukshuk', 1, { m: [4, 6] }], beaverlodge: ['beaver lodge', 1, { m: [5, 1.6] }], rosebed: ['rose garden', 1, { m: [6, .8] }], bridge: ['Lions Gate Bridge', 1], station: ['train station', 1, { m: [16, 6] }],
     },
     zones: {
-      camp: { d: 2, coin: .6, at, t: 'ant:6,crumb:5,seed:2,marshmallow:3,berry,pebble:2,mug,lantern,backpack,beetle,spider' },
-      forest: { d: 1, at, t: 'ant:8,seed:4,aphid:3,gnat:2,ladybug:2,beetle:2,berry:3,pebble:2,spider,acorn:2,pinecone:2,snail,mushroom:3,worm,frog,mouse,feather,fern:2,squirrel,rabbit,fox:.6,deer:.6,wolf:.3,bear:.3,moose:.2,boulder:.4,pine:3,oak,bigtree,log,cabin:.1,hat:.05' },
-      lake: { d: .7, wet: 1, coin: .1, at, t: 'gnat:3,fish:3,frog,duck,salmon,beaver:.5,canoe:.3' },
-      river: { d: .8, wet: 1, coin: .1, at, t: 'gnat:2,fish:3,salmon:2,frog,duck,beaver,canoe:.3' },
-      meadow: { d: .9, at, t: 'ant:6,seed:5,aphid:2,ladybug:3,grasshopper:3,cricket:2,butterfly:3,bee:2,flower:4,pebble,snail,worm,mouse,gopher,rabbit:2,heron:.3,haybale:.4,bush,fox:.4,horse:.6,bison:.6,deer:.4,oak:.6,windmill:.05' },
-      desert: { d: .7, at, t: 'ant:4,seed,pebble:4,beetle:3,scorpion:3,gem:.5,lizard:2,skull:.6,snake,tumbleweed:2,cactus:3,vulture,coyote:.6,camel:.6,jeep:.15,boulder:.6,saguaro:1.5,mesa:.03' },
-      oasis: { d: 1.2, at, t: 'ant:3,seed,flower:2,butterfly,lizard,bush,palm:3,camel,campervan:.2' },
-      beach: { d: 1, at, t: 'ant:3,shell:5,pebble:2,crab:3,starfish:2,feather,sandcastle:.6,seaweed,turtle:.4,seal:.4,palm:.6,buoy:.2,campervan:.2' },
-      ocean: { d: .5, wet: 1, coin: .1, at, t: 'krill:6,tropfish:2,fish:3,jelly:2,blowfish,seaweed,octopus,turtle,dolphin,shark:.6,orca:.3,whale:.5,bluewhale:.3,fishboat:.2,buoy:.3' },
-      reef: { d: 1.2, wet: 1, coin: .2, at, t: 'krill:4,starfish:2,tropfish:4,coral:4,blowfish,octopus,crab,turtle:.5,shark:.3,wreck:.04' },
-      icewater: { d: .5, wet: 1, coin: .1, at, t: 'krill:8,fish:3,jelly,penguin:2,seal:2,orca:.5,whale:.4,bluewhale:.2' },
-      ice: { d: .8, at, t: 'pebble:2,iceblock:2,flag:.5,penguin:2,seal:2,snowman:.6,sled:.4,snowmobile:.3,igloo:.6,iceberg:.08' },
-      station: { d: 1.5, at, t: 'flag:2,iceblock,penguin:2,snowman,sled,snowmobile:2,igloo' },
-      xforest: { d: .4, deco: 1, coin: 0, t: 'pine:4,oak,bigtree,boulder:.4' }, xmeadow: { d: .3, deco: 1, coin: 0, t: 'oak,bush:2,bison:.4,horse:.3' },
-      xdesert: { d: .3, deco: 1, coin: 0, t: 'saguaro:2,cactus:2,boulder,mesa:.05' }, xbeach: { d: .3, deco: 1, coin: 0, t: 'palm,seaweed' }, xice: { d: .3, deco: 1, coin: 0, t: 'iceberg:.1,iceblock:2,penguin:2' },
+      res: { d: .7, at, t: 'ant:3,leaf:3,cup:2,pebble,flower,squirrel,raccoon:.3,person:5,jogger,kid,dog:2,bike:2,bin:.6,hydrant:.4,car:5,taxi:.5,van' },
+      com: { d: .8, at, t: 'ant:3,cup:4,leaf:2,pebble,person:7,kid,dog,bike:2,bin,car:4,taxi,van' },
+      road: { d: .5, at, t: 'leaf:2,cup,pebble,car:6,taxi,van' },
+      path: { d: .9, at, t: 'ant:4,leaf:4,acorn,pebble:2,cup,feather,squirrel:2,person:3,jogger:2,kid,dog:2,bench:.5' },
+      forest: { d: .8, at, t: 'ant:6,seed:3,acorn:3,pinecone:4,leaf:4,feather,mushroom:3,fern:4,snail:2,beetle:2,spider,squirrel:2,raccoon,coyote:.25,heron:.1,log:1,boulder:.5,bush:2' },
+      lawn: { d: .55, at, t: 'ant:6,seed:4,leaf:3,flower:4,ladybug:2,butterfly:2,feather,pebble,ball:.6,frisbee:.5,squirrel:2,goose:1.5,person:2,kid:1.5,dog:1.2,picnic:.4,umbrella:.2,oak:1.2,bush:.6' },
+      garden: { d: 1, at, t: 'ant:4,flower:8,ladybug:3,butterfly:3,snail,rosebed:.6,bench:.3,oak:.3' },
+      golf: { d: .7, at, t: 'ant:3,seed:2,ball:3,flag:.4,person,goose:.6,oak:.2' },
+      court: { d: .6, at, t: 'ball:4,cup,person:2,kid' },
+      aqua: { d: .5, at: (k, x, y) => [x, y], t: 'cup:2,crumb:2,person:2,kid:2' },
+      play: { d: 1.2, at, t: 'ant:3,crumb:3,ball:3,cup,kid:6,person:2,slide:.5,swings:.4,sandcastle:.6' },
+      parking: { d: .9, at, t: 'cup:2,leaf,pebble,person,car:10,van:2,taxi' },
+      beach: { d: 1, at, t: 'shell:6,pebble:4,crab:3,feather,cup,sandcastle:.6,towel:.5,umbrella:.5,log:3,person:2,kid,dog,heron:.3,goose:.4,seal:.2,boulder:.3' },
+      pool: { d: 1, wet: 1, coin: .1, at, t: 'floatie:3,ball:2,duck:.3' },
+      water: { d: .25, wet: 1, coin: .08, at, t: 'fish:3,duck:2,seal:1.2,otter:.3,kayak:1.2,canoe:.6,sailboat:1.5,speedboat:.8,yacht:.5,orca:.12' },
+      lake: { d: .5, wet: 1, coin: .1, at, t: 'fish:3,duck:4,swan:1.2,goose:1,heron:.4,otter:.2' },
+      marina: { d: .6, wet: 1, coin: .1, at, t: 'fish,duck:2,kayak,sailboat:4,yacht:4,speedboat:2' },
+      // past the red line: the same city, forest and lawns carry on as scenery
+      xres: { d: .4, deco: 1, coin: 0, at: atX, t: 'streettree:3,car:2,person:2' }, xforest: { d: .4, deco: 1, coin: 0, at: atX, t: 'bigtree:6,pine:4' }, xlawn: { d: .3, deco: 1, coin: 0, at: atX, t: 'oak:2,bush,person' },
     },
     zoneAt, outside,
-    build(add, rng) {
-      // the campsite where you start (ant-sized): tents, a fire, campers, an RV, a canoe on the lake
-      const [cx, cy] = [700, 3500];
-      add('campfire', cx, cy - 3, { label: 'Campfire' }); add('tent', cx - 6, cy - 7); add('tent', cx + 7, cy - 8); add('picnic', cx + 4, cy + 4);
-      add('camper', cx - 2, cy + 1); add('camper', cx + 2.5, cy - 1); add('rv', cx + 18, cy + 6, { label: 'RV' }); add('campervan', cx - 16, cy + 9);
-      add('lantern', cx + 4.4, cy + 4.1); add('mug', cx + 3.6, cy + 3.8); add('backpack', cx - 5, cy - 3);
-      for (let i = 0; i < 6; i++) { const a = rng() * 6.28, r = 25 + rng() * 30; add(rng() < .7 ? 'tent' : 'campervan', cx + Math.cos(a) * r * 3, cy + Math.sin(a) * r * 2); }
-      add('canoe', 800 + 175, 5600, { yaw: 1 });
-      // the dam on the river in the greenlands, its reservoir behind it
-      add('dam', DAM[0], DAM[1], { keep: 1, id: 'dam', label: 'The Big Dam', yaw: Math.PI / 2, fact: 'A dam holds back a river to make a lake.' });
-      // a dinosaur skeleton dig in the desert, a research station on the ice
-      add('dino', 12600, 2600, { label: 'Dinosaur dig', id: 'dinodig', fact: 'Deserts are great places to find dinosaur fossils.' });
-      add('station', 23500, 3500, { label: 'Research station', id: 'station', fact: 'Scientists live on the Antarctic ice to study weather and penguins.' });
-      for (let i = 0; i < 5; i++) add('igloo', 23300 + rng() * 400, 3300 + rng() * 400);
-      add('wreck', 17500, 3500, { label: 'Shipwreck', id: 'wreck' });
-      for (let i = 0; i < 12; i++) add('iceberg', 20500 + rng() * 800, rng() * H, { yaw: rng() * 6.28 });
-      for (let i = 0; i < 6; i++) add('mesa', 9500 + rng() * 4000, rng() < .5 ? 300 + rng() * 800 : H - 300 - rng() * 800, { yaw: rng() * 6.28 });
+    collide(r) {
+      if (!aqOpen()) for (const w of AQWALLS) pushRect(r, w);       // the Aquarium's walls are absolute until it fits
+      if (inPlay(G.x, G.y)) { G.okX = G.x; G.okY = G.y; return; }
+      if (G.okX === undefined) return;
+      G.x = G.okX; G.y = G.okY; G.vx *= -0.2; G.vy *= -0.2;            // the red line: an invisible barrier
     },
-    hint: w => w === 'whale' ? [17500, 3000] : w === 'tree' ? [1500, 3500] : null,
-    words: ['FISH', 'BEAR', 'TREE', 'WHALE', 'SAND', 'CAMEL', 'ANT', 'FROG', 'ICE', 'NEST'],
-    check: ['c:tree:15', 'c:whale:6', 'b:dam'],
-    quests: [
-      'c:ant:6', 't:25', 'c:fish:5|c', 'x:5', 'c:tent:2', 'a:ant:15', 'c:campfire:1', 'c:crab:4|c', 'c:cactus:3|c', 'c:penguin:3|c',
-      'c:mushroom:3|c', 'c:shark:1|c', 'x:8', 'c:camel:2|c', 'c:igloo:1|c', 'c:coral:3|c', 'b:cabin', 't:200',
-      'f:add', 'f:sub', 'f:mul', 'f:miss', 'f:mul', 'f:add', 'f:sub', 'q:5,10,15,20,25',
-      'q:ICE|s|Eat I-C-E in order', 'l:F', 'l:C', 'f:word', 'q:FISH', 'l:B',
-      'p:palm,pine,palm,pine', 'p:fish,crab,fish,crab', 'p:rabbit,squirrel,rabbit,squirrel', 'p:penguin,seal,penguin,seal',
-      'r:4', 's:5000', 'r:7', 's:40000',
-    ],
-    ispy: ['dino|a dinosaur', 'hat', 'penguin', 'igloo', 'snowman', 'camel', 'scorpion', 'tumbleweed', 'saguaro', 'skull', 'bison', 'windmill', 'haybale', 'heron', 'beaver',
-      'moose', 'bear', 'rv', 'canoe', 'lantern', 'marshmallow', 'starfish', 'sandcastle', 'octopus', 'turtle', 'jelly', 'dolphin', 'orca', 'snowmobile', '#dam'],
-    eduSubj: 'science',
-    edu: [
-      { n: 'Forest animals', s: ['f:ant,ladybug,snail', 'f:frog,mouse,squirrel', 'f:fox,deer,bear'] },
-      { n: 'Greenlands', s: ['f:grasshopper,butterfly,bee', 'f:gopher,rabbit,bison', 'i:#dam|Find the Big Dam on the river'] },
-      { n: 'Desert life', s: ['f:scorpion,lizard,snake', 'f:cactus,tumbleweed,camel', 'i:#dinodig|Find the dinosaur dig'] },
-      { n: 'Under the sea', s: ['f:starfish,crab,octopus', 'f:jelly,turtle,dolphin', 'f:shark,whale'] },
-      { n: 'Antarctica', s: ['f:penguin,seal,igloo', 'i:#station|Find the research station', 'f:snowmobile,orca'] },
-      { n: 'Nature maths', s: ['m:add', 'm:sub', 'm:mul'] },
-    ],
-    doneTxt: 'From an ant to a whale-sized hole: forest, greenlands, desert, ocean and ice are yours!',
-    bg(g, V) {
-      const x0 = V.x0, y0 = V.y0, x1 = V.x1, y1 = V.y1, st = Math.max(20, (y1 - y0) / 60);
-      const COL = ['#4f8a3c', '#8cc063', '#e3c98a', '#f0dca0', '#2f7fc1', '#3b8fd0', '#eef4f8'];
-      // biome bands with wobbly edges (row strips, so a close-up costs nothing)
-      for (let y = Math.floor(y0 / st) * st; y < y1; y += st) {
-        let px = x0;
-        for (let i = 0; i <= EDGE.length; i++) {
-          const ex = i < EDGE.length ? EDGE[i] + wob(y + st / 2, i) : x1;
-          if (ex > px) { g.fillStyle = COL[i]; g.fillRect(px, y, Math.min(ex, x1) - px, st + .5); px = ex; }
-          if (px >= x1) break;
+    build(add, rng) {
+      const A = (k, lon, lat, o) => add(k, ...P(lon, lat), Object.assign({ quiet: 1 }, o && o.id ? { keep: 1 } : null, o));
+      const inside = (x, y) => inPlay(x, y);
+      const near = (x, y) => inPlay(x, y) || inPlay(x + 220, y) || inPlay(x - 220, y) || inPlay(x, y + 220) || inPlay(x, y - 220);   // scenery only where you can see it
+      const pts = D.pts || {};
+      const each = (k, f) => { const a = pts[k] || []; for (let i = 0; i < a.length; i += 2) f(a[i], a[i + 1], i / 2); };
+      // the picnic blanket you start on, and its picnic (ant scale)
+      const [bx, by] = START;
+      add('blanket', bx, by, { nosolid: 1, under: 1, yaw: .3, label: 'Picnic blanket' });
+      add('sandwich', bx + .25, by - .1, { keep: 1, id: 'sandwich', label: 'the picnic sandwich', yaw: .4 });
+      add('basket', bx - .55, by + .35, { keep: 1, id: 'basket', label: 'the picnic basket', yaw: .3 });
+      for (const [k, ox, oy] of [['apple', .5, .3], ['juice', -.1, .45], ['juice', .05, .52], ['cookie', .3, .45], ['cookie', .38, .4], ['berry', -.3, -.2], ['berry', -.26, -.25], ['berry', -.33, -.15],
+        ['napkin', .6, -.3], ['cup', -.5, -.4], ['chip', .1, -.35], ['chip', .15, -.3], ['chip', .2, -.42]]) add(k, bx + ox, by + oy, { yaw: rng() * 6 });
+      for (let i = 0; i < 40; i++) { const a = rng() * 6.28, r = rng() * 1.1; add(i % 3 ? 'crumb' : 'ant', bx + Math.cos(a) * r, by + Math.sin(a) * r * .8, { yaw: rng() * 6 }); }
+      for (let i = 0; i < 14; i++) { const a = rng() * 6.28, r = 1.4 + rng() * 2.5; add(rng() < .5 ? 'ant' : rng() < .5 ? 'seed' : 'berry', bx + Math.cos(a) * r, by + Math.sin(a) * r, { yaw: rng() * 6 }); }
+      // the real benches, lamps, bins, fountains, washrooms, artworks and trees
+      each('bench', (x, y) => inside(x, y) && add('bench', x, y, { yaw: rng() * 6.28 }));
+      each('lamp', (x, y) => inside(x, y) && add('lamp', x, y, {}));
+      each('bin', (x, y) => inside(x, y) && add('bin', x, y, {}));
+      each('hydrant', (x, y) => inside(x, y) && add('hydrant', x, y, {}));
+      each('fountain', (x, y) => inside(x, y) && add('fountain2', x, y, {}));
+      each('toilets', (x, y) => inside(x, y) && add('toilets', x, y, { yaw: rng() * 6.28 }));
+      each('art', (x, y) => inside(x, y) && add('art', x, y, { yaw: rng() * 6.28 }));
+      each('tree', (x, y) => { if (!isWater(x, y) && near(x, y)) add(inside(x, y) ? 'streettree' : 'streettree', x, y, Object.assign({ yaw: rng() * 6.28, s: .8 + rng() * .5 }, inside(x, y) ? null : { deco: 1 })); });
+      // the forest itself: a real stand of cedars and firs over every forest polygon (dense, spec D/E), maples at the edges
+      for (const p of D.forest) {
+        const r = p[0]; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (let i = 0; i < r.length; i += 2) { x0 = Math.min(x0, r[i]); x1 = Math.max(x1, r[i]); y0 = Math.min(y0, r[i + 1]); y1 = Math.max(y1, r[i + 1]); }
+        const S = 21;
+        for (let y = y0 + S / 2; y < y1; y += S) for (let x = x0 + S / 2; x < x1; x += S) {
+          const tx = x + (rng() - .5) * S * .8, ty = y + (rng() - .5) * S * .8;
+          if (!inPoly(tx, ty, r) || isWater(tx, ty) || !near(tx, ty) || nearRoad(tx, ty, 6)) continue;
+          const v = rng(), k = v < .5 ? 'bigtree' : v < .85 ? 'pine' : 'oak';
+          add(k, tx, ty, Object.assign({ yaw: rng() * 6.28, s: .7 + rng() * .6 }, inside(tx, ty) ? null : { deco: 1 }));
         }
       }
-      g.fillStyle = '#56c2c9'; for (let i = Math.floor(Math.max(x0, 14600) / 650) - 1; i <= Math.min(x1, 20500) / 650; i++) for (let j = Math.floor(y0 / 650) - 1; j <= y1 / 650; j++) if (REEF(i, j)) { g.beginPath(); g.arc(i * 650 + 325, j * 650 + 325, 230, 0, 7); g.fill(); }
-      g.fillStyle = '#f2e0a0'; g.beginPath(); g.arc(OASIS[0], OASIS[1], 600, 0, 7); g.fill();
-      g.fillStyle = '#4aa3df'; g.strokeStyle = '#4aa3df'; g.lineCap = 'round'; g.lineJoin = 'round';
-      g.lineWidth = 44; g.beginPath(); g.moveTo(RIVER[0], RIVER[1]); for (let i = 2; i < RIVER.length; i += 2) g.lineTo(RIVER[i], RIVER[i + 1]); g.stroke();
-      for (const c of [...LAKES, OASIS]) { g.beginPath(); g.arc(c[0], c[1], c[2], 0, 7); g.fill(); }
-      g.fillStyle = '#7a5a3a'; g.beginPath(); g.arc(700, 3500, 9, 0, 7); g.fill();                        // the campsite's trampled dirt
-      g.fillStyle = 'rgba(255,255,255,.35)'; for (let x = 21300; x < W + 4000; x += 900) if (x > x0 - 900 && x < x1) g.fillRect(x, y0, 2, y1 - y0);   // ice cracks
+      // the West End's real buildings (outside the line they're scenery)
+      for (const [x, y, w, d, yaw, h] of D.bld) {
+        if (!near(x, y)) continue;
+        const k = h < 9 ? (w * d < 160 ? 'house' : 'shop') : h < 16 ? 'lowrise' : h < 40 ? 'midrise' : 'highrise';
+        const ob = add(k, x, y, { yaw, deco: inside(x, y) ? undefined : 1, quiet: 1 });
+        if (ob) { ob.fw = Math.max(w, d) * .95; ob.hm = h; ob.sv = 1; ob.t = tierOf(G.C, ob.fw); ob.r = ob.fw / 2; }
+      }
+      // parked cars filling the real lots
+      for (const p of D.parking) {
+        const r = p[0]; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (let i = 0; i < r.length; i += 2) { x0 = Math.min(x0, r[i]); x1 = Math.max(x1, r[i]); y0 = Math.min(y0, r[i + 1]); y1 = Math.max(y1, r[i + 1]); }
+        if (!inside((x0 + x1) / 2, (y0 + y1) / 2)) continue;
+        const n = Math.min(24, Math.floor((x1 - x0) * (y1 - y0) / 60));
+        for (let i = 0; i < n; i++) { const x = x0 + rng() * (x1 - x0), y = y0 + rng() * (y1 - y0); if (inPoly(x, y, r)) add(rng() < .85 ? 'car' : 'van', x, y, { yaw: rng() < .5 ? 0 : Math.PI }); }
+      }
+      // the famous places, at their real spots
+      A('hat', -123.1455, 49.2933, { label: 'a top hat', sub: 'left on a bench', id: 'tophat' });
+      A('mermaid', -123.12597, 49.30262, { label: 'Girl in a Wetsuit', id: 'mermaid', fact: 'A bronze statue of a diver sitting on a rock just off the seawall.' });
+      A('figurehead', -123.12649, 49.30267, { label: 'the Empress of Japan figurehead', id: 'empress', fact: 'A copy of the dragon figurehead from a steamship that sailed to Asia.' });
+      A('hollowtree', -123.15357, 49.30688, { label: 'the Hollow Tree', id: 'hollowtree', fact: 'A giant old cedar stump so hollow that people stand inside it.' });
+      A('siwash', -123.1563, 49.30872, { label: 'Siwash Rock', id: 'siwash', deco: 1, fact: 'A tall sea stack standing in the water by the seawall.' });
+      A('lighthouse', -123.14141, 49.31403, { label: 'the Prospect Point lighthouse', id: 'prospectlh', fact: 'It guards the narrows under the Lions Gate Bridge.' });
+      A('lighthouse', -123.11708, 49.3008, { label: 'the Brockton Point lighthouse', id: 'brocktonlh' });
+      A('gun', -123.1176, 49.2981, { label: 'the Nine O\'Clock Gun', id: 'gun', fact: 'A cannon that fires every night at nine o\'clock.' });
+      A('jubilee', -123.1428, 49.2953, { label: 'the Jubilee Fountain', id: 'jubilee', sub: 'Lost Lagoon', fact: 'A fountain in the middle of Lost Lagoon.' });
+      A('arch', -123.13072, 49.30226, { label: 'Lumberman\'s Arch', id: 'arch', yaw: .6 });
+      A('waterpark', -123.13148, 49.29776 + .0045, { label: 'the water park', id: 'waterpark', sub: 'Lumberman\'s Arch' });
+      A('teahouse', -123.15722, 49.30123, { label: 'the Teahouse', id: 'teahouse', sub: 'Ferguson Point', yaw: .4 });
+      A('pavilion', -123.13405, 49.29959, { label: 'the Stanley Park Pavilion', id: 'pavilion', yaw: .2 });
+      A('rowclub', -123.13429, 49.29662, { label: 'the Vancouver Rowing Club', id: 'rowclub', yaw: -.5 });
+      A('rvyc', -123.12695, 49.29599, { label: 'the Royal Vancouver Yacht Club', id: 'rvyc', yaw: -.4 });
+      A('deadman', -123.1228, 49.2952, { label: 'Deadman\'s Island', id: 'deadman', nosolid: 1, fact: 'A small wooded island in Coal Harbour, home to a navy base.' });
+      A('inukshuk', -123.14376, 49.28432, { label: 'the Inukshuk', id: 'inukshuk', sub: 'English Bay' });
+      A('beaverlodge', -123.1395, 49.3043, { label: 'the beaver lodge', id: 'beaverlake', sub: 'Beaver Lake' });
+      A('rosebed', -123.13611, 49.29869, { label: 'the Rose Garden', id: 'rosegarden' }); for (let i = 0; i < 8; i++) A('rosebed', -123.1366 + (i % 4) * .00012, 49.2985 + Math.floor(i / 4) * .0001, {});
+      A('gas', -123.13187, 49.2914, { label: 'the gas station', sub: 'Coal Harbour', yaw: .55 });
+      // the Brockton Point totem poles: scenery only
+      for (let i = 0; i < 9; i++) A('totem', -123.12135 + (i % 5) * .00009, 49.29915 + Math.floor(i / 5) * .00007, { deco: 1, label: i === 2 ? 'Totem poles' : '', sub: 'Brockton Point' });
+      // tennis courts, the pitch & putt, playgrounds and pools (on their real polygons)
+      const mid = p => { const r = p[0]; let x = 0, y = 0; for (let i = 0; i < r.length; i += 2) { x += r[i]; y += r[i + 1]; } return [x / (r.length / 2), y / (r.length / 2)]; };
+      let ti = 0; for (const p of D.court) { const [x, y] = mid(p); if (inside(x, y)) add('net', x, y, ti++ ? { yaw: Q } : { yaw: Q, label: 'the tennis courts', id: 'tennis' }); }
+      let gi = 0; for (const p of D.golf) { const [x, y] = mid(p); if (inside(x, y)) add('flag', x, y, gi++ ? {} : { label: 'the pitch & putt', id: 'pitchputt' }); }
+      const plays = D.play.map(mid).filter(([x, y]) => inside(x, y)).sort((a, b) => Math.hypot(a[0] - START[0], a[1] - START[1]) - Math.hypot(b[0] - START[0], b[1] - START[1]));
+      plays.forEach(([x, y], pi) => add(pi % 2 ? 'swings' : 'slide', x, y, Object.assign({ yaw: rng() * 6 }, pi === 0 ? { keep: 1, id: 'ceperleyslide', label: 'the Ceperley playground slide' } : null)));
+      // the Aquarium: tanks with their animals inside the open-top hall
+      aqHall = A('aquahall', -123.1310, 49.3003, { label: 'the Vancouver Aquarium', id: 'aquarium', nosolid: 1, fact: 'Sea otters, jellyfish, penguins and fish from all over the world live here.' });
+      const tank = (dx, dy, kind, n) => { const x = AQX + dx, y = AQY + dy; add('aquatank', x, y, { quiet: 1, nosolid: 1 }); for (let i = 0; i < n; i++) add(kind, x + (rng() - .5) * 6, y + (rng() - .5) * 5, { quiet: 1, yaw: rng() * 6 }); };
+      tank(-28, -16, 'jelly', 6); tank(-14, -16, 'fish', 6); tank(0, -16, 'octopus', 2); tank(14, -16, 'turtle', 2); tank(28, -16, 'fish', 6);
+      tank(-26, 6, 'otter', 3); tank(-10, 6, 'penguin', 5); tank(10, 6, 'seal', 2); tank(26, 6, 'fish', 6);
+      for (let i = 0; i < 10; i++) add(i % 3 ? 'person' : 'kid', AQX + (rng() - .5) * 70, AQY + 14 + rng() * 8, { quiet: 1 });
+      // Lions Gate Bridge (the south half is inside the line), the miniature train
+      { const [x0, y0] = P(-123.1385, 49.3150), [x1, y1] = P(-123.1395, 49.3215); add('bridge', (x0 + x1) / 2, (y0 + y1) / 2, { deco: 1, quiet: 1, label: 'Lions Gate Bridge', fwx: Math.hypot(x1 - x0, y1 - y0), hm: 60, yaw: Math.atan2(x1 - x0, y1 - y0) }); }
+      A('station', -123.1373, 49.3007, { label: 'the miniature train station', yaw: .3 });
+      A('minitrain', -123.1373, 49.3007, { path: poly([-123.1373, 49.3007, -123.1385, 49.3020, -123.1400, 49.3015, -123.1395, 49.2998, -123.1380, 49.2995, -123.1373, 49.3007]), spd: 2.2, loop: 1, face: 1, label: 'the miniature train', id: 'minitrain' });
+      // movers: cars and tour buses on the park drive and the causeway, cyclists on the bike paths, people on the seawall
+      const lens = l => { let s = 0; for (let i = 2; i < l.length; i += 2) s += Math.hypot(l[i] - l[i - 2], l[i + 1] - l[i - 1]); return s; };
+      const inLine = l => { let n = 0; for (let i = 0; i < l.length; i += 2) if (inside(l[i], l[i + 1])) n++; return n > l.length / 4; };
+      const pick = (list, minL) => list.filter(l => inLine(l) && lens(l) > minL);
+      for (const l of pick(D.roads.hwy, 120)) for (let j = 0; j < 3; j++) add(['car', 'van', 'car', 'taxi'][j], 0, 0, { path: l, spd: 11 + rng() * 3, ph: rng(), face: 1, lane: (j % 2 ? 1 : -1) * 3 });
+      const mains = pick(D.roads.main, 150);
+      mains.forEach((l, i) => { add(i % 3 ? 'car' : 'tourbus', 0, 0, { path: l, spd: i % 3 ? 8 + rng() * 2 : 5, ph: rng(), face: 1, lane: (i % 2 ? 1 : -1) * 2.5, label: i % 3 ? '' : (i ? '' : 'the park tour bus') }); });
+      for (const [i, l] of pick(D.roads.main, 300).slice(0, 2).entries()) add('horsecart', 0, 0, { path: l, spd: 1.6, ph: rng(), face: 1, lane: 2.5, label: i ? '' : 'the horse-drawn tour' });
+      pick(D.roads.bike, 80).forEach((l, i) => { for (let j = 0; j < 2; j++) add('cyclist', 0, 0, { path: l, spd: 4 + rng() * 2, ph: rng(), face: 1, lane: j ? .8 : -.8 }); });
+      pick(D.roads.foot, 200).slice(0, 70).forEach((l, i) => add(i % 3 ? 'person' : 'jogger', 0, 0, { path: l, spd: i % 3 ? 1.2 : 2.6, ph: rng(), face: 1 }));
+      // boats out on the water, float planes by Coal Harbour, seals and orcas
+      const W8 = [[-123.163, 49.296, -123.160, 49.306, -123.155, 49.312, -123.162, 49.300], [-123.150, 49.284, -123.158, 49.288, -123.152, 49.291, -123.146, 49.287],
+        [-123.115, 49.3045, -123.120, 49.308, -123.130, 49.312, -123.122, 49.307], [-123.112, 49.299, -123.118, 49.2935, -123.125, 49.2925, -123.116, 49.297]];
+      W8.forEach((w, i) => { for (const [k, sp] of [['sailboat', 2.5], ['speedboat', 7], ['kayak', 1.2], ['yacht', 4]]) add(k, 0, 0, { path: poly([...w, w[0], w[1]]), spd: sp, ph: rng(), loop: 1, face: 1 }); });
+      for (let i = 0; i < 4; i++) A('seaplane', -123.1185 + i * .0006, 49.2925, { yaw: Q });
+      for (let i = 0; i < 3; i++) A('orca', -123.163 + i * .003, 49.31 - i * .002, { path: poly([-123.165 + i * .002, 49.296, -123.162, 49.312, -123.15, 49.3165, -123.162, 49.304]), spd: 3, ph: i / 3, loop: 1, face: 1, label: i ? '' : 'Orcas', id: i ? undefined : 'orca' });
+      for (let i = 0; i < 8; i++) { const [x, y] = P(-123.158 + rng() * .045, 49.284 + rng() * .03); if (isWater(x, y) && inside(x, y) && zoneHere(x, y) === 'water') add('seal', x, y, { quiet: 1 }); }
+      for (let i = 0; i < 6; i++) A('swan', -123.1435 + i * .0006, 49.2958 + (i % 2) * .0003, {});
+    },
+    hint: w => w === 'tree' ? P(-123.145, 49.302) : null,
+    words: ['PARK', 'TREE', 'SEAL', 'DUCK', 'SWAN', 'BIKE', 'BOAT', 'ORCA', 'BEACH', 'SAND'],
+    // the objective ladder (story): the picnic → Second Beach → the west side → the whole park → Coal Harbour
+    beats: ['sandwich', 'basket', 'ceperleyslide', 'hollowtree', 'prospectlh', 'arch', 'teahouse', 'rowclub', 'aquarium', 'deadman'],
+    rings: (() => { const r = (a, b, c, d) => [...P(a, b), ...P(c, d)], [sx, sy] = START, pic = [sx - 14, sy - 14, sx + 14, sy + 14], sb = r(-123.1545, 49.2968, -123.1440, 49.2905),
+      west = r(-123.163, 49.312, -123.138, 49.2885), park = r(-123.166, 49.318, -123.112, 49.2875);
+      return [pic, pic, sb, west, park, park, park, null, null, null]; })(),
+    check: ['c:tree:20', 'b:mermaid||Find the Girl in a Wetsuit', 'b:orca||Eat an orca'],
+    quests: [
+      'c:ant:8', 't:25', 'c:leaf:5', 'x:5', 'c:squirrel:3', 'a:ant:15', 'c:bench:3', 'c:duck:3|c', 'c:goose:3|c', 'c:cyclist:2|c',
+      'c:car:3', 'c:sailboat:2|c', 'x:8', 'c:seal:2|c', 'b:minitrain|c|Eat the miniature train', 'c:tree:10', 'b:tourbus|c|Eat a park tour bus', 't:200',
+      'f:add', 'f:sub', 'f:mul', 'f:miss', 'f:mul', 'f:add', 'f:sub', 'q:5,10,15,20,25',
+      'q:PARK|s|Eat P-A-R-K in order', 'l:S', 'l:B', 'f:word', 'q:SEAL', 'l:T',
+      'p:bench,lamp,bench,lamp', 'p:duck,swan,duck,swan', 'p:person,dog,person,dog', 'p:sailboat,kayak,sailboat,kayak',
+      'r:4', 's:5000', 'r:7', 's:30000',
+    ],
+    ispy: ['#mermaid', '#empress', '#hollowtree', '#prospectlh', '#brocktonlh', '#gun', '#jubilee', '#arch', '#waterpark', '#teahouse', '#pavilion', '#rowclub', '#rvyc',
+      '#aquarium', '#deadman', '#inukshuk', '#beaverlake', '#rosegarden', '#tennis', '#pitchputt', '#minitrain', 'heron', 'raccoon', 'coyote', 'otter', 'swan', 'seal', 'orca', 'penguin', 'hat'],
+    eduSubj: 'geography',
+    edu: [
+      { n: 'Around the seawall', s: ['i:#mermaid|Find the Girl in a Wetsuit', 'i:#empress|Find the Empress of Japan figurehead', 'i:#brocktonlh|Find the Brockton Point lighthouse'] },
+      { n: 'The west side', s: ['i:#teahouse|Find the Teahouse', 'i:#hollowtree|Find the Hollow Tree', 'i:#prospectlh|Find the Prospect Point lighthouse'] },
+      { n: 'Lakes and lagoons', s: ['i:#jubilee|Find the fountain in Lost Lagoon', 'i:#beaverlake|Find the beaver lodge in Beaver Lake', 'f:duck,swan,goose'] },
+      { n: 'Fun and games', s: ['i:#waterpark|Find the water park', 'i:#tennis|Find the tennis courts', 'i:#pitchputt|Find the pitch & putt'] },
+      { n: 'On the water', s: ['i:#rowclub|Find the Vancouver Rowing Club', 'i:#rvyc|Find the Royal Vancouver Yacht Club', 'i:#deadman|Find Deadman\'s Island'] },
+      { n: 'Ocean animals', s: ['i:#aquarium|Find the Vancouver Aquarium', 'f:seal,otter,orca', 'f:jelly,penguin,octopus'] },
+      { n: 'Park maths', s: ['m:add', 'm:sub', 'm:mul'] },
+    ],
+    doneTxt: 'From a crumb on a picnic blanket to Deadman\'s Island: Stanley Park is in your belly!',
+    bg(g, V) {
+      const x0 = V.x0, y0 = V.y0, x1 = V.x1, y1 = V.y1, px = V.px;
+      const box = p => { const r = p[0]; let a = 1e9, b = 1e9, c = -1e9, d = -1e9; for (let i = 0; i < r.length; i += 2) { a = Math.min(a, r[i]); c = Math.max(c, r[i]); b = Math.min(b, r[i + 1]); d = Math.max(d, r[i + 1]); } return [a, b, c, d]; };
+      const vis = k => (D['_v' + k] || (D['_v' + k] = (D[k] || []).map(p => [box(p), p])));
+      const F = (k, col) => { g.fillStyle = col; g.beginPath(); for (const [b, p] of vis(k)) if (!(b[0] > x1 || b[2] < x0 || b[1] > y1 || b[3] < y0)) ringPath(g, p); g.fill('evenodd'); };
+      g.fillStyle = '#d9d6c8'; g.fillRect(x0, y0, x1 - x0, y1 - y0);
+      F('com', '#d3cdc2'); F('res', '#dcd7cb'); F('park', '#8fcf6f'); F('grass', '#8fcf6f'); F('forest', '#4f8a3c'); F('lawn', '#9fd87c'); F('garden', '#a7d98a'); F('field', '#7fcf62');
+      F('golf', '#76d46a'); F('court', '#c8704a'); F('play', '#f2c27a'); F('parking', '#a3a5a8'); F('beach', '#ead9a8'); F('rock', '#b9b2a6');
+      // water with a gentle shimmer of light bands (idle life), then lakes, pools and marinas
+      F('water', '#5aa9e6'); F('lakes', '#4f9fe0'); F('pools', '#7fd3f0'); F('marina', '#4f9fdb');
+      // the seawall's stone edge, piers and docks
+      g.strokeStyle = '#efe9dc'; g.lineCap = 'round'; g.lineJoin = 'round';
+      g.fillStyle = '#b08a5a'; g.beginPath(); for (const p of D.piers) ringPath(g, p); g.fill(); g.strokeStyle = '#b08a5a'; strokeAll(g, D.pierl, 2);
+      const lines = (k, w, col, minPx) => { if (w / px < (minPx || 0)) return; g.strokeStyle = col; strokeAll(g, D.roads[k].filter(l => true), Math.max(w, px * .6)); };
+      lines('foot', 2.5, '#efe6d2', .15); lines('bike', 3.2, '#d9a07a', .1);
+      g.strokeStyle = '#d9d5cc'; strokeAll(g, D.roads.street, 10); strokeAll(g, D.roads.main, 13); strokeAll(g, D.roads.hwy, 17);
+      lines('street', 8, '#8e9196'); lines('main', 11, '#83868c'); lines('hwy', 15, '#7d8087');
+      if (1 / px > 1.5) { g.setLineDash([3, 6]); g.strokeStyle = '#e8c64a'; g.lineWidth = .25; g.beginPath(); for (const l of D.roads.main.concat(D.roads.hwy)) { g.moveTo(l[0], l[1]); for (let i = 2; i < l.length; i += 2) g.lineTo(l[i], l[i + 1]); } g.stroke(); g.setLineDash([]); }
+      // the Aquarium's floor
+      g.fillStyle = '#e7e2d6'; g.fillRect(AQX - AQW / 2, AQY - AQD / 2, AQW, AQD);
     },
   });
 })();
 
 
-/* ---------- CHAPTER 6: SPACE — our solar system, in the real order (play-scale sizes/distances) ---------- */
+/* ---------- WORLD 4: SPACE — from a footprint on the Moon to the Sun (play-scale sizes and distances, real order) ----------
+   You start beside the Apollo landing site on the Moon, small enough to eat moon dust. The Moon is the gateway: eat it
+   and Earth, its space junk and the ISS open up, then the planets (all eight orbit the Sun once the Moon is gone), their
+   moons (Jupiter has dozens, with aliens), the asteroid belt, the dwarf planets, the Kuiper belt, the Oort cloud and
+   Planet Nine (if it's real). The Sun is the last thing you eat. */
 (() => {
-  const W = 56000, H = 56000, SX = 28000, SY = 28000;
+  const W = 80000, H = 80000, SX = 40000, SY = 40000;
   const orb = (r, a) => [SX + Math.cos(a) * r, SY + Math.sin(a) * r];
-  // id, type, orbit radius, angle, label line 2, fact
+  const circ = (cx, cy, r, n = 64, a0 = 0) => { const p = []; for (let i = 0; i <= n; i++) { const a = a0 + i / n * 6.2832; p.push(cx + Math.cos(a) * r, cy + Math.sin(a) * r); } return p; };
+  // id, orbit radius, start angle, label line 2, fact, orbit speed (units/s along the orbit)
   const PLANETS = [
-    ['mercury', 2500, 0.6, 'Planet 1 — closest to the Sun', 'Mercury is the smallest planet.'],
-    ['venus', 3600, 2.2, 'Planet 2', 'Venus is the hottest planet.'],
-    ['earth', 4800, 4.0, 'Planet 3 — our home!', 'Earth is the only planet we know with life.'],
-    ['mars', 6200, 5.0, 'Planet 4 — the red planet', 'Mars has the tallest volcano in the solar system.'],
-    ['jupiter', 12500, 1.2, 'Planet 5 — the biggest', 'Jupiter is so big that all the other planets could fit inside it.'],
-    ['saturn', 16000, 3.0, 'Planet 6', 'Saturn\'s rings are made of ice and rock.'],
-    ['uranus', 19500, 4.6, 'Planet 7', 'Uranus spins on its side!'],
-    ['neptune', 23000, 0.2, 'Planet 8 — the farthest planet', 'Neptune has the fastest winds in the solar system.'],
+    ['mercury', 2500, 0.6, 'Planet 1 — closest to the Sun', 'Mercury is the smallest planet.', 26],
+    ['venus', 3600, 2.2, 'Planet 2', 'Venus is the hottest planet.', 20],
+    ['earth', 4800, 4.0, 'Planet 3 — our home!', 'Earth is the only planet we know with life.', 16],
+    ['mars', 6200, 5.0, 'Planet 4 — the red planet', 'Mars has the tallest volcano in the solar system.', 13],
+    ['jupiter', 12500, 1.2, 'Planet 5 — the biggest', 'Jupiter is so big that all the other planets could fit inside it.', 9],
+    ['saturn', 16000, 3.0, 'Planet 6', 'Saturn\'s rings are made of ice and rock.', 7],
+    ['uranus', 19500, 4.6, 'Planet 7', 'Uranus spins on its side!', 6],
+    ['neptune', 23000, 0.2, 'Planet 8 — the farthest planet', 'Neptune has the fastest winds in the solar system.', 5],
   ];
-  const BELT = [7600, 9600], KUIPER = 24800;
-  const EARTH = orb(4800, 4.0), MARS = orb(6200, 5.0), JUP = orb(12500, 1.2), SAT = orb(16000, 3.0);
-  const RINGS = [260, 900];                                  // Saturn's rings: a field of eatable ice and rock bits
+  const BELT = [7600, 9600], KUIPER = [24500, 30000], OORT = [33000, 39500];
+  const EARTH = orb(4800, 4.0), MOON = [EARTH[0] + 380, EARTH[1] - 260], MOON_R = 30;   // the Moon's surface is a zoomed-in stage (the Moon you swallow is 15 across)
+  const RINGS = [260, 900];
+  let planetObj = {}, moonGone = () => false;
+  // where things are right now (the planets move): Saturn's rings and Jupiter's alien zone travel with them
+  const at0 = id => planetObj[id] || null;
   function zoneAt(x, y) {
     if (x < 0 || y < 0 || x > W || y > H) return null;
+    if (!moonGone() && Math.hypot(x - MOON[0], y - MOON[1]) < MOON_R) return 'moon';
     const r = Math.hypot(x - SX, y - SY);
     if (r < 1500) return null;
     if (Math.hypot(x - EARTH[0], y - EARTH[1]) < 1300) return 'earthorbit';
-    const rs = Math.hypot(x - SAT[0], y - SAT[1]); if (rs > RINGS[0] && rs < RINGS[1]) return 'rings';
     if (r > BELT[0] && r < BELT[1]) return 'belt';
-    if (r > KUIPER) return 'kuiper';
+    if (r > KUIPER[0] && r < KUIPER[1]) return 'kuiper';
+    if (r > OORT[0] && r < OORT[1]) return 'oort';
     return 'space';
   }
-  const pl = (n, t, c1, c2, o) => [n, t, Object.assign({ planet: 1 }, o || {})];
-  const PW = { pluto: 14, europa: 17, io: 18, moon: 22, callisto: 23, titan: 24, ganymede: 25, mercury: 30, mars: 40, venus: 56, earth: 60,
-    neptune: 110, uranus: 118, saturn: 175, jupiter: 210, sun: 330 };   // fit widths in play units, compressed real order (clarification 4c)
+  const PW = { pluto: 14, eris: 14, haumea: 11, makemake: 11, gonggong: 9, quaoar: 9, sedna: 8, ceres: 8, europa: 17, io: 18, moon: 15, callisto: 23, titan: 24, ganymede: 25,
+    mercury: 30, mars: 40, venus: 56, earth: 60, planet9: 90, neptune: 110, uranus: 118, saturn: 175, jupiter: 210, sun: 330 };   // fit widths in play units, compressed real order
   const sized = (n, k, o) => [n, 1, Object.assign({ planet: 1, m: [PW[k], PW[k]] }, o || {})];
+  const E6 = ['', '', '', '', '', ''];                                // no space junk at moon-dust sizes
   CH.push({
     n: 4, key: 'space', mus: 'ch6.mp3', name: 'Space', short: 'Space', c1: '#3949ab', c2: '#0d1240', bgc: '#03030c', rim: '#a98bff', space: 1,
-    W, H, start: [EARTH[0] + 420, EARTH[1] + 380], cost: 3.6, need: 215, pv: 1.2, view: 13,
-    sizes: [0, 16, 26, 42, 66, 100, 150, 230, 350, 520],
-    real: [0, 3.5e6, 5e6, 7e6, 1e7, 1.4e7, 3e7, 6e7, 1.4e8, 1.4e9],
+    W, H, start: [MOON[0] - 1.2, MOON[1] + 5.2], cost: 3.6, need: 60, needP: 1.6, xpk: 2, spd: 1.4, pv: 1.2, view: 13,
+    sizes: [0, .25, .5, 1, 2, 4, 8, 16, 26, 42, 66, 100, 150, 230, 350, 520],
+    // "How big am I?": moon-walk sizes in metres, then the gateway jump to moon-sized and up
+    real: [0, .3, .8, 2, 4, 10, 1500, 3.5e6, 5e6, 7e6, 1e7, 1.4e7, 3e7, 6e7, 1.4e8, 1.4e9],
     tagN: { asteroid: 'asteroid' },
     types: {
-      rock: ['space rock', 1, { s: .6 }], ice: ['ice rock', 1], bolt: ['space bolt', 1], glove: ['lost glove', 1], stardust: ['stardust', 1, { pl: 'stardust' }],
-      satellite: ['satellite', 2], meteor: ['meteor', 2, { s: .7, mv: 'fly' }], astronaut: ['astronaut', 2, { mv: 'w' }], asteroid: ['asteroid', 2, { tags: 'asteroid' }],
-      probe: ['space probe', 2], telescope: ['space telescope', 2],
-      comet: ['comet', 3, { s: 1.2, mv: 'fly' }], ufo: ['UFO', 3, { mv: 'fly' }], rocket: ['rocket', 3, { mv: 'w' }], alien: ['alien', 3, { mv: 'w' }],
-      bigast: ['big asteroid', 3, { tags: 'asteroid', s: 1.1 }], iss: ['International Space Station', 1, { m: [14, 6] }],
-      station: ['space station', 4, {}], outpost: ['alien outpost', 4, {}],
-      giantcomet: ['giant comet', 5, { s: 1.4, mv: 'fly' }], mothership: ['alien mothership', 5, { s: 1.3, mv: 'w' }], ringstation: ['mega space station', 6, {}],
-      moon: sized('the Moon', 'moon'), pluto: sized('Pluto', 'pluto'), io: sized('Io', 'io'), europa: sized('Europa', 'europa'), ganymede: sized('Ganymede', 'ganymede'),
-      callisto: sized('Callisto', 'callisto'), titan: sized('Titan', 'titan'),
+      // the Moon (Apollo landing site)
+      moondust: ['moon dust', 1, { pl: 'moon dust' }], pebble: ['moon pebble', 1], moonrock: ['moon rock', 2], boot: ['boot print', 1, { m: [.3, .02] }], camera: ['moon camera', 3],
+      flag: ['flag', 3], seismo: ['moonquake detector', 4], astronaut: ['astronaut', 4, { mv: 'w' }], lunarrover: ['the moon buggy', 1, { m: [3, 1.2] }], lander: ['the Apollo lander', 1, { m: [5.5, 6] }],
+      crater: ['small crater', 5], moonhill: ['moon hill', 1, { m: [4.5, 1.6] }], bigcrater: ['big crater', 1, { m: [6.5, .5] }], apolloflag: ['the Apollo flag', 1, { m: [.6, 1.4] }],
+      // space
+      rock: ['space rock', 7, { s: .6 }], ice: ['ice rock', 7], bolt: ['space bolt', 7], glove: ['lost glove', 7], stardust: ['stardust', 7, { pl: 'stardust' }], junk: ['space junk', 7, { pl: 'space junk' }],
+      satellite: ['satellite', 8], meteor: ['meteor', 8, { s: .7, mv: 'fly' }], asteroid: ['asteroid', 8, { tags: 'asteroid' }], probe: ['space probe', 8], telescope: ['space telescope', 8],
+      comet: ['comet', 9, { s: 1.2, mv: 'fly' }], ufo: ['UFO', 9, { mv: 'fly' }], rocket: ['rocket', 9, { mv: 'w' }], alien: ['alien', 9, { mv: 'w' }],
+      bigast: ['big asteroid', 9, { tags: 'asteroid', s: 1.1 }], iss: ['International Space Station', 1, { m: [14, 6] }],
+      station: ['space station', 10, {}], outpost: ['alien outpost', 10, {}], minimoon: ['small moon', 8], giantcomet: ['giant comet', 11, { s: 1.4, mv: 'fly' }], mothership: ['alien mothership', 11, { s: 1.3, mv: 'w' }],
+      moon: ['the Moon', 1, { planet: 1, m: [PW.moon, .15] }], pluto: sized('Pluto', 'pluto'), io: sized('Io', 'io'), europa: sized('Europa', 'europa'), ganymede: sized('Ganymede', 'ganymede'),
+      callisto: sized('Callisto', 'callisto'), titan: sized('Titan', 'titan'), ceres: sized('Ceres', 'ceres'), eris: sized('Eris', 'eris'), haumea: sized('Haumea', 'haumea'),
+      makemake: sized('Makemake', 'makemake'), gonggong: sized('Gonggong', 'gonggong'), quaoar: sized('Quaoar', 'quaoar'), sedna: sized('Sedna', 'sedna'), planet9: sized('Planet Nine', 'planet9'),
       mercury: sized('Mercury', 'mercury'), venus: sized('Venus', 'venus'), earth: sized('Earth', 'earth'), mars: sized('Mars', 'mars'),
       jupiter: sized('Jupiter', 'jupiter'), saturn: sized('Saturn', 'saturn'), uranus: sized('Uranus', 'uranus'), neptune: sized('Neptune', 'neptune'),
       sun: ['the Sun', 1, { c1: '#ffcc33', m: [PW.sun, PW.sun] }],
-      rover: ['Mars rover', 1, { m: [9, 6] }], ringice: ['ring ice', 1, { s: .7 }], ringrock: ['ring rock', 1, { s: .8 }], hat: ['top hat', 1],
+      rover: ['Mars rover', 1, { m: [9, 6] }], ringice: ['ring ice', 8, { s: .7 }], ringrock: ['ring rock', 8, { s: .8 }], hat: ['top hat', 7],
     },
     zones: {
-      space: { d: .8, t: ['rock:3,ice,bolt,glove,stardust:2', 'satellite,meteor:2,astronaut,probe', 'comet:2,ufo:2,rocket,alien', 'station:.3,outpost:.5', 'giantcomet,mothership', 'ringstation'] },
-      earthorbit: { d: 1.4, coin: .35, t: ['bolt:3,glove:2,rock', 'satellite:4,astronaut:2,telescope', 'rocket:2,ufo', 'station'] },
-      belt: { d: 1.5, t: ['rock:4,stardust', 'asteroid:8', 'bigast:5,comet', 'outpost', 'mothership'] },
-      kuiper: { d: .9, t: ['ice:5,rock', 'meteor', 'comet:3', '', 'giantcomet:2'] },
-      rings: { d: 2.2, coin: .3, t: ['ringice:6,ringrock:4', 'ringice:3,ringrock:2,asteroid', 'bigast'] },
-      xspace: { d: .25, deco: 1, t: ['rock:3,ice:2', 'meteor,satellite', 'comet:2', '', 'giantcomet'] },
+      moon: { d: 1.6, coin: .2, t: ['moondust:5,pebble:3,boot:2', 'pebble:2,moonrock:4', 'moonrock:2,camera,flag:.3', 'seismo:.5,astronaut:.6,moonrock', 'crater:.8'] },
+      space: { d: .55, t: [...E6, 'rock:3,ice,bolt,glove,stardust:2', 'satellite,meteor:2,probe', 'comet:2,ufo,rocket', 'station:.2,outpost:.3', 'giantcomet'] },
+      earthorbit: { d: 1.1, coin: .3, t: [...E6, 'junk:4,bolt:3,glove:2,rock', 'satellite:4,telescope', 'rocket:2', 'station'] },
+      belt: { d: 1.3, t: [...E6, 'rock:4,stardust', 'asteroid:8', 'bigast:5,comet', 'outpost', 'mothership:.3'] },
+      kuiper: { d: .8, t: [...E6, 'ice:5,rock', 'meteor,minimoon', 'comet:3', '', 'giantcomet:2'] },
+      oort: { d: .35, t: [...E6, 'ice:6', 'meteor', 'comet:4', '', 'giantcomet:3'] },
+      xspace: { d: .2, deco: 1, t: [...E6, 'rock:3,ice:2', 'meteor,satellite', 'comet:2', '', 'giantcomet'] },
     },
     zoneAt, outside: () => 'xspace',
-    build(add) {
-      PLANETS.forEach(([id, r, a, sub, fact]) => add(id, ...orb(r, a), { keep: 1, id, label: tname(CH[4], id), sub, fact }));
-      add('moon', EARTH[0] + 380, EARTH[1] - 260, { keep: 1, id: 'moon', label: 'The Moon', sub: 'Earth\'s moon' });
-      [['io', 'Io', 'Io has hundreds of volcanoes.'], ['europa', 'Europa', 'Europa has an ocean under its ice.'], ['ganymede', 'Ganymede', 'Ganymede is the biggest moon in the solar system.'],
-        ['callisto', 'Callisto', 'Callisto is covered in craters.']].forEach(([id, n, fact], i) => add(id, JUP[0] + Math.cos(i * 1.6 + .4) * (420 + i * 120), JUP[1] + Math.sin(i * 1.6 + .4) * (420 + i * 120), { keep: 1, id, label: n, sub: 'a moon of Jupiter', fact }));
-      add('titan', SAT[0] + 1100, SAT[1] - 300, { keep: 1, id: 'titan', label: 'Titan', sub: 'a moon of Saturn', fact: 'Titan has lakes — but they are not water!' });
-      add('rover', MARS[0] + 90, MARS[1] - 110, { keep: 1, id: 'rover', label: 'Mars rover', sub: 'exploring Mars', fact: 'Rovers are robots that drive on Mars and study its rocks.' });
-      add('pluto', ...orb(26500, 2.6), { keep: 1, id: 'pluto', label: 'Pluto', sub: 'a dwarf planet', fact: 'Pluto is a dwarf planet, far out past Neptune.' });
-      add('sun', SX, SY, { keep: 1, id: 'sun', label: 'The Sun', sub: 'our star', fact: 'The Sun is a star. All the planets go around it.', needs: PLANETS.map(p => p[0]), needTxt: 'eat all 8 planets' });
-      add('iss', EARTH[0] + 300, EARTH[1] + 150, { keep: 1, id: 'iss', label: 'International Space Station', sub: 'orbiting Earth', fact: 'Astronauts live and work on the ISS, high above the Earth.' });
-      add('telescope', EARTH[0] - 260, EARTH[1] + 260, { keep: 1, id: 'telescope', label: 'Space telescope' });
-      add('probe', ...orb(27200, 5.6), { keep: 1, id: 'voyager', label: 'Voyager 1', sub: 'the farthest spacecraft' });
+    build(add, rng) {
+      const K = (k, x, y, o) => add(k, x, y, Object.assign({ keep: 1 }, o));
+      // the Moon: a grey disc you start on; the Apollo landing site with its lander, buggy, flag and boot prints
+      const moon = K('moon', MOON[0], MOON[1], { id: 'moon', label: 'The Moon', sub: 'Earth\'s moon', under: 1, nosolid: 1, flatMoon: 1, fact: 'Twelve astronauts have walked on the Moon.' }) || { dead: 1 };
+      moonGone = () => !!moon.dead;
+      K('apolloflag', MOON[0] + 1.8, MOON[1] + 4.6, { id: 'apolloflag', label: 'the Apollo flag', fact: 'Astronauts planted flags on the Moon. There is no wind, so a rod holds them out.' });
+      K('lunarrover', MOON[0] + 6, MOON[1] - 1.5, { id: 'lunarrover', label: 'the moon buggy', yaw: .6, fact: 'Astronauts drove an electric car on the Moon!' });
+      K('lander', MOON[0] - 4.2, MOON[1] - 3.4, { id: 'lander', label: 'the Apollo lander', fact: 'The lander carried two astronauts down to the Moon and back up again.' });
+      // hills and big craters to grow on before you can swallow the Moon itself
+      for (let i = 0; i < 14; i++) { const a = rng() * 6.28, d = 9 + rng() * 18; add(i % 3 ? 'moonhill' : 'bigcrater', MOON[0] + Math.cos(a) * d, MOON[1] + Math.sin(a) * d, { quiet: 1, s: .7 + rng() * .6 }); }
+      for (let i = 0; i < 16; i++) add('boot', MOON[0] - 1 + i * .25, MOON[1] + 2 + Math.sin(i) * .2, { yaw: .3 });
+      for (let i = 0; i < 2; i++) add('astronaut', MOON[0] + 1.2 + i * 1.5, MOON[1] + .8, { label: i ? '' : 'Astronaut', quiet: 1 });
+      // the planets, on their orbits (Earth holds still until the Moon is eaten, so your start can't drift away)
+      for (const [id, r, a, sub, fact, sp] of PLANETS) {
+        const [x, y] = orb(r, a), o = { id, label: tname(G.C, id), sub, fact };
+        Object.assign(o, id !== 'earth' ? { path: circ(SX, SY, r, 96, a), spd: sp, loop: 1, ph: 0 } : { path: [x, y, x + 1, y], spd: 0, orbit: 1 });
+        planetObj[id] = K(id, x, y, o) || { x, y, dead: 1 };          // (an eaten planet still anchors its moons' orbits)
+        if (planetObj[id].pb === undefined && id === 'earth') planetObj[id].pb = [0, 0, W, H];
+      }
+      // moons and followers: anything that orbits a planet rides along with it
+      const fol = [];
+      // a follower is a mover with no path of its own (orbit: 1): tick() places it around its planet, and it is always gathered
+      const follow = (k, par, R, a0, w, o) => { const p = planetObj[par], x = p.x + Math.cos(a0) * R, y = p.y + Math.sin(a0) * R, ob = add(k, x, y, Object.assign({ quiet: 1, path: [x, y, x + 1, y], spd: 0, orbit: 1 }, o)); if (ob) { ob.pb = [0, 0, W, H]; fol.push([ob, p, R, a0, w]); } return ob; };
+      const MO = {
+        mars: ['Phobos', 'Deimos'], jupiter: ['Io', 'Europa', 'Ganymede', 'Callisto', 'Amalthea', 'Himalia', 'Thebe', 'Elara', 'Pasiphae', 'Metis', 'Carme', 'Sinope', 'Lysithea', 'Ananke', 'Leda', 'Adrastea',
+          'Callirrhoe', 'Themisto', 'Megaclite', 'Taygete', 'Chaldene', 'Harpalyke', 'Kalyke', 'Iocaste', 'Erinome', 'Isonoe', 'Praxidike', 'Autonoe', 'Thyone', 'Hermippe', 'Aitne', 'Eurydome'],
+        saturn: ['Titan', 'Rhea', 'Iapetus', 'Dione', 'Tethys', 'Enceladus', 'Mimas', 'Hyperion', 'Phoebe'], uranus: ['Titania', 'Oberon', 'Umbriel', 'Ariel', 'Miranda'], neptune: ['Triton', 'Nereid', 'Proteus'],
+      };
+      const BIG = { Io: 'io', Europa: 'europa', Ganymede: 'ganymede', Callisto: 'callisto', Titan: 'titan' };
+      const FACT = { Io: 'Io has hundreds of volcanoes.', Europa: 'Europa has an ocean under its ice.', Ganymede: 'Ganymede is the biggest moon in the solar system.', Callisto: 'Callisto is covered in craters.',
+        Titan: 'Titan has lakes — but they are not water!', Phobos: 'Phobos is slowly falling toward Mars.', Triton: 'Triton orbits Neptune backwards!', Enceladus: 'Enceladus shoots water into space.' };
+      for (const [par, list] of Object.entries(MO)) list.forEach((nm, i) => {
+        const big = BIG[nm], R = (PW[par] * .7) + 60 + i * (par === 'jupiter' ? 34 : 70), id = big || nm.toLowerCase();
+        follow(big || 'minimoon', par, R, i * 2.39, (big ? .05 : .03) + rng() * .03, { keep: 1, id, label: nm, sub: 'a moon of ' + tname(G.C, par), fact: FACT[nm], quiet: big ? 0 : 1 });
+      });
+      // Jupiter's aliens, Saturn's rings (ice and rock riding around it), the rover on Mars
+      for (let i = 0; i < 10; i++) follow('alien', 'jupiter', 300 + rng() * 900, rng() * 6.28, .04 + rng() * .05, { label: i ? '' : 'Aliens near Jupiter' });
+      for (let i = 0; i < 4; i++) follow('ufo', 'jupiter', 500 + rng() * 800, rng() * 6.28, .06, {});
+      follow('mothership', 'jupiter', 1500, 1, .02, { keep: 1, id: 'mothership', label: 'the alien mothership' });
+      for (let i = 0; i < 70; i++) follow(i % 3 ? 'ringice' : 'ringrock', 'saturn', RINGS[0] + rng() * (RINGS[1] - RINGS[0]), rng() * 6.28, .05, {});
+      follow('rover', 'mars', 30, .8, 0, { keep: 1, id: 'rover', label: 'Mars rover', sub: 'exploring Mars', fact: 'Rovers are robots that drive on Mars and study its rocks.' });
+      // Earth: space junk, the ISS and a telescope (they ride with Earth once it starts to orbit)
+      follow('iss', 'earth', 300, .45, .06, { keep: 1, id: 'iss', label: 'International Space Station', sub: 'orbiting Earth', fact: 'Astronauts live and work on the ISS, high above the Earth.', quiet: 0 });
+      follow('telescope', 'earth', 360, 2.4, .02, { keep: 1, id: 'telescope', label: 'Space telescope' });
+      for (let i = 0; i < 40; i++) follow(i % 4 ? 'junk' : 'satellite', 'earth', 90 + rng() * 500, rng() * 6.28, .02 + rng() * .06, {});
+      // the dwarf planets (8), sparse discoveries far out, Voyager, Planet Nine
+      const DW = [['ceres', 8600, 1.9, 'a dwarf planet in the asteroid belt', 'Ceres is the biggest thing in the asteroid belt.'], ['pluto', 26500, 2.6, 'a dwarf planet', 'Pluto is a dwarf planet, far out past Neptune.'],
+        ['haumea', 27500, 4.1, 'a dwarf planet', 'Haumea spins so fast it is shaped like an egg.'], ['makemake', 28500, 5.4, 'a dwarf planet', 'Makemake was found just after Easter.'],
+        ['quaoar', 27000, .9, 'a dwarf planet', 'Quaoar has its own ring!'], ['gonggong', 29200, 3.4, 'a dwarf planet', 'Gonggong is reddish, like Mars.'],
+        ['eris', 31500, 5.9, 'a dwarf planet', 'Eris is almost the same size as Pluto.'], ['sedna', 35500, 1.6, 'a dwarf planet', 'Sedna takes about 11,000 years to go round the Sun.']];
+      for (const [id, r, a, sub, fact] of DW) K(id, ...orb(r, a), { id, label: tname(G.C, id), sub, fact });
+      K('planet9', ...orb(37500, 3.9), { id: 'planet9', label: 'Planet Nine?', sub: 'scientists think it might be out here', fact: 'Nobody has seen Planet Nine yet. Something far away seems to tug on the icy worlds.' });
+      K('probe', ...orb(31000, .4), { id: 'voyager', label: 'Voyager 1', sub: 'the farthest spacecraft', fact: 'Voyager 1 has been flying since 1977.' });
+      for (const [r, a] of [[11000, 3.3], [18000, 5.5], [21000, 1.9]]) add('station', ...orb(r, a), { quiet: 1 });
+      add('sun', SX, SY, { keep: 1, id: 'sun', label: 'The Sun', sub: 'our star', fact: 'The Sun is a star. All the planets go around it.' });
+      // followers move every frame; Earth (and its riders) start orbiting once the Moon is eaten
+      const E = planetObj.earth, er = 4800; let ea = 4.0;
+      if (moon && moon.dead === undefined) moon.dead = 0;
+      this.tick = dt => {
+        if (moon.dead) { ea += dt * 16 / er; E.x = SX + Math.cos(ea) * er; E.y = SY + Math.sin(ea) * er; }
+        const t = G.t;
+        for (const [o, p, R, a0, w] of fol) if (!o.dead && !o.fall) { const a = a0 + t * w; o.x = p.x + Math.cos(a) * R; o.y = p.y + Math.sin(a) * R; }
+      };
     },
     hint: w => w === 'asteroid' ? orb(8600, Math.atan2(G.y - SY, G.x - SX)) : null,
     finish() { setTimeout(() => { SFX.fanfare(); UI.complete(); }, 1200); },
+    // the objective ladder: the Apollo site → the Moon (the gateway) → Earth → the giants → the Sun
+    beats: ['apolloflag', 'lunarrover', 'lander', 'moon', 'earth', 'neptune', 'saturn', 'jupiter', 'sun'],
+    rings: (() => { const m = [MOON[0] - MOON_R, MOON[1] - MOON_R, MOON[0] + MOON_R, MOON[1] + MOON_R], e = [EARTH[0] - 1400, EARTH[1] - 1400, EARTH[0] + 1400, EARTH[1] + 1400];
+      return [m, m, m, m, null, null, null, null, null]; })(),
     ispy: ['#mercury', '#venus', '#earth', '#mars', '#jupiter', '#saturn', '#uranus', '#neptune', '#moon', '#pluto', '#iss', '#rover', '#io', '#europa', '#ganymede',
-      '#callisto', '#titan', '#voyager', 'satellite', 'astronaut', 'comet', 'ufo', 'rocket', 'alien', 'asteroid', '#telescope', 'meteor', 'glove', 'hat', 'ringice'],
+      '#callisto', '#titan', '#voyager', '#lander', '#lunarrover', '#ceres', '#eris', '#planet9', '#mothership', 'satellite', 'astronaut', 'comet', 'ufo', 'alien', 'hat'],
     eduSubj: 'science',
     edu: [
+      { n: 'On the Moon', s: ['i:#apolloflag|Find the Apollo flag', 'i:#lunarrover|Find the moon buggy', 'i:#lander|Find the Apollo lander'] },
       { n: 'Our corner of space', s: ['i:#iss|Find the International Space Station', 'i:#moon|Absorb the Moon', 'i:#earth|Absorb planet Earth'] },
       { n: 'Mission to Mars', s: ['i:#rover|Find the Mars rover', 'i:#mercury|Absorb Mercury, closest to the Sun', 'i:#mars|Absorb Mars, the red planet'] },
       { n: 'Moons first', s: ['i:#io|Find Io, a moon of Jupiter', 'i:#europa|Find Europa, the icy moon', 'i:#titan|Find Titan, a moon of Saturn'] },
       { n: 'The giants', s: ['f:ringice,ringrock', 'i:#saturn|Absorb Saturn', 'i:#jupiter|Absorb Jupiter, the biggest planet'] },
-      { n: 'Far out', s: ['i:#neptune|Absorb Neptune', 'i:#pluto|Find Pluto, the dwarf planet', 'i:#voyager|Find Voyager 1'] },
+      { n: 'Dwarf planets', s: ['i:#ceres|Find Ceres in the asteroid belt', 'i:#pluto|Find Pluto', 'i:#eris|Find Eris'] },
+      { n: 'Far out', s: ['i:#neptune|Absorb Neptune', 'i:#voyager|Find Voyager 1', 'i:#planet9|Look for Planet Nine'] },
       { n: 'Countdown maths', s: ['m:add', 'm:sub', 'm:mul'] },
     ],
-    doneTxt: 'All 8 planets, their moons, the asteroid belt, and THE SUN. But wait… zoom out…',
+    doneTxt: 'From moon dust to the Sun: the whole solar system is in your belly!',
     words: ['MOON', 'STAR', 'SUN', 'MARS', 'COMET', 'ORBIT', 'PLANET', 'ROCKET', 'EARTH', 'SPACE'],
-    check: ['q:@mercury,venus,earth,mars,jupiter,saturn,uranus,neptune|c|Eat the 8 planets in order', 'c:asteroid:10|c|Eat 10 asteroids from the belt', 'b:sun|c|Eat the Sun'],
+    check: ['b:uranus|c|Eat Uranus, the planet that spins on its side', 'c:asteroid:10|c|Eat 10 asteroids from the belt', 'b:planet9|c|Find Planet Nine'],
     quests: [
-      'c:satellite:3|c', 't:30', 'c:comet:2|c', 'x:5', 'c:ufo:2', 'c:rocket:3', 'a:alien:15', 'c:astronaut:2|c', 'b:iss|c|Eat the International Space Station', 'b:moon|c|Eat the Moon',
-      'b:pluto|c|Eat Pluto, the dwarf planet', 'c:ice:5|c', 'c:asteroid:5|c', 'x:8', 'c:alien:3', 'c:station:2', 'b:mars|c|Eat Mars, the red planet', 't:300',
+      'c:moonrock:5|c', 't:30', 'c:satellite:3|c', 'x:5', 'c:comet:2|c', 'c:junk:5', 'a:alien:15', 'c:astronaut:2|c', 'b:iss|c|Eat the International Space Station', 'c:ufo:2',
+      'b:pluto|c|Eat Pluto, the dwarf planet', 'c:ice:5|c', 'c:asteroid:5|c', 'x:8', 'c:alien:3', 'c:minimoon:3', 'b:mars|c|Eat Mars, the red planet', 't:300',
       'f:add', 'f:sub', 'f:mul', 'f:miss', 'f:mul', 'f:add', 'f:sub', 'q:10,9,8,7,6,5,4,3,2,1|m|Countdown: eat 10 to 1. Blast off!',
       'q:MOON', 'q:STAR', 'l:S', 'l:M', 'f:word', 'q:SUN',
       'p:rocket,ufo,rocket,ufo', 'p:comet,satellite,comet,satellite', 'p:ice,rock,ice,rock', 'p:alien,astronaut,alien,astronaut',
@@ -1385,15 +1644,22 @@ const CH = [null];
       const gl = g.createRadialGradient(SX, SY, 300, SX, SY, 4000); gl.addColorStop(0, 'rgba(255,200,80,.35)'); gl.addColorStop(1, 'rgba(255,200,80,0)');
       g.fillStyle = gl; g.fillRect(SX - 4000, SY - 4000, 8000, 8000);
       g.fillStyle = 'rgba(160,140,120,.18)'; g.beginPath(); g.arc(SX, SY, BELT[1], 0, 7); g.arc(SX, SY, BELT[0], 0, 7, true); g.fill();
-      g.fillStyle = 'rgba(140,180,220,.08)'; g.beginPath(); g.arc(SX, SY, W / 2, 0, 7); g.arc(SX, SY, KUIPER, 0, 7, true); g.fill();
+      g.fillStyle = 'rgba(140,180,220,.08)'; g.beginPath(); g.arc(SX, SY, KUIPER[1], 0, 7); g.arc(SX, SY, KUIPER[0], 0, 7, true); g.fill();
+      g.fillStyle = 'rgba(200,220,255,.045)'; g.beginPath(); g.arc(SX, SY, OORT[1], 0, 7); g.arc(SX, SY, OORT[0], 0, 7, true); g.fill();
       g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = Math.max(6, 1.5 * pw);
       for (const p of PLANETS) { g.beginPath(); g.arc(SX, SY, p[1], 0, 7); g.stroke(); }
-      g.setLineDash([40 * pw, 30 * pw]); g.beginPath(); g.arc(SX, SY, 26500, 0, 7); g.stroke(); g.setLineDash([]);
-      g.fillStyle = 'rgba(230,210,160,.16)'; g.beginPath(); g.arc(SAT[0], SAT[1], RINGS[1], 0, 7); g.arc(SAT[0], SAT[1], RINGS[0], 0, 7, true); g.fill();
+      // the Moon's surface (until you eat it): grey regolith with craters
+      if (!moonGone() && V.x1 > MOON[0] - MOON_R && V.x0 < MOON[0] + MOON_R && V.y1 > MOON[1] - MOON_R && V.y0 < MOON[1] + MOON_R) {
+        g.fillStyle = '#9e9e9e'; g.beginPath(); g.arc(MOON[0], MOON[1], MOON_R, 0, 7); g.fill();
+        const r = mulberry(7); for (let i = 0; i < 60; i++) { const a = r() * 6.28, d = Math.sqrt(r()) * MOON_R * .92, s = .2 + r() * 1.4; g.fillStyle = 'rgba(70,70,70,.35)'; g.beginPath(); g.arc(MOON[0] + Math.cos(a) * d, MOON[1] + Math.sin(a) * d, s, 0, 7); g.fill(); g.fillStyle = 'rgba(230,230,230,.25)'; g.beginPath(); g.arc(MOON[0] + Math.cos(a) * d - s * .2, MOON[1] + Math.sin(a) * d - s * .2, s * .7, 0, 7); g.fill(); }
+      }
       g.textAlign = 'center'; g.textBaseline = 'middle';
       const lab = (s, x, y, px, col) => { g.font = `900 ${px * pw}px ${UI_FONT}`; g.fillStyle = col; g.fillText(s, x, y); };
-      for (const a of [0.9, 2.6, 4.4, 5.9]) { const [x, y] = orb(8600, a); lab('ASTEROID BELT', x, y - 16 * pw, 18, 'rgba(255,230,180,.75)'); lab('between Mars and Jupiter', x, y + 8 * pw, 13, 'rgba(255,230,180,.6)'); }
-      for (const a of [1.5, 4.8]) { const [x, y] = orb(25600, a); lab('KUIPER BELT (icy far-out zone)', x, y, 16, 'rgba(190,220,255,.6)'); }
+      if (pw > 2) {
+        for (const a of [0.9, 2.6, 4.4, 5.9]) { const [x, y] = orb(8600, a); lab('ASTEROID BELT', x, y - 16 * pw, 18, 'rgba(255,230,180,.75)'); lab('between Mars and Jupiter', x, y + 8 * pw, 13, 'rgba(255,230,180,.6)'); }
+        for (const a of [1.5, 4.8]) { const [x, y] = orb(27200, a); lab('KUIPER BELT (icy far-out zone)', x, y, 16, 'rgba(190,220,255,.6)'); }
+        for (const a of [.6, 3.7]) { const [x, y] = orb(36000, a); lab('OORT CLOUD (comets come from here)', x, y, 16, 'rgba(200,220,255,.5)'); }
+      }
     },
   });
 })();
@@ -2749,6 +3015,7 @@ function solidPush(r) {
   }
 }
 function moveOnPath(o, T) {
+  if (o.orbit) return;                               // placed by its world's tick() (moons riding their planet)
   const p = o.path, n = p.length / 2 - 1;
   if (!o.len) { o.len = 0; o.seg = []; for (let i = 0; i < n; i++) { const l = Math.hypot(p[i * 2 + 2] - p[i * 2], p[i * 2 + 3] - p[i * 2 + 1]); o.seg.push(l); o.len += l; } }
   let s = (T * o.spd + o.ph * o.len) % (o.len * (o.loop ? 1 : 2));
@@ -3107,6 +3374,36 @@ const MODEL = (() => {
       ...(p.chalet ? [bx(.12, .07, .16, 0, (p.h || .8) + .03, 0, '#8a5a32'), pr(.14, .05, .18, 0, (p.h || .8) + .09, 0, '#4a3a2a', { ry: 1.5708 })] : [])],
     mesa: p => [cy(1, .4, 1, 0, .2, 0, p.a || '#6f7d5a', { top: .75, seg: 10 }), cy(.76, .06, .76, 0, .43, 0, '#fff', { seg: 10 })],
     hill: p => [sp(1, .55, 1, 0, 0, 0, p.a || '#6aa84f', { hemi: 1 }), sp(.3, .3, .3, .2, .25, .1, '#3f8a3a')],
+    // World 3: Stanley Park
+    sandwich: p => [pr(1, .3, .9, 0, .15, 0, '#f3d9a4', { ry: 0 }), pr(1.02, .08, .92, 0, .2, 0, '#7cb342'), pr(1.02, .06, .92, 0, .26, 0, '#e57373')],
+    chip: p => [sp(1, .15, .8, 0, .05, 0, '#f2c14e')],
+    juice: p => [bx(.6, 1, .4, 0, .5, 0, '#ff9800'), bx(.62, .3, .42, 0, .55, 0, '#fff3e0'), cy(.06, .4, .06, .15, 1.15, 0, '#fafafa')],
+    blanket: p => [bx(1, .01, .8, 0, .005, 0, '#fafafa'), ...[0, 1, 2, 3, 4].flatMap(i => [0, 1, 2, 3].filter(j => (i + j) % 2 === 0).map(j => bx(.2, .012, .2, -.4 + i * .2, .006, -.3 + j * .2, '#e53935')))],
+    napkin: p => [bx(1, .02, 1, 0, .01, 0, '#fafafa')],
+    floatie: p => [to(1, 1, .3, 0, .15, 0, p.a || '#ff4081', { tube: .2, rx: 1.5708 })],
+    net: p => [bx(1, .08, .02, 0, .9, 0, '#fafafa'), bx(1, .8, .01, 0, .5, 0, '#37474f'), cy(.03, 1, .03, -.5, .5, 0, '#90a4ae'), cy(.03, 1, .03, .5, .5, 0, '#90a4ae')],
+    cyclist: p => [...R.bike({ a: p.a || '#1e88e5' }), ...R.fig({ a: p.b || '#ffca28', c: '#263238' }).map(q => { const r = q.slice(); r[1] *= .55; r[2] *= .55; r[3] *= .55; r[4] *= .55; r[5] = r[5] * .55 + .8; r[6] = r[6] * .55 - .1; return r; })],
+    horsecart: p => [...R.quad({ a: '#6d4c41', d: 2, lh: .9, neck: .4, mane: '#3a2a1a' }).map(q => { const r = q.slice(); r[1] *= .45; r[2] *= .45; r[3] *= .45; r[4] *= .45; r[5] *= .45; r[6] = r[6] * .45 + 1.6; return r; }), bx(1, .5, 2, 0, .75, -.6, '#c62828'), bx(1.02, .08, 2, 0, 1.6, -.6, '#fafafa'), ...wheels(1, -1.3, .2, .35)],
+    figurehead: p => [rk(1.2, .5, 1, 0, .25, 0, '#6d6862'), bx(.4, 1.6, .5, 0, 1.2, 0, '#f4f4f0', { rx: -.3 }), sp(.45, .4, .7, 0, 2.1, .35, '#f9a825'), bx(.12, .12, .5, 0, 2.2, .75, '#f9a825')],
+    hollowtree: p => [cy(1, 1, 1, 0, .5, 0, '#6d4c41', { top: .85, seg: 9 }), cy(.55, 1.02, .55, 0, .52, .1, '#3e2723', { seg: 7 }), cy(.4, .6, .4, .15, 1.2, -.1, '#5d4037', { top: .6 }), sp(.5, .4, .5, -.3, 1.05, -.2, '#4f8a3c')],
+    gun: p => [bx(.8, .3, .8, 0, .15, 0, '#9e9e9e'), cy(.22, 1.4, .22, 0, .45, .1, '#263238', { rx: 1.4 }), to(.5, .5, .1, -.35, .35, 0, '#5d4037', { ry: 1.5708, tube: .06 }), to(.5, .5, .1, .35, .35, 0, '#5d4037', { ry: 1.5708, tube: .06 }), bx(1.1, .05, 1.1, 0, .02, 0, '#bdbdbd')],
+    jubilee: p => [...R.fountain({}), ...[0, 1, 2, 3, 4, 5].map(i => sp(.12, .5, .12, Math.cos(i) * .45, .9, Math.sin(i) * .45, '#bfe6ff'))],
+    lumberarch: p => [bx(.12, 1, .12, -.45, .5, 0, '#8d6e63'), bx(.12, 1, .12, .45, .5, 0, '#8d6e63'), cy(.16, 1.2, .16, 0, 1.05, 0, '#a1887f', { rz: 1.5708 }), bx(.08, .5, .1, -.25, .7, 0, '#8d6e63', { rz: .6 }), bx(.08, .5, .1, .25, .7, 0, '#8d6e63', { rz: -.6 })],
+    aquahall: p => [bx(1, .006, .66, 0, .003, 0, '#ece7db'), bx(1, .085, .015, 0, .042, -.325, '#90caf9'), bx(.015, .085, .66, -.4925, .042, 0, '#90caf9'), bx(.015, .085, .66, .4925, .042, 0, '#90caf9'),
+      bx(.44, .085, .015, -.28, .042, .325, '#90caf9'), bx(.44, .085, .015, .28, .042, .325, '#90caf9'), bx(.14, .03, .02, 0, .1, .33, '#1565c0'), sp(.12, .06, .08, 0, .13, .33, '#ffca28')],
+    aquatank: p => [bx(1, .14, .7, 0, .07, 0, '#37474f'), bx(.94, .13, .64, 0, .08, 0, '#4fc3f7'), bx(.96, .02, .66, 0, .15, 0, '#b3e5fc')],
+    deadman: p => [cy(1, .04, .5, 0, .02, 0, '#c9b28a', { seg: 12 }), sp(.9, .1, .44, 0, .05, 0, '#4f8a3c'), ...[[-.3, .05], [-.1, -.08], [.15, .06], [.3, -.04], [0, .12], [-.38, -.08]].map(([x, z]) => co(.12, .14, .12, x, .15, z, '#2e6b32')), bx(.12, .05, .08, .05, .08, -.1, '#eceff1')],
+    waterpark: p => [bx(1, .03, .8, 0, .015, 0, '#4fc3f7'), cy(.12, .3, .12, -.25, .15, -.1, '#ff7043'), sp(.2, .12, .2, -.25, .32, -.1, '#ffca28'), cy(.08, .25, .08, .2, .12, .15, '#ab47bc'), bx(.3, .02, .1, .15, .2, -.2, '#29b6f6', { rx: -.4 }), sp(.06, .2, .06, .3, .3, .2, '#bfe6ff')],
+    beaverlodge: p => [sp(1, .5, 1, 0, 0, 0, '#6d4c41', { hemi: 1 }), ...[0, 1, 2, 3, 4].map(i => cy(.05, .9, .05, Math.cos(i * 1.3) * .3, .25, Math.sin(i * 1.3) * .3, '#8d6e63', { rz: 1.2, ry: i }))],
+    rosebed: p => [bx(1, .15, .6, 0, .075, 0, '#5d4037'), ...[0, 1, 2, 3, 4, 5, 6, 7].map(i => sp(.18, .18, .18, -.4 + (i % 4) * .27, .25, i < 4 ? -.15 : .15, ['#e91e63', '#f44336', '#ff80ab', '#fff176'][i % 4]))],
+    // World 4: the Moon
+    moonflat: p => [cy(1, .006, 1, 0, .003, 0, '#a7a7a7', { seg: 24 })],
+    lander: p => [bx(.7, .45, .7, 0, .55, 0, '#d4af37'), ...[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([a, b]) => bx(.06, .7, .06, a * .42, .3, b * .42, '#bdbdbd', { rx: b * .35, rz: -a * .35 })),
+      ...[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([a, b]) => cy(.16, .03, .16, a * .55, .02, b * .55, '#bdbdbd')), bx(.55, .4, .55, 0, 1, 0, '#e0e0e0'), cy(.18, .12, .18, 0, 1.25, 0, '#9e9e9e'), bx(.12, .12, .02, 0, 1, .28, '#263238')],
+    bootprint: p => [bx(.35, .02, 1, 0, .01, 0, '#6e6e6e'), ...[0, 1, 2, 3].map(i => bx(.36, .025, .06, 0, .012, -.4 + i * .27, '#555'))],
+    crater: p => [to(1, 1, .25, 0, .02, 0, '#8a8a8a', { tube: .12, rx: 1.5708 }), cy(.8, .01, .8, 0, .005, 0, '#6f6f6f', { seg: 14 })],
+    seismo: p => [bx(1, .3, 1, 0, .15, 0, '#d4af37'), cy(.08, .5, .08, 0, .5, 0, '#9e9e9e'), bx(.6, .02, .6, 0, .76, 0, '#263238')],
+    usflag: p => [cy(.04, 2, .04, 0, 1, 0, '#ddd'), bx(.02, .55, .9, 0, 1.7, .45, '#fafafa'), ...[0, 1, 2].map(i => bx(.025, .07, .9, 0, 1.5 + i * .18, .45, '#c62828')), bx(.03, .25, .38, 0, 1.84, .2, '#1a237e'), bx(.04, .04, .95, 0, 1.99, .45, '#ddd')],
     snowjump: p => [sp(1, .5, 1, 0, 0, 0, '#f4f8ff', { hemi: 1 }), bx(.9, .04, .2, 0, .02, .45, '#90caf9')],
     snowtube: p => [to(1, 1, .4, 0, .2, 0, p.a || '#e53935', { tube: .2, rx: 1.5708 }), sp(.42, .42, .42, 0, .55, 0, '#1e88e5')],
     island: p => [cy(1, .25, 1, 0, .12, 0, '#f2dfa0', { seg: 12, top: .85 }), sp(.7, .35, .7, .05, .25, 0, '#5aa64a'), ...R.palm({}).map(q => { const r = q.slice(); r[1] *= .3; r[2] *= .3; r[3] *= .3; r[4] = r[4] * .3 - .15; r[5] = r[5] * .3 + .3; r[6] *= .3; return r; })],
@@ -3295,6 +3592,20 @@ const MODEL = (() => {
     up_vacuum: ['ifunnel', {}], up_lucky: ['iclover', {}], up_payday: ['iclip', {}], up_wide: ['ieye', {}], up_head: ['iflag', {}],
   };
   const PER = { // per-chapter meanings of shared ids
+    'space:moon': ['moonflat', {}], 'space:moondust': ['planet', { a: '#bdbdbd', b: '#9e9e9e' }], 'space:pebble': ['rock', { a: '#8f8f8f' }], 'space:moonrock': ['rock', { a: '#9a9a9a', h: .7 }], 'space:boot': ['bootprint', {}],
+    'space:camera': ['camera', {}], 'space:flag': ['usflag', {}], 'space:apolloflag': ['usflag', {}], 'space:seismo': ['seismo', {}], 'space:lunarrover': ['rover', {}], 'space:lander': ['lander', {}], 'space:crater': ['crater', {}], 'space:moonhill': ['hill', { a: '#9a9a9a' }], 'space:bigcrater': ['crater', {}],
+    'space:junk': ['rock', { a: '#b0bec5', h: .5, b: '#ff7043' }], 'space:minimoon': ['planet', { a: '#a1887f', b: '#8d6e63' }], 'space:ceres': ['planet', { a: '#9e9e9e', b: '#757575' }], 'space:eris': ['planet', { a: '#eceff1', b: '#cfd8dc' }],
+    'space:haumea': ['planet', { a: '#f5f5f5', b: '#e0e0e0' }], 'space:makemake': ['planet', { a: '#d7a77a', b: '#b98a5e' }], 'space:gonggong': ['planet', { a: '#c75b4a', b: '#a1473a' }], 'space:quaoar': ['planet', { a: '#b5826a', b: '#94654f' }],
+    'space:sedna': ['planet', { a: '#b33a2a', b: '#8c2a1e' }], 'space:planet9': ['planet', { a: '#3f51b5', b: '#283593' }],
+    'park:sandwich': ['sandwich', {}], 'park:chip': ['chip', {}], 'park:juice': ['juice', {}], 'park:blanket': ['blanket', {}], 'park:napkin': ['napkin', {}], 'park:floatie': ['floatie', {}],
+    'park:net': ['net', {}], 'park:goose': ['bird', { a: '#6d5a48', head: '#222', neck: .6, lg: .5, beak: '#222' }], 'park:otter': ['quad', { a: '#5d4037', d: 2.6, lh: .2 }], 'park:cyclist': ['cyclist', { v: [{ a: '#1e88e5', b: '#ffca28' }, { a: '#e53935', b: '#43a047' }] }],
+    'park:tourbus': ['bus', { a: '#c62828', b: '#fafafa', d: 3.8 }], 'park:horsecart': ['horsecart', {}], 'park:minitrain': ['train', { a: '#2e7d32', b: '#ffca28', d: 7 }], 'park:fountain2': ['blk', { a: '#90a4ae', h: 1.4, d: .6 }],
+    'park:swings': ['swingset', {}], 'park:toilets': ['house', { a: '#d7ccc8', b: '#5d4037', hh: .8 }], 'park:art': ['statue', { a: '#4e5d4e' }], 'park:figurehead': ['figurehead', {}], 'park:hollowtree': ['hollowtree', {}],
+    'park:gun': ['gun', {}], 'park:jubilee': ['jubilee', {}], 'park:arch': ['lumberarch', {}], 'park:teahouse': ['house', { a: '#fafafa', b: '#2e7d32', d: 1.6 }], 'park:pavilion': ['house', { a: '#8d6e63', b: '#4e342e', d: 1.5 }],
+    'park:rowclub': ['house', { a: '#fff8e1', b: '#b71c1c', d: 1.4, hh: 1.2 }], 'park:rvyc': ['bld', { a: '#eceff1', h: .3, d: 1.3, fl: 2, b: '#1565c0' }], 'park:aquahall': ['aquahall', {}], 'park:aquatank': ['aquatank', {}],
+    'park:deadman': ['deadman', {}], 'park:waterpark': ['waterpark', {}], 'park:siwash': ['rock', { a: '#7a7066', h: 1.3, d: 1, b: '#2e6b32' }], 'park:beaverlodge': ['beaverlodge', {}], 'park:rosebed': ['rosebed', {}],
+    'park:bigtree': ['pine', { n: 5, hh: 1.8, a: '#1b5e20', b: '#235f2a' }], 'park:pine': ['pine', { n: 4, hh: 1.4, a: '#2e7d32', b: '#1b5e20' }], 'park:oak': ['tree', { trunk: 1.6, a: '#4caf50' }], 'park:bench': ['bench', {}],
+    'park:station': ['house', { a: '#ffcc80', b: '#2e7d32', d: 1.6, hh: .8 }], 'park:inukshuk': ['inukshuk', {}], 'park:lighthouse': ['lighthouse', {}], 'park:gas': ['gas', {}], 'park:bridge': ['bridge', {}],
     'home:bottle': ['bottle', { a: '#e3f2fd', b: '#ffcc80' }], 'home:can': ['can', { a: '#e0e0e0', b: '#c62828', h: 1.4 }], 'van:lodge': ['bld', { a: '#8a5a32', h: .5, d: 1.4, fl: 2, roof: .35, b: '#4a3a2a' }], 'van:bus': ['bus', { a: '#1e5fb8', b: '#f4f4f4' }], 'van:skystation': ['bld', { a: '#dfe3e6', h: .22, d: 2.6, fl: 1, roof: .15, b: '#2d7dd2' }], 'van:pillar': ['blk', { a: '#cfccc4', h: 4 }],
     'van:zipline': ['fig', { a: '#ff7043', c: '#263238' }], 'van:snowtube': ['snowtube', { a: '#e53935' }], 'van:jump': ['snowjump', {}], 'van:rail': ['bench', { a: '#90a4ae' }], 'van:snowboarder': ['fig', { a: '#43a047', c: '#1a237e' }], 'van:newspaper': ['nbox', {}], 'globe:island': ['island', {}], 'globe:car': ['car', { v: [{ a: '#e53935' }, { a: '#1e88e5' }] }],
     'globe:house': ['house', { v: [{ a: '#f4e1c1', b: '#c0392b' }, { a: '#e8e0d0', b: '#455a64' }] }], 'globe:tower': ['tower', { hh: 3.6 }], 'globe:hotel': ['hotel', { hh: 4.4 }], 'globe:stadium': ['stadium', {}], 'globe:camel': ['quad', { a: '#d4a35a', hump: 1, neck: .5, d: 2, lh: 1 }],
@@ -3720,7 +4031,7 @@ function drawWorld3D() {
   V3.ghost.scale.set(R, 1, R); V3.ghost.material.color.set(C.rim || '#9b6bff'); V3.ghost.visible = V3.holeScale < 2;
   V3.ground.visible = V3.pit.visible = true;
   if (V3.statF && V3.statF.length) {
-    V3.statF.forEach((m, i) => m.visible = i === (C.layered ? G.fl : 0));
+    V3.statF.forEach((m, i) => m.visible = i === (C.layered ? G.fl : 0) && !(C.wallsGone && C.wallsGone()));
     V3.stat = V3.statF[C.layered ? G.fl : 0]; V3.stat.position.set(-G.cam.x, 0, -G.cam.y);
     if (G.C.walls3d.cut) V3.stat.scale.y = clamp(holeD() * 1.2 / G.C.walls3d.h, 0.12, 1);     // dollhouse cutaway: walls rise as you grow
     V3.wallU.hole.value.set(hx, hz); V3.wallU.hR.value = R;
@@ -3784,6 +4095,7 @@ function lodOf(md) {
 /* x-ray: anything standing between the camera and the pit is drawn see-through, so the hole is never lost */
 const TAN_TILT = Math.tan(CAM_TILT);
 function hidesHole(o, md, hx, hz, R) {
+  if (o.under) return false;                         // a rug / blanket you sit on never ghosts
   const fw = o.fw * (o.vs || 1), hr = 0.5 * fw * Math.max(md.w, md.d), H = md.h * fw * (o.sv || 1);
   const ox = _p3.x - hx, oz = _p3.z - hz;
   if (Math.abs(ox) > hr + R * 0.9 || oz < -hr - R * 0.3) return false;
