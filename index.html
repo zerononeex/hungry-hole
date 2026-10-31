@@ -931,7 +931,7 @@ const CH = [null];
     g.restore();
   }
   CH.push({
-    n: 2, key: 'van', mus: 'ch3.mp3', name: 'Metro Vancouver', short: 'Vancouver', c1: '#2d9cdb', c2: '#145a86', bgc: '#cfd8b8', rim: '#6ad1ff', metric: 1,
+    n: 2, key: 'van', mus: 'ch2.mp3', name: 'Metro Vancouver', short: 'Vancouver', c1: '#2d9cdb', c2: '#145a86', bgc: '#cfd8b8', rim: '#6ad1ff', metric: 1,
     W, H, start: P(-123.1185, 49.2835), cost: 1.8, need: 25, needP: 1.6, xpk: 3, spd: 3.6, pv: 0.6, view: 13, agridSize: 900, bld: BLD, tries: t => t >= 5 ? 16 : 4,
     fill: .3, fillKeep: new Set(['streettree', 'bigtree', ...BLD]),           // v5 density: filler cut 70%, trees and streets of buildings stay
     // the objective ladder (story): Gastown → Chinatown → Coal Harbour → the North Shore → Richmond → the whole region
@@ -1292,7 +1292,7 @@ const CH = [null];
     if (m === l) G.x = x - r; else if (m === rr) G.x = x + w + r; else if (m === t) G.y = y - r; else G.y = y + h + r;
   }
   CH.push({
-    n: 3, key: 'park', mus: 'ch4.mp3', name: 'Stanley Park', short: 'Stanley Park', c1: '#8bc34a', c2: '#33691e', bgc: '#5aa9e6', rim: '#8ef08e', metric: 1,
+    n: 3, key: 'park', mus: 'ch3.mp3', name: 'Stanley Park', short: 'Stanley Park', c1: '#8bc34a', c2: '#33691e', bgc: '#5aa9e6', rim: '#8ef08e', metric: 1,
     W, H, start: START, cost: 2, need: 100, needP: 1.4, xpk: 3, spd: 1.7, pv: .9, view: 13, agridSize: 120, tries: t => t >= 6 ? 10 : 4, fill: .1, fillKeep: new Set(['bigtree', 'pine', 'oak', 'cedar', 'streettree']),
     sizes: [0, .04, .09, .2, .45, 1, 2.2, 5, 11, 25, 55, 120, 200],
     tagN: { tree: 'tree' }, regionAt, regionName: r => r, areaKey: regionAt, P, inv, inPlay, isWater,
@@ -1572,7 +1572,7 @@ const CH = [null];
   const sized = (n, k, o) => [n, 1, Object.assign({ planet: 1, m: [PW[k], PW[k]] }, o || {})];
   const E6 = ['', '', '', '', '', ''];                                // no space junk at moon-dust sizes
   CH.push({
-    n: 4, key: 'space', mus: 'ch6.mp3', name: 'Space', short: 'Space', c1: '#3949ab', c2: '#0d1240', bgc: '#03030c', rim: '#a98bff', space: 1,
+    n: 4, key: 'space', mus: 'ch4.mp3', name: 'Space', short: 'Space', c1: '#3949ab', c2: '#0d1240', bgc: '#03030c', rim: '#a98bff', space: 1,
     W, H, start: [MOON[0] - 1.2, MOON[1] + 5.2], cost: 3.6, need: 60, needP: 1.6, xpk: 2, spd: 1.4, pv: 1.2, view: 13,
     sizes: [0, .25, .5, 1, 2, 4, 8, 16, 26, 42, 66, 100, 150, 230, 350, 520],
     // "How big am I?": moon-walk sizes in metres, then the gateway jump to moon-sized and up
