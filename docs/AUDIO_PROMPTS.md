@@ -156,3 +156,7 @@ the start (the sound must begin immediately), no vocals, gentle volume (never a 
 | `audio/sfx-size-reached.mp3` | chapter target size reached (Story) |
 
 The MUSIC toggle in Settings controls the tracks; the SOUND toggle controls all SFX (synth + files).
+
+**Adding a file:** drop it into `audio/` with the exact name above, then add that name to the list in
+`audio/manifest.js` (uncomment its entry). Only listed files are requested, so the game never asks the
+server for a file that is not there (no 404s, no console errors) and stays silent-but-complete until you add them.

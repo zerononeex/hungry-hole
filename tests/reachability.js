@@ -99,9 +99,20 @@ const { chromium } = require('playwright');
             if (!gain) break;
             xp += gain; while (lvl < C.N && xp >= HH.need(lvl)) { xp -= HH.need(lvl); lvl++; }
           }
-          const reachD = hd();
-          comps.push({ rooms: [...inside].join('+'), food: items.length, exitDoor: +need.toFixed(2), grewTo: +reachD.toFixed(3), ok: reachD >= need || !exits.length });
-          if (!(reachD >= need || !exits.length)) out.fails.push(`shut in ${[...inside].join('+')}: food grows the hole only to ${reachD.toFixed(2)} m, the door needs ${need.toFixed(2)} m`);
+          const reachD = hd(); let kind = '';
+          if (reachD < need && exits.length) {
+            // not enough food: the no-fail rule must open a door once the rooms are eaten out (run the real engine)
+            setSize(lvl, xp); G.x = cx; G.y = cy; G.vx = G.vy = 0; exits.forEach(d => { d.open = 0; });
+            for (let f2 = 0; f2 < 400 && !exits.some(d => d.open); f2++) {
+              G.now += 33; G.t += 1 / 30; HH.update(1 / 30); G.x = cx; G.y = cy;
+              for (const o of G.vis) if (!o.door && !o.dead && HH.fits(o, HH.holeD())) o.dead = 1;   // a player who ate everything
+            }
+            const opened = exits.find(d => d.open); kind = opened ? 'door swings open' : '';
+            if (opened) { opened.open = 0; opened.yaw -= 1.2; }
+          }
+          const okc = reachD >= need || !exits.length || !!kind;
+          comps.push({ rooms: [...inside].join('+'), food: items.length, exitDoor: +need.toFixed(2), grewTo: +reachD.toFixed(3), ok: okc, kind });
+          if (!okc) out.fails.push(`shut in ${[...inside].join('+')}: food grows the hole only to ${reachD.toFixed(2)} m, the door needs ${need.toFixed(2)} m, and no door opened`);
         }
         out.rooms = { startD: +D0.toFixed(3), comps };
       }
@@ -109,7 +120,7 @@ const { chromium } = require('playwright');
     }, n);
     ok = ok && !r.fails.length;
     console.log(`CH${r.n} ${r.name}: max hole ${r.max.holeD} cell ${r.max.cell} reachable ${r.max.reached}/${r.max.playable} (${r.max.pct}%) ${r.fails.length ? 'FAIL\n   ' + r.fails.join('\n   ') : 'PASS'}`);
-    if (r.rooms) { console.log(`  per-room growth from ${r.rooms.startD} m (just past the under-door gap):`); for (const c of r.rooms.comps) console.log(`    ${c.ok ? 'ok  ' : 'FAIL'} ${c.rooms}: ${c.food} things, grows to ${c.grewTo} m, door ${c.exitDoor} m`); }
+    if (r.rooms) { console.log(`  per-room growth from ${r.rooms.startD} m (just past the under-door gap):`); for (const c of r.rooms.comps) console.log(`    ${c.ok ? 'ok  ' : 'FAIL'} ${c.rooms}: ${c.food} things, grows to ${c.grewTo} m, door ${c.exitDoor} m${c.kind ? ' -> eaten out, ' + c.kind : ''}`); }
   }
   console.log('errors:', JSON.stringify(errs.slice(0, 5))); await b.close();
   process.exit(ok && !errs.length ? 0 : 1);

@@ -411,6 +411,22 @@ const CH = [null];
     return true;
   }
   const say = s => { if (G.now - msgT > 4000) { msgT = G.now; toast(s, '#ffd96a'); } };
+  /* no fail states: outgrow the under-door gap inside a small room, eat everything there, and a shut door
+     swings open for you after a few seconds (it stays a door you can eat later) */
+  const sides = (x, y, o) => o === 'h' ? [roomAt(x, y - .3), roomAt(x, y + .3)] : [roomAt(x - .3, y), roomAt(x + .3, y)];
+  let ARCH = null, stuckT = 0;
+  function doorKindness(dt) {
+    const D = holeD(); if (D <= GAP) { stuckT = 0; return; }
+    const here = roomAt(G.x, G.y); if (!here) return;
+    if (!ARCH) { ARCH = OPEN.filter(p => p[4] !== 'd' && p[4] !== 'x').map(p => sides(p[0], p[1], p[3]).map(r => r && r[0])); }
+    const comp = new Set([here[0]]); for (let grew = true; grew;) { grew = false; for (const [a, b] of ARCH) if (a && b && comp.has(a) !== comp.has(b)) { comp.add(a); comp.add(b); grew = true; } }
+    const inComp = o => { const r = roomAt(o.x, o.y); return r && comp.has(r[0]); };
+    if (G.vis.some(o => !o.dead && !o.fall && !o.door && !o.tile && !o.helper && !o.coin && !o.deco && !o.exit && fits(o, D) && inComp(o))) { stuckT = 0; return; }
+    if ((stuckT += dt) < 4) return; stuckT = 0;
+    let best = null, bd = 1e9;
+    for (const d of doorObjs) if (!d.dead && !d.fall && !d.open && !fits(d, D) && sides(d.x, d.y, d.rect[2] > d.rect[3] ? 'h' : 'v').some(r => r && comp.has(r[0]))) { const k = Math.hypot(d.x - G.x, d.y - G.y); if (k < bd) { bd = k; best = d; } }
+    if (best) { best.open = 1; best.yaw += 1.2; toast('Creak! The door swings open for you.', '#ffd96a'); }
+  }
   // furniture per room: type, fx, fy (fractions of the room), options
   const Q = Math.PI / 2;
   const FURN = {
@@ -530,11 +546,12 @@ const CH = [null];
       cr = Math.min(cr, 0.36);                     // a giant hole still fits through a doorway (spec F20)
       for (const w of WALLS) pushOut(w, cr);
       const D = holeD();
-      for (const d of doorObjs) if (!d.dead && !d.fall && D > GAP && !fits(d, D)) {
+      for (const d of doorObjs) if (!d.dead && !d.fall && !d.open && D > GAP && !fits(d, D)) {
         if (pushOut(d.rect, cr) && Math.hypot(G.x - d.x, G.y - d.y) < 1) say(D < d.fw * WOBBLE_MIN ? 'Too big to slide under the door now. Grow big enough to gobble it!' : 'Almost big enough. Bump the door to wobble it in!');
       }
     },
-    tick() {
+    tick(dt) {
+      doorKindness(dt);
       const b = G.auth.find(o => o.k === 'backdoor');
       if (b && Math.hypot(G.x - b.x, G.y - b.y) < 0.8 && G.run.kind === 'story') say(G.st.c ? 'The backyard is out there. The neighbourhood is waiting!' : 'The backyard! Grow to full size to finish the house.');
     },
@@ -2116,7 +2133,7 @@ function genCell(t, cx, cy) {
     const L = Z.t[t]; if (!L) continue;
     const k = wpick(L, r2);
     // streets of buildings are placed along the roads, not loose filler: they keep their own (higher) density
-    if (r1 > Z.d * 0.8 * FILL_K * (C.bld && C.bld.has(k) ? Z.bd || 1 : 4 / tries)) continue;
+    if (r1 > Z.d * 0.8 * FILL_K * (C.fill || 1) * (C.bld && C.bld.has(k) ? Z.bd || 1 : 4 / tries)) continue;
     if (Z.at) { const p = Z.at(k, x, y, rng, out); if (!p) continue; [x, y, yaw] = p; }
     const ob = mkObj(C, k, x, y, { zn: z, deco: Z.deco || undefined, yaw });
     if (C.objInit) C.objInit(ob);
