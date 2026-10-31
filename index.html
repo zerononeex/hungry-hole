@@ -197,24 +197,24 @@ const PTS = [0, 5, 8, 12, 16, 22, 30, 40, 52, 66, 82, 100, 120, 145, 170, 200]; 
 const MULT = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]; // points ladder (x2.0 only at lvl 10)
 const GROW = l => 1 + 0.15 * l;               // v4: Growth Boost x1.0 -> x2.5 (upgrades must be unmistakable)
 const COMBO_MS = 6000;
-const UP_BASE = 40, UP_GROW = 1.45;           // upgrade cost = base * grow^(n-1) * chapter multiplier
+const UP_BASE = 40, UP_GROW = 1.38;           // upgrade cost = base * grow^(n-1) * chapter multiplier (v4: flatter, runs are longer)
 const RESPAWN_MS = 45000;                     // eaten ordinary things come back after this, out of sight
 const TINY_BONUS = 20, CHECK_BONUS = 100;     // quest coin bonuses (x chapter coin scale)
 const ISPY_BONUS = 150, EDU_BONUS = 60;       // mode rewards (x chapter coin scale), paid into that chapter's wallet
 
 const UPGRADES = [
-  {k:'speed',  n:'Speed',        d:'Your hole zooms around faster.',                         fx:l=>l?`+${l*6}% speed`:'normal speed'},
+  {k:'speed',  n:'Speed',        d:'Your hole zooms around faster.',                         fx:l=>l?`+${l*10}% speed`:'normal speed'},
   {k:'growth', n:'Growth Boost', d:'Every bite makes you grow more.',                        fx:l=>`x${GROW(l).toFixed(2).replace(/0$/, '')} growth`},
   {k:'points', n:'Points Boost', d:'Every bite is worth more points.',                       fx:l=>`x${MULT[l].toFixed(1)} points`},
-  {k:'coin',   n:'Coin Boost',   d:'You earn more coins from everything.',                   fx:l=>l?`+${l*8}% coins`:'normal coins'},
+  {k:'coin',   n:'Coin Boost',   d:'You earn more coins from everything.',                   fx:l=>l?`+${l*12}% coins`:'normal coins'},
   {k:'magnet', n:'Magnet Aura',  d:'Things you can eat slide toward you by themselves.',     fx:l=>l?`pulls from ${(1+l*0.25).toFixed(2).replace(/0$/, '')}x your size`:'no pull yet'},
-  {k:'vacuum', n:'Vacuum Reach', d:'Things fall in from further away.',                      fx:l=>l?`+${l*6}% reach`:'normal reach'},
-  {k:'lucky',  n:'Lucky Coins',  d:'Sometimes a bite drops a bonus coin too.',               fx:l=>l?`${l*3}% bonus coin chance`:'no bonus coins'},
-  {k:'payday', n:'Quest Payday', d:'Quests and checklist items pay more coins.',             fx:l=>l?`+${l*15}% quest coins`:'normal quest coins'},
-  {k:'wide',   n:'Wide Eyes',    d:'The camera zooms out so you see more of the map.',       fx:l=>l?`+${l*4}% view`:'normal view'},
+  {k:'vacuum', n:'Vacuum Reach', d:'Things fall in from further away.',                      fx:l=>l?`+${l*10}% reach`:'normal reach'},
+  {k:'lucky',  n:'Lucky Coins',  d:'Sometimes a bite drops a bonus coin too.',               fx:l=>l?`${l*4}% bonus coin chance`:'no bonus coins'},
+  {k:'payday', n:'Quest Payday', d:'Quests and checklist items pay more coins.',             fx:l=>l?`+${l*20}% quest coins`:'normal quest coins'},
+  {k:'wide',   n:'Wide Eyes',    d:'The camera zooms out so you see more of the map.',       fx:l=>l?`+${l*6}% view`:'normal view'},
   {k:'head',   n:'Head Start',   d:'Start each chapter run already a little bit bigger.',    fx:l=>l?`starts ${(l*0.25).toFixed(2).replace(/0$/, '').replace(/\.0$/, '')} sizes bigger`:'no head start'},
 ];
-const UPF = { speed: l => 1 + 0.06 * l, vacuum: l => 1 + 0.06 * l, magnet: l => 1 + 0.25 * l, coin: l => 1 + 0.08 * l, lucky: l => 0.03 * l, payday: l => 1 + 0.15 * l, wide: l => 1 + 0.04 * l, head: l => 0.25 * l };
+const UPF = { speed: l => 1 + 0.1 * l, vacuum: l => 1 + 0.1 * l, magnet: l => 1 + 0.25 * l, coin: l => 1 + 0.12 * l, lucky: l => 0.04 * l, payday: l => 1 + 0.2 * l, wide: l => 1 + 0.06 * l, head: l => 0.25 * l };   // v4: stronger, so every level is felt
 
 /* UI line icons (24x24 strokes). UI never uses emoji. The 10 upgrade icons are 3D models (see UPICON). */
 const ICON = {
@@ -268,7 +268,7 @@ const MT = {
   ibroad: [1.3, .9], piano: [1.5, 1.2], tub: [1.6, .55], drumkit: [1.6, 1.2], bike: [1.7, 1], table: [1.8, .75],
   bed: [2, .6], bunkbed: [2, 1.7], kbed: [2.1, .6], sofa: [2.2, .85], island: [2.4, .9],
   // Metro Vancouver
-  manhole: [.7, .02], drain: [.6, .05], cup: [.09, .12], newspaper: [.5, 1.1], log: [4, .6], cone: [.4, .7], light: [.6, 6], squirrel: [.4, .25], chicken: [.4, .4],
+  corn: [.4, 2.2], manhole: [.7, .02], drain: [.6, .05], cup: [.09, .12], newspaper: [.5, 1.1], log: [4, .6], cone: [.4, .7], light: [.6, 6], squirrel: [.4, .25], chicken: [.4, .4],
   luggage: [.5, .7], shell: [.08, .03], raccoon: [.8, .4], seal: [1.7, .5], kayak: [4.5, .4], boulder: [3, 2], sheep: [1.3, 1], pig: [1.5, .9], goat: [1.2, .9],
   cow: [2.4, 1.5], horse: [2.4, 1.7], deer: [1.8, 1.4], bear: [1.8, 1], grizzly: [2.3, 1.3], taxi: [4.8, 1.5], foodtruck: [7, 3], tractor: [4, 2.8], skytrain: [68, 3.5],
   sailboat: [10, 13], speedboat: [8, 2], yacht: [25, 8], orca: [8, 2], tug: [20, 8], seaplane: [15, 4], smallplane: [11, 3], airplane: [40, 12], gondola: [6, 5],
@@ -290,7 +290,7 @@ const MT = {
   snowman: [.8, 1.6], iceblock: [1, .8], flag: [.6, 2], buoy: [1, 1.5], coral: [1, .6], campfire: [1, .5], turtle: [1.2, .4], haybale: [1.5, 1.2], bush: [1.5, 1.2],
   sled: [2, .5], dolphin: [2.5, .8], wolf: [1.3, .8], bison: [3, 1.9], camel: [3, 2.2], moose: [3, 2.2], snowmobile: [3, 1.2], igloo: [3.5, 2], canoe: [5, .4],
   shark: [4, 1.5], jeep: [4, 1.8], campervan: [6, 2.7], rv: [9, 3.6], saguaro: [1, 10], palm: [6, 12], oak: [12, 15], fishboat: [12, 5], windmill: [10, 30],
-  whale: [15, 4], bluewhale: [30, 5], wreck: [40, 12], station: [30, 8], iceberg: [60, 30], dam: [200, 50], mesa: [400, 120],
+  whale: [15, 4], bluewhale: [30, 5], wreck: [40, 12], station: [30, 8], iceberg: [60, 30], dam: [60, 20], mesa: [400, 120],
   // neighbourhood
   flower: [.2, .4], sprout: [.1, .1], mushroom: [.08, .08], snail: [.04, .03], ball: [.075, .075], leaf: [.1, .005], ladybug: [.008, .005],
   butterfly: [.06, .02], frisbee: [.27, .03], tomato: [.08, .07], carrot: [.2, .04], gnome: [.2, .35], boot: [.3, .3], extinguisher: [.18, .55],
@@ -468,7 +468,7 @@ const CH = [null];
   };
   CH.push({
     n: 1, name: 'The House', short: 'House', c1: '#4f7fd6', c2: '#2a3f8f', bgc: '#6aa84f', rim: '#9b6bff', metric: 1,
-    W, H, start: [14.25, 3.6], cost: 1, need: 22, pv: 1.5, view: 13, gap: GAP, walls3d: { rects: WALLS, h: 2.4, cut: 1 }, wallR: 0.36,
+    W, H, start: [14.25, 3.6], cost: 1, need: 280, needP: 1.2, pv: 1.5, view: 13, gap: GAP, walls3d: { rects: WALLS, h: 2.4, cut: 1 }, wallR: 0.36,
     sizes: [0, 0.045, 0.08, 0.14, 0.24, 0.42, 0.7, 1.15, 1.9],
     types: {
       lego: ['Lego brick', 1], marble: ['marble', 1], die: ['dice', 1, { pl: 'dice' }], crayon: ['crayon', 1], button: ['button', 1], paperclip: ['paper clip', 1],
@@ -645,7 +645,7 @@ const CH = [null];
   const CARS = 'car:4,van,police:.3,ambulance:.2,firetruck:.15,bus:.2,truck:.3';
   CH.push({
     n: 2, name: 'Backyard & the Neighbourhood', short: 'Neighbourhood', c1: '#4caf50', c2: '#1b5e20', bgc: '#5f9e48', rim: '#ffcf4a', metric: 1,
-    W, H, start: [HOME[0] + HOME[2] / 2, HOME[1] + HOME[3] * .6], cost: 1.3, need: 70, pv: 0.9, view: 13,
+    W, H, start: [HOME[0] + HOME[2] / 2, HOME[1] + HOME[3] * .6], cost: 1.3, need: 155, pv: 0.9, view: 13,
     sizes: [0, .3, .5, .85, 1.4, 2.4, 4, 6.5, 10.5, 16],
     tagN: { tree: 'tree', house: 'house' },
     types: {
@@ -914,7 +914,7 @@ const CH = [null];
   const atX = (k, x, y, rng, out) => at(k, x, y, rng, out);
   CH.push({
     n: 3, name: 'Metro Vancouver', short: 'Vancouver', c1: '#2d9cdb', c2: '#145a86', bgc: '#cfd8b8', rim: '#6ad1ff', metric: 1,
-    W, H, start: P(-123.1185, 49.2835), cost: 1.8, need: 90, pv: 0.6, view: 13, agridSize: 900, bld: BLD, tries: t => t >= 5 ? 16 : 4,
+    W, H, start: P(-123.1185, 49.2835), cost: 1.8, need: 280, pv: 0.6, view: 13, agridSize: 900, bld: BLD, tries: t => t >= 5 ? 16 : 4,
     sizes: [0, 1.5, 2.5, 4.5, 8, 14, 25, 45, 80, 140, 250, 450],
     tagN: { house: 'house', tree: 'tree' }, regionAt, P, inv, inPlay, nearRoad, isWater,
     regionPos: rg => { const r = REGIONS.find(r => r[0] === rg); return r && P(r[1], r[2]); },
@@ -922,7 +922,7 @@ const CH = [null];
     areaKey: regionAt,
     tgtBox: [...P(-123.27, 49.33), ...P(-122.65, 49.0)],
     types: {
-      manhole: ['manhole cover', 1], drain: ['storm drain', 1], cup: ['coffee cup', 1], can: ['pop can', 1], newspaper: ['newspaper box', 1, { pl: 'newspaper boxes' }],
+      hat: ['top hat', 1], manhole: ['manhole cover', 1], drain: ['storm drain', 1], cup: ['coffee cup', 1], can: ['pop can', 1], newspaper: ['newspaper box', 1, { pl: 'newspaper boxes' }],
       leaf: ['maple leaf', 1, { pl: 'maple leaves' }], flower: ['tulip', 1], shell: ['shell', 1], mushroom: ['mushroom', 1], corn: ['corn plant', 1], log: ['driftwood log', 1],
       cone: ['traffic cone', 1], hydrant: ['fire hydrant', 1], lamp: ['lamppost', 1], light: ['traffic light', 1], bench: ['bench', 1, { pl: 'benches' }],
       squirrel: ['squirrel', 1, { mv: 'w' }], duck: ['duck', 1, { mv: 'w' }], chicken: ['chicken', 1, { mv: 'w' }], umbrella: ['beach umbrella', 1], luggage: ['suitcase', 1],
@@ -975,7 +975,7 @@ const CH = [null];
       G.x = G.okX; G.y = G.okY; G.vx *= -0.2; G.vy *= -0.2;            // the invisible border: you simply stop
     },
     build(add, rng) {
-      const A = (k, lon, lat, o) => add(k, ...P(lon, lat), Object.assign({ quiet: 1 }, o));
+      const A = (k, lon, lat, o) => add(k, ...P(lon, lat), Object.assign({ quiet: 1 }, o && o.id ? { keep: 1 } : null, o));   // named places stay eaten
       // every school, high school, community centre and casino at its real location (names show only while targeted)
       for (const [k, x, y, nm] of D3.poi) if (inPlay(x, y)) add(k, x, y, { label: nm, quiet: 1, nm, yaw: rng() * 6.28 });
       // the famous places, with their own shapes
@@ -1152,7 +1152,7 @@ const CH = [null];
   const BIOME = { forest: 'Forest', camp: 'Forest', lake: 'Forest', river: 'Greenlands', meadow: 'Greenlands', desert: 'Desert', oasis: 'Desert', beach: 'Ocean', ocean: 'Ocean', reef: 'Ocean', icewater: 'Antarctic ice', ice: 'Antarctic ice', station: 'Antarctic ice' };
   CH.push({
     n: 4, name: 'The Wilderness', short: 'Wilderness', c1: '#8bc34a', c2: '#33691e', bgc: '#4f8a3c', rim: '#8ef08e', metric: 1,
-    W, H, start: [700, 3530], cost: 2.4, need: 80, view: 13,
+    W, H, start: [700, 3530], cost: 2.4, need: 235, view: 13,
     sizes: [0, .008, .016, .032, .065, .13, .26, .5, 1, 2, 4, 8, 16, 32, 64],
     tagN: { tree: 'tree', whale: 'whale' },
     regionAt: (x, y) => BIOME[zoneHere(x, y)] || 'Forest', regionName: r => r, areaKey: (x, y) => BIOME[zoneHere(x, y)] || 'Forest',
@@ -1453,7 +1453,7 @@ const CH = [null];
   }
   CH.push({
     n: 5, name: 'World Tour', short: 'World', c1: '#ff9800', c2: '#b34700', bgc: '#2a6fb5', rim: '#ffd23f',
-    W, H, wrap: 1, v2k: 200 / 400, spd: 5.2, start: P(-123.1, 49.28), cost: 3, need: 100, pv: 2, view: 13, agridSize: 4000,
+    W, H, wrap: 1, v2k: 200 / 400, spd: 5.2, start: P(-123.1, 49.28), cost: 3, need: 340, pv: 2, view: 13, agridSize: 4000,
     sizes: [0, 16, 26, 42, 66, 100, 150, 230, 350],
     real: [0, 800, 2000, 5000, 12000, 30000, 80000, 250000, 800000],
     tagN: { wonder: 'World Wonder', landmark: 'landmark', island: 'island', tree: 'tree' },
@@ -1518,8 +1518,8 @@ const CH = [null];
       const sx = STAGE_W - 170, sy = 130, sg = g.createRadialGradient(sx, sy, 20, sx, sy, 190); sg.addColorStop(0, 'rgba(255,214,90,.95)'); sg.addColorStop(.35, 'rgba(255,170,40,.45)'); sg.addColorStop(1, 'rgba(255,140,0,0)');
       g.fillStyle = sg; g.fillRect(sx - 190, sy - 190, 380, 380); g.fillStyle = '#ffd34d'; g.beginPath(); g.arc(sx, sy, 62, 0, 7); g.fill();
       const ball = (x, y, r, c1, c2) => { const bg2 = g.createRadialGradient(x - r * .35, y - r * .35, r * .1, x, y, r); bg2.addColorStop(0, c1); bg2.addColorStop(1, c2); g.fillStyle = bg2; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); };
-      ball(sx - 150, sy + 70, 9, '#ddd6cc', '#7a746c'); ball(170, 120, 24, '#ff9a6a', '#9c2f12');
-      for (const [s2, x, y] of [['the Sun', sx, sy + 86], ['Mercury', sx - 150, sy + 92], ['Mars', 170, 162]]) txt(s2, x, y, 16, 'rgba(255,255,255,.85)', 'center', 800);
+      ball(sx - 150, sy + 70, 9, '#ddd6cc', '#7a746c'); ball(560, 250, 24, '#ff9a6a', '#9c2f12');
+      for (const [s2, x, y] of [['the Sun', sx, sy + 86], ['Mercury', sx - 150, sy + 92], ['Mars', 560, 292]]) txt(s2, x, y, 16, 'rgba(255,255,255,.85)', 'center', 800);
       g.restore();
       txt(p < 0.62 ? 'THE MOON!' : 'GULP!', STAGE_W / 2, 150, 64, '#ffd23f', 'center', 900);
     },
@@ -1611,7 +1611,7 @@ const CH = [null];
   const sized = (n, k, o) => [n, 1, Object.assign({ planet: 1, m: [PW[k], PW[k]] }, o || {})];
   CH.push({
     n: 6, name: 'Space', short: 'Space', c1: '#3949ab', c2: '#0d1240', bgc: '#03030c', rim: '#a98bff', space: 1,
-    W, H, start: [EARTH[0] + 420, EARTH[1] + 380], cost: 3.6, need: 90, pv: 1.2, view: 13,
+    W, H, start: [EARTH[0] + 420, EARTH[1] + 380], cost: 3.6, need: 215, pv: 1.2, view: 13,
     sizes: [0, 16, 26, 42, 66, 100, 150, 230, 350, 520],
     real: [0, 3.5e6, 5e6, 7e6, 1e7, 1.4e7, 3e7, 6e7, 1.4e8, 1.4e9],
     tagN: { asteroid: 'asteroid' },
@@ -1713,7 +1713,7 @@ const CH = [null];
   const st = (n, t, c1, o) => [n, t, o || {}];
   CH.push({
     n: 7, name: 'The Humbling', short: 'Humbling', c1: '#8e24aa', c2: '#2a0636', bgc: '#0d0221', rim: '#ff6bd6', space: 1,
-    W, H, start: [W / 2, H / 2], cost: 4.5, need: 80, pv: 5, view: 13,
+    W, H, start: [W / 2, H / 2], cost: 4.5, need: 170, pv: 5, view: 13,
     sizes: [0, 16, 26, 42, 66, 100, 150, 230, 350, 520],
     real: [0, 2e9, 5e9, 1.5e10, 4e10, 1e11, 3e11, 1e12, 4e12, 1.5e13],
     tagN: { giantstar: 'giant star', giantufo: 'giant UFO' },
@@ -2168,7 +2168,7 @@ function gather(x0, y0, x1, y1, z) {
 }
 
 /* ---------- hole size / upgrades ---------- */
-const need = L => Math.max(1, Math.round((G.C ? G.C.need : 20) * L * L * NEED_K));
+const need = L => Math.max(1, Math.round((G.C ? G.C.need : 20) * Math.pow(L, G.C && G.C.needP || 2) * NEED_K));   // needP: a finite map (the house) flattens the late curve
 const UPL = k => G.st.up[UPGRADES.findIndex(u => u.k === k)];
 /* sizes[L] = the hole's diameter at the start of level L (metres in Ch 1-4); it grows smoothly to the next */
 function holeD() {
@@ -2375,6 +2375,8 @@ function placeTile(tl, j) {
   tl.x = G.x + D * 1.6; tl.y = G.y;
 }
 /* the player's district / room / biome: Educational math targets never leave it */
+/* labels: quiet names (Ch3 POIs, Ch5 flags) stay hidden until the place is a target (I Spy, Educational, a quest) */
+const labelOn = o => !!o.label && (!o.quiet || !!o.tgt || !!o.qlab);
 function areaKey(x, y) { const C = G.C; return C.areaKey ? C.areaKey(x, y) : C.regionAt ? C.regionAt(x, y) : C.zoneAt(x, y); }
 function relocateTiles() {
   const C = G.C, D = holeD(), owners = new Set(G.tiles.map(t => t.owner));
@@ -2851,7 +2853,6 @@ const MODEL = (() => {
     pine: p => { const n = p.n || 3, hh = p.hh || 1; return [cy(.25, .6 * hh, .25, 0, .3 * hh, 0, WOOD), ...Array.from({ length: n }, (_, i) => co(1 - i * .22, 1.1 * hh, 1 - i * .22, 0, .6 * hh + i * .7 * hh + .5 * hh, 0, i % 2 ? (p.b || '#2e7d32') : (p.a || '#1b5e20'), { seg: 8 })), ...(p.snow ? [co(.4, .5, .4, 0, .6 * hh + n * .7 * hh + .2, 0, '#fff', { seg: 8 })] : [])]; },
     palm: p => [cy(.22, 2.6, .22, .2, 1.3, 0, '#9a7040', { rz: -.15, top: .8 }), ...[0, 1.25, 2.5, 3.75, 5].map(a => bx(.25, .06, 1.3, .4 + Math.cos(a) * .55, 2.55, Math.sin(a) * .55, '#3f9a3f', { ry: -a + 1.5708, rx: .35 })), sp(.3, .3, .3, .4, 2.5, 0, '#6b4a22')],
     cactus: p => [cy(.5, p.h || 2, .5, 0, (p.h || 2) / 2, 0, '#3f8f4a', { seg: 8 }), sp(.5, .3, .5, 0, p.h || 2, 0, '#3f8f4a'), cy(.3, .7, .3, -.45, (p.h || 2) * .6, 0, '#3f8f4a'), bx(.4, .2, .2, -.25, (p.h || 2) * .45, 0, '#3f8f4a'), ...(p.h > 2 ? [cy(.3, .9, .3, .45, (p.h || 2) * .7, 0, '#3f8f4a'), bx(.4, .2, .2, .25, (p.h || 2) * .55, 0, '#3f8f4a')] : [])],
-    acacia: p => [cy(.25, 2, .25, 0, 1, 0, '#7a5a3a', { rz: .1 }), cy(2.4, .35, 1.8, .1, 2.1, 0, '#6a8f2a', { seg: 9 }), cy(1.6, .3, 1.2, .3, 2.35, .1, '#7da336', { seg: 9 })],
     bush: p => [sp(1, .7, 1, 0, .35, 0, p.a || '#3f9a45'), sp(.7, .6, .7, .3, .45, .2, p.b || '#4caf50'), sp(.6, .5, .6, -.3, .4, -.2, p.a || '#3f9a45')],
     forest: p => [[-.6, -.5], [.6, -.4], [0, .5], [-.5, .7], [.6, .6]].flatMap(([x, z], i) => [cy(.15, .4, .15, x, .2, z, WOOD), co(.8, 1.3 + i % 2 * .3, .8, x, .9, z, i % 2 ? '#2e7d32' : '#1b5e20', { seg: 7 }), co(.55, .9, .55, x, 1.5 + i % 2 * .3, z, '#2e7d32', { seg: 7 })]),
     flower: p => [cy(.08, p.h || .8, .08, 0, (p.h || .8) / 2, 0, '#3a8a2a'), sp(.35, .1, .6, .18, .3, 0, '#3a8a2a', { ry: .4 }), sp(1, .5, 1, 0, (p.h || .8) + .1, 0, p.a), sp(.4, .3, .4, 0, (p.h || .8) + .25, 0, p.b || '#ffd23f')],
@@ -2981,7 +2982,6 @@ const MODEL = (() => {
     mall: p => [bx(1, .9, 1.8, 0, .45, 0, p.a || '#d6d0c4'), bx(1.02, .3, 1.7, 0, .55, 0, WIN), bx(.6, .5, .8, 0, 1.1, 0, p.b || '#b0a898'), bx(.62, .2, .82, 0, 1.15, 0, WIN)],
     terminal: p => [bx(1, .6, 3, 0, .3, 0, '#c8ced6'), bx(1.02, .3, 2.9, 0, .35, 0, WIN), cy(1.1, .2, 3, 0, .65, 0, '#e8edf2', { rx: 1.5708, seg: 6 }), bx(.3, 1.4, .3, .3, .7, 1.2, '#888'), bx(.6, .4, .6, .3, 1.5, 1.2, WIN)],
     campus: p => [bx(1, .9, 2.4, 0, .45, 0, p.a || '#c9b8a0'), bx(.8, .6, 1.2, 0, 1.2, 0, p.a || '#c9b8a0'), bx(1.02, .2, 2.3, 0, .55, 0, WIN), bx(.4, 1.2, .4, 0, 1.6, .8, '#b0a088'), co(.5, .5, .5, 0, 2.45, .8, '#4a6a8a', { seg: 4, ry: .785 })],
-    fort: p => [...[[0, -.7, 1.5, .15], [0, .7, 1.5, .15], [-.7, 0, .15, 1.5], [.7, 0, .15, 1.5]].map(([x, z, sx, sz]) => bx(sx, .6, sz, x, .3, z, '#8a6a43')), ...[-1, 1].flatMap(sx => [-1, 1].map(sz => cy(.35, .9, .35, sx * .7, .45, sz * .7, '#7a5a33', { seg: 6 }))), ...[-1, 1].flatMap(sx => [-1, 1].map(sz => co(.45, .4, .45, sx * .7, 1.1, sz * .7, '#5a3a1a', { seg: 6 }))), bx(.6, .5, .5, 0, .25, 0, '#fff'), pr(.7, .3, .6, 0, .65, 0, '#c0392b')],
     market: p => [bx(1, .8, 3, 0, .4, 0, p.a || '#c4a484'), pr(1.1, .4, 3.05, 0, 1, 0, '#7a3a2a', { ry: 1.5708 }), bx(1.02, .25, 2.8, 0, .45, 0, WIN)],
     totem: p => [...['#c0392b', '#2471a3', '#f1c40f', '#1e8449'].map((c, i) => bx(1, 1, 1, 0, .5 + i, 0, c)), bx(2.4, .2, .5, 0, 3.4, 0, '#c0392b'), ...[0, 1, 2, 3].flatMap(i => [-1, 1].map(s => bx(.2, .15, .05, s * .2, .7 + i, .51, '#111')))],
     fountain: p => [cy(1.6, .3, 1.6, 0, .15, 0, '#bfc6cc', { seg: 14 }), cy(1.4, .05, 1.4, 0, .31, 0, '#6ab7ff', { seg: 14 }), cy(.2, .8, .2, 0, .6, 0, '#bfc6cc'), cy(.6, .15, .6, 0, 1, 0, '#bfc6cc'), sp(.3, .6, .3, 0, 1.3, 0, '#bfe6ff')],
@@ -2997,10 +2997,6 @@ const MODEL = (() => {
     trafficlight: p => [cy(.2, 3, .2, 0, 1.5, 0, '#333'), bx(.6, 1.4, .5, 0, 3.4, 0, '#222'), sp(.3, .3, .1, 0, 3.85, .25, '#e33'), sp(.3, .3, .1, 0, 3.4, .25, '#fc3'), sp(.3, .3, .1, 0, 2.95, .25, '#3c3')],
     luggage: p => [bx(1, 1.4, .6, 0, .75, 0, p.a || '#2d6a9f'), to(.4, .3, .1, 0, 1.5, 0, '#222', { tube: .05 }), sp(.15, .15, .15, -.35, .07, 0, '#111'), sp(.15, .15, .15, .35, .07, 0, '#111')],
     campfire: p => [...[0, 1, 2, 3].map(i => cy(.15, 1.2, .15, 0, .1, 0, '#6b4423', { rz: 1.5708, ry: i * .8 })), co(.7, .9, .7, 0, .55, 0, '#ff7a1a', { seg: 6 }), co(.4, .7, .4, 0, .65, 0, '#ffd23f', { seg: 6 }), ...[0, 1, 2, 3, 4, 5].map(i => sp(.3, .25, .3, Math.cos(i) * .6, .1, Math.sin(i) * .6, '#888'))],
-    chest: p => [bx(1, .6, 1.5, 0, .3, 0, '#8b5a2b'), cy(1, .5, 1.5, 0, .6, 0, '#a0522d', { rx: 1.5708, seg: 8 }), bx(1.02, .1, 1.52, 0, .55, 0, GOLD), bx(.2, .25, .1, 0, .55, .76, GOLD), sp(.4, .2, .4, 0, .85, 0, GOLD)],
-    crown: p => [cy(1, .5, 1, 0, .25, 0, GOLD, { seg: 10 }), ...[0, 1, 2, 3, 4].map(i => co(.25, .45, .25, Math.cos(i * 1.256) * .4, .7, Math.sin(i * 1.256) * .4, GOLD)), sp(.2, .2, .2, 0, .3, .5, '#d22')],
-    goblet: p => [cy(.7, .1, .7, 0, .05, 0, GOLD), cy(.15, .6, .15, 0, .4, 0, GOLD), cy(1, .7, 1, 0, 1, 0, GOLD, { top: 1.2 }), sp(.2, .2, .2, 0, .9, .52, '#3cf')],
-    anchor: p => [bx(.25, 2, .25, 0, 1, 0, '#4a4f55'), to(.5, .5, .2, 0, 2.2, 0, '#4a4f55', { tube: .1 }), to(1.4, 1.4, .25, 0, .7, 0, '#4a4f55', { tube: .12, arc: 3.14, rz: 3.14 }), bx(1, .2, .2, 0, 1.6, 0, '#4a4f55')],
     gem: p => [co(1, .7, 1, 0, .35, 0, p.a || '#3cf', { seg: 6, rx: 3.14 }), co(1, .35, 1, 0, .87, 0, p.a || '#3cf', { seg: 6 })],
     shell: p => [sp(1, .4, 1, 0, .2, 0, p.a || '#f6d7c3'), ...[-.3, 0, .3].map(x => bx(.06, .42, .9, x, .21, 0, p.b || '#e0b49a', { ry: x }))],
     feather: p => [sp(.6, .1, 2, 0, .05, 0, p.a || '#ddd'), bx(.05, .06, 2.2, 0, .1, 0, '#888')],
@@ -3075,7 +3071,7 @@ const MODEL = (() => {
   };
   /* type -> [recipe, params]. Shared recipes, per-type palettes and proportions. */
   const T = {
-    chest: ['chest', {}], crown: ['crown', {}], croissant: ['croissant', {}], pizza: ['pizza', {}], noodles: ['noodles', {}], sushi: ['sushi', {}],
+    croissant: ['croissant', {}], pizza: ['pizza', {}], noodles: ['noodles', {}], sushi: ['sushi', {}],
     taco: ['taco', {}], hotdog: ['hotdog', {}], pretzel: ['pretzel', {}], doll: ['doll', {}], tuktuk: ['tuktuk', {}],
     // Ch1 the house
     lego: ['brick', { v: [{ a: '#e53935' }, { a: '#1e88e5' }, { a: '#fdd835' }, { a: '#43a047' }] }], marble: ['ball', { v: [{ a: '#4fc3f7' }, { a: '#ef5350' }, { a: '#ab47bc' }] }], die: ['die', {}], crayon: ['stick', { v: [{ a: '#e53935' }, { a: '#1e88e5' }, { a: '#43a047' }] }],
@@ -3151,20 +3147,20 @@ const MODEL = (() => {
     smallplane: ['airplane', { a: '#fafafa', b: '#1e88e5' }], yacht: ['boat', { a: '#fafafa', cab: .5, d: 3 }], orca: ['fish', { a: '#111', belly: '#fafafa', fin: .8, d: 2.8, h: 1 }], cabin: ['cabin', {}], seabus: ['ship', { a: '#fafafa', b: '#1565c0', decks: 1, d: 3.2 }],
     whiterock: ['whiterock', {}], quay: ['market', {}], tower: ['tower', { hh: 3.4, v: [{ a: '#9aa6b5', b: '#5d7ea8' }, { a: '#b8c2cc', b: '#3f6f9f' }, { a: '#8090a4', b: '#7fb0d8', spire: .5 }] }],
     airplane: ['airplane', {}], ferry: ['ship', { a: '#fafafa', b: '#1565c0', decks: 2, stack: '#e53935', d: 4.5 }], mall: ['mall', {}], cargo: ['ship', { a: '#263238', b: '#c62828', box: 1, d: 5 }], stadium: ['stadium', { a: '#e8ecef' }],
-    cruise: ['ship', { a: '#fafafa', b: '#0d47a1', decks: 4, stack: '#0d47a1', d: 5 }], fort: ['fort', {}], university: ['campus', {}], terminal: ['terminal', {}], lodge: ['mountain', { h: .7, chalet: 1, a: '#5f7f4f', b: '#4f6f3f', snow: '#e8eef2' }], totem: ['totem', {}],
+    cruise: ['ship', { a: '#fafafa', b: '#0d47a1', decks: 4, stack: '#0d47a1', d: 5 }], terminal: ['terminal', {}], lodge: ['mountain', { h: .7, chalet: 1, a: '#5f7f4f', b: '#4f6f3f', snow: '#e8eef2' }], totem: ['totem', {}],
     // Ch4 wilderness
-    pebble: ['pebble', {}], bug: ['worm', { a: '#8bc34a', b: '#558b2f' }], ant: ['bug', { a: '#3a2a22', b: '#3a2a22' }], berry: ['berry', {}], acorn: ['acorn', {}], feather: ['feather', {}], scorpion: ['lizard', { a: '#8a5a2a', tail: '#5a3a1a' }],
-    oyster: ['shell', { a: '#a0a0a0', b: '#d9d0c0' }], fish: ['fish', { v: [{ a: '#4fc3f7' }, { a: '#ffb74d' }] }], crab: ['crab', {}], rabbit: ['quad', { a: '#d7ccc8', d: 1.2, lh: .25, ears: 1 }], bush: ['bush', {}], cactus: ['cactus', { h: 2 }],
+    pebble: ['pebble', {}], ant: ['bug', { a: '#3a2a22', b: '#3a2a22' }], berry: ['berry', {}], acorn: ['acorn', {}], feather: ['feather', {}], scorpion: ['lizard', { a: '#8a5a2a', tail: '#5a3a1a' }],
+    fish: ['fish', { v: [{ a: '#4fc3f7' }, { a: '#ffb74d' }] }], crab: ['crab', {}], rabbit: ['quad', { a: '#d7ccc8', d: 1.2, lh: .25, ears: 1 }], bush: ['bush', {}], cactus: ['cactus', { h: 2 }],
     frog: ['frog', {}], snake: ['worm', { a: '#689f38', b: '#33691e' }], tropfish: ['fish', { a: '#ff7043', b: '#fdd835', fin: .3 }], coral: ['coral', { v: [{ a: '#ff6f91', b: '#ffc75f' }, { a: '#9b5de5', b: '#f15bb5' }] }], lizard: ['lizard', { a: '#7cb342' }],
-    owl: ['bird', { a: '#8d6e63', head: '#8d6e63', lg: .15 }], hawk: ['bird', { a: '#6d4c41', head: '#fafafa', wing: '#5d4037', lg: .1 }], gem: ['gem', { v: [{ a: '#29b6f6' }, { a: '#ec407a' }, { a: '#66bb6a' }] }], campfire: ['campfire', {}],
+    gem: ['gem', { v: [{ a: '#29b6f6' }, { a: '#ec407a' }, { a: '#66bb6a' }] }], campfire: ['campfire', {}],
     camper: ['fig', { a: '#2e7d32', c: '#5d4037', hat: '#fdd835', hatH: .25 }], fox: ['quad', { a: '#ef6c00', b: '#fafafa', d: 1.6, lh: .45, ears: 1 }], beaver: ['quad', { a: '#6d4c41', b: '#3e2723', d: 1.5, lh: .25 }], salmon: ['fish', { a: '#ff8a65', d: 2.4 }],
-    blowfish: ['fish', { a: '#fdd835', d: 1.1, h: 1 }], octopus: ['octopus', {}], canoe: ['canoe', {}], flamingo: ['bird', { a: '#f48fb1', neck: .8, lg: 1.4, leg: '#f48fb1', beak: '#222' }], goblet: ['goblet', {}], wolf: ['quad', { a: '#9e9e9e', d: 1.8, lh: .6, ears: 1 }],
-    zebra: ['quad', { a: '#fafafa', b: '#222', stripes: 1, d: 2, lh: .8, mane: '#222' }], campervan: ['van', { a: '#fafafa', c: '#26a69a', d: 2.8 }], boulder: ['stone', { a: '#8f8a84', h: .8 }], warthog: ['quad', { a: '#8d6e63', horn: '#fafafa', d: 1.6, lh: .4 }],
-    ram: ['quad', { a: '#a1887f', horn: '#d7ccc8', d: 1.6, lh: .6 }], turtle: ['turtle', {}], oak: ['tree', { trunk: 1.8, a: '#388e3c' }], palm: ['palm', {}], acacia: ['acacia', {}], camel: ['quad', { a: '#d4a35a', hump: 1, neck: .5, d: 2, lh: 1 }],
+    blowfish: ['fish', { a: '#fdd835', d: 1.1, h: 1 }], octopus: ['octopus', {}], canoe: ['canoe', {}], wolf: ['quad', { a: '#9e9e9e', d: 1.8, lh: .6, ears: 1 }],
+    campervan: ['van', { a: '#fafafa', c: '#26a69a', d: 2.8 }], boulder: ['stone', { a: '#8f8a84', h: .8 }],
+    turtle: ['turtle', {}], oak: ['tree', { trunk: 1.8, a: '#388e3c' }], palm: ['palm', {}], camel: ['quad', { a: '#d4a35a', hump: 1, neck: .5, d: 2, lh: 1 }],
     lion: ['quad', { a: '#e0a040', mane: '#a0601a', d: 2, lh: .7 }], shark: ['fish', { a: '#78909c', belly: '#eceff1', fin: .9, d: 3 }], dolphin: ['fish', { a: '#64b5f6', belly: '#e3f2fd', fin: .5, d: 2.6 }], saguaro: ['cactus', { h: 4 }],
-    leopard: ['quad', { a: '#f2c14e', b: '#5a3a1a', spots: 1, d: 2, lh: .65 }], anchor: ['anchor', {}], elephant: ['quad', { a: '#9e9e9e', trunk: 1, ears: 1, d: 2.2, lh: 1.2 }], giraffe: ['quad', { a: '#f2c14e', b: '#a0601a', spots: 1, neck: 2.2, lh: 1.6, d: 1.8 }],
-    rhino: ['quad', { a: '#8d8d8d', nose: '#e0e0e0', d: 2.2, lh: .7 }], hippo: ['quad', { a: '#8e7c93', d: 2.2, lh: .45 }], bigrock: ['stone', { a: '#7d7872', h: 1, b: '#6d6862' }], wreck: ['wreck', {}],
-    whale: ['fish', { a: '#455a64', belly: '#b0bec5', d: 3.6, h: 1.1 }], bluewhale: ['fish', { a: '#3f6ea5', belly: '#cfe3f0', d: 4, h: 1.1 }], dam: ['dam', {}], rockies: ['mountain', { h: .85, a: '#5f6c8e', b: '#4f5b7c' }],
+    elephant: ['quad', { a: '#9e9e9e', trunk: 1, ears: 1, d: 2.2, lh: 1.2 }], giraffe: ['quad', { a: '#f2c14e', b: '#a0601a', spots: 1, neck: 2.2, lh: 1.6, d: 1.8 }],
+    wreck: ['wreck', {}],
+    whale: ['fish', { a: '#455a64', belly: '#b0bec5', d: 3.6, h: 1.1 }], bluewhale: ['fish', { a: '#3f6ea5', belly: '#cfe3f0', d: 4, h: 1.1 }], dam: ['dam', {}],
     // Ch5 world tour (whole-world scale: a "car" is a little car on a continent)
     tree: ['tree', {}], guard: ['fig', { a: '#c62828', c: '#1a237e', hat: '#111', hatH: .7 }], penguin: ['blob', { a: '#263238', h: 1.6 }], moto: ['bike', { a: '#e53935', motor: 1 }], oldcar: ['car', { a: '#26c6da', d: 2.4 }],
     dancer: ['fig', { a: '#c2185b', c: '#111', hair: '#111' }], parrot: ['bird', { a: '#e53935', head: '#fdd835', wing: '#1e88e5', lg: .2 }], kangaroo: ['quad', { a: '#b5824e', d: 1.4, lh: .9, neck: .5, ears: 1 }], panda: ['quad', { a: '#fafafa', head: '#fafafa', leg: '#222', ears: 1, d: 1.6, lh: .4 }],
@@ -3195,7 +3191,7 @@ const MODEL = (() => {
     '6:ice': ['rock', { a: '#cfe8ff', h: .7 }], '7:ice': ['rock', { a: '#bfe9ff', h: .7 }], '7:station': ['station', {}], '7:comet': ['comet', { a: '#f8bbd0', b: '#ff4fd8' }], '7:ufo': ['ufo', { a: '#b0b8c8', b: '#55efc4' }],
     '7:satellite': ['sat', { a: '#a0a0a0' }], '7:alien': ['alien', { a: '#b388ff' }], '7:rock': ['rock', { a: '#6d5f7a' }], '6:rock': ['rock', {}],
   };
-  const NATURE = new Set(['tree', 'pine', 'palm', 'cactus', 'acacia', 'bush', 'forest', 'flower', 'sprout', 'mushroom', 'coral', 'stone', 'pebble', 'rock', 'iceberg', 'whiterock', 'mountain', 'hill', 'shell', 'leaf', 'feather', 'berry', 'grapes', 'sparkle', 'comet', 'planet', 'star', 'crystal', 'island']);
+  const NATURE = new Set(['tree', 'pine', 'palm', 'cactus', 'bush', 'forest', 'flower', 'sprout', 'mushroom', 'coral', 'stone', 'pebble', 'rock', 'iceberg', 'whiterock', 'mountain', 'hill', 'shell', 'leaf', 'feather', 'berry', 'grapes', 'sparkle', 'comet', 'planet', 'star', 'crystal', 'island']);
   /* ---- geometry factory ---- */
   const shapeCache = {};
   function shape(kind, o) {
@@ -3627,7 +3623,7 @@ function drawWorld3D() {
       pushMerge(V3.mS, V3.quad);
     }
     if (o.helper) { _qy.identity(); _m4.compose(_p3.set(_p3.x, 0.5, _p3.z), _qy, _s3.set(fw * 2.2, 1, fw * 2.2)); pushMerge(V3.mH, V3.quad); }
-    if (o.label && (!o.quiet || o.tgt || o.qlab) && fw * z > 18 && !o.fall) LABELS.push(o);
+    if (labelOn(o) && fw * z > 18 && !o.fall) LABELS.push(o);
   }
   flushAll();
   for (const [o, m] of V3.tiles) if (!usedTiles.has(o)) { m.visible = false; if (o.dead || !G.tiles.includes(o)) { V3.scene.remove(m); V3.tiles.delete(o); } }
@@ -3695,7 +3691,6 @@ function drawMenu3D() {
   flushAll();
   V3.ren.render(V3.scene, V3.cam);
 }
-function clearGL() { V3.ren.setClearColor(0x000000, 1); V3.ren.clear(); }
 
 /* ---------- 2D helpers for the HUD canvas ---------- */
 function rr(x, X, Y, W, H, R) { x.beginPath(); x.moveTo(X + R, Y); x.arcTo(X + W, Y, X + W, Y + H, R); x.arcTo(X + W, Y + H, X, Y + H, R); x.arcTo(X, Y + H, X, Y, R); x.arcTo(X, Y, X + W, Y, R); x.closePath(); }
@@ -4222,7 +4217,7 @@ requestAnimationFrame(frame);
 
 /* test hook for automated checks (harmless in play) */
 window.HH = { get S() { return S; }, G, CH, UI, prep, loadChapter, startChapter, eat, holeD, need, addXP, bankerTransfer, bankerArrive, buyUpgrade, upCost,
-  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole };
+  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole, labelOn, MODES, genCell, tierOf, mkObj };
 </script>
 </body>
 </html>
