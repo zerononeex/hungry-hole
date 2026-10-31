@@ -5315,46 +5315,51 @@ function drawHUD() {
   const mr = miniRect(); g.save(); g.translate(0, mr[1] + mr[3] + (C.wrap ? 34 : 12) - y);   // v5.1: the whole objective/quest stack sits below the minimap
   if (G.run.kind !== 'story') drawModeHUD();
   else {
-  g.fillStyle = 'rgba(20,14,46,.78)'; rr(g, 12, y, 372, 190, 16); g.fill();
+  // v5.2 Part 5: the same information, denser: a 268-px column (was 372), tighter rows, 12-px floor on any text
+  const PW = 268, ckH = 17, box = 46;
+  const bodyH = 26 + box + 8 + 14 + C.CK.length * ckH + 4;
+  g.fillStyle = 'rgba(20,14,46,.78)'; rr(g, 12, y, PW, bodyH, 12); g.fill();
   const head = `WORLD ${C.n} · ${C.name.toUpperCase()}`;
-  txt(head, 26, y + 18, fitText(head, 340, 15), '#ffd96a');
+  txt(head, 22, y + 13, fitText(head, PW - 22, 13), '#ffd96a');
   // the objective ladder (story tasks are its size-gate beats)
-  g.fillStyle = 'rgba(255,210,63,.16)'; rr(g, 20, y + 32, 356, 62, 11); g.fill();
+  g.fillStyle = 'rgba(255,210,63,.16)'; rr(g, 18, y + 24, PW - 12, box, 9); g.fill();
   if (G.goal) {
-    const im = thumb(G.goal.mc || C, G.goal.k, G.goal.pal); if (im) g.drawImage(im, 24, y + 35, 56, 56);
-    txt(`OBJECTIVE ${st.beat + 1}/${C.beats.length}`, 88, y + 48, 13, '#ffd96a');
-    const gn = 'Eat ' + goalName(G.goal); txt(gn, 88, y + 74, fitText(gn, 280, 20), '#fff', 'left', 900);
-  } else txt(C.beats ? 'World complete! Roam and eat anything.' : '', 30, y + 63, 17, '#9ff0a8');
-  txt('BONUS CHECKLIST', 26, y + 108, 11, '#cbd');
+    const im = thumb(G.goal.mc || C, G.goal.k, G.goal.pal); if (im) g.drawImage(im, 21, y + 26, box - 4, box - 4);
+    txt(`OBJECTIVE ${st.beat + 1}/${C.beats.length}`, 22 + box, y + 35, 12, '#ffd96a');
+    const gn = 'Eat ' + goalName(G.goal); txt(gn, 22 + box, y + 55, fitText(gn, PW - box - 18, 17), '#fff', 'left', 900);
+  } else txt(C.beats ? 'World complete! Eat anything.' : '', 24, y + 24 + box / 2, 14, '#9ff0a8');
+  let yy0 = y + 24 + box + 14;
+  txt('BONUS CHECKLIST', 22, yy0, 12, '#cbd'); yy0 += 14;
   C.CK.forEach((q, j) => {
-    const p = Math.min(st.check[j], q.n), d = p >= q.n, yy = y + 128 + j * 22;
-    tick(30, yy, 8, d);
-    const s = fitText(q.txt, 262, 14); txt(q.txt, 46, yy, s, d ? '#9ff0a8' : '#eee');
-    txt(q.k === 'q' ? `${p}/${q.n}` : `${fmt(p)}/${fmt(q.n)}`, 372, yy, 13, '#cfe', 'right');
+    const p = Math.min(st.check[j], q.n), d = p >= q.n, yy = yy0 + j * ckH;
+    tick(25, yy, 6.5, d);
+    const cnt = q.k === 'q' ? `${p}/${q.n}` : `${fmt(p)}/${fmt(q.n)}`;
+    txt(q.txt, 37, yy, fitText(q.txt, PW - 90, 13), d ? '#9ff0a8' : '#eee');
+    txt(cnt, PW + 6, yy, 12, '#cfe', 'right');
   });
-  y += 198;
+  y += bodyH + 5;
   // Tiny Quest chips
   for (const a of st.act) {
-    const q = C.Q[a.i], h = (q.k === 'q' || q.k === 'f') ? 58 : 38;
-    g.fillStyle = 'rgba(16,40,70,.8)'; rr(g, 12, y, 372, h, 13); g.fill();
-    g.strokeStyle = 'rgba(106,209,255,.6)'; g.lineWidth = 2; g.stroke();
+    const q = C.Q[a.i], h = (q.k === 'q' || q.k === 'f') ? 46 : 28;
+    g.fillStyle = 'rgba(16,40,70,.8)'; rr(g, 12, y, PW, h, 10); g.fill();
+    g.strokeStyle = 'rgba(106,209,255,.6)'; g.lineWidth = 1.5; g.stroke();
     if (q.k === 'f') {
-      txt(q.op === 'word' ? 'Missing letter:' : 'Find:', 24, y + 17, 14, '#9fdcff');
-      txt(a.d ? a.d.q : '', 24, y + 40, fitText(a.d ? a.d.q : '', 340, 24), '#fff');
+      txt(q.op === 'word' ? 'Missing letter:' : 'Find:', 21, y + 12, 12, '#9fdcff');
+      txt(a.d ? a.d.q : '', 21, y + 31, fitText(a.d ? a.d.q : '', PW - 20, 19), '#fff');
     } else if (q.k === 'q') {
-      txt(q.ids ? 'In order:' : 'Eat in order:', 24, y + 15, 13, '#9fdcff');
-      const n = q.items.length, w = Math.min(34, 340 / n);
+      txt(q.ids ? 'In order:' : 'Eat in order:', 21, y + 11, 12, '#9fdcff');
+      const n = q.items.length, w = Math.min(28, (PW - 20) / n);
       q.items.forEach((it, i) => {
-        const bx = 24 + i * w, done = i < a.p;
+        const bx = 20 + i * w, done = i < a.p;
         g.fillStyle = done ? '#2eb84a' : i === a.p ? '#ffd23f' : 'rgba(255,255,255,.15)';
-        rr(g, bx, y + 26, w - 4, 26, 6); g.fill();
-        txt(it.length > 2 ? it.slice(0, 2) : it, bx + (w - 4) / 2, y + 40, it.length > 1 ? 13 : 17, done ? '#fff' : i === a.p ? '#3a1d00' : '#ccd', 'center');
+        rr(g, bx, y + 21, w - 3, 21, 5); g.fill();
+        txt(it.length > 2 ? it.slice(0, 2) : it, bx + (w - 3) / 2, y + 32, it.length > 1 ? 12 : 15, done ? '#fff' : i === a.p ? '#3a1d00' : '#ccd', 'center');
       });
     } else {
-      txt(q.txt, 24, y + h / 2, fitText(q.txt, 280, 16));
-      if (q.n > 1) txt(`${fmt(Math.min(a.p, q.n))}/${fmt(q.n)}`, 372, y + h / 2, 14, '#cfe', 'right');
+      txt(q.txt, 21, y + h / 2, fitText(q.txt, PW - 60, 14));
+      if (q.n > 1) txt(`${fmt(Math.min(a.p, q.n))}/${fmt(q.n)}`, PW + 6, y + h / 2, 12, '#cfe', 'right');
     }
-    y += h + 6;
+    y += h + 4;
   }
   }
   g.restore();
@@ -5426,33 +5431,33 @@ function drawHUD() {
 function drawModeHUD() {
   const C = G.C, R = G.run;
   if (R.kind === 'explore') {      // free roam: just the world's name and a reminder of the size buttons
-    g.fillStyle = 'rgba(16,40,70,.78)'; rr(g, 12, 12, 330, 56, 16); g.fill();
-    txt('EXPLORATION · ' + C.name.toUpperCase(), 26, 32, fitText('EXPLORATION · ' + C.name.toUpperCase(), 300, 16), '#9fdcff', 'left', 900);
-    txt('Use + and − to change size', 26, 54, 13, '#fff', 'left');
+    g.fillStyle = 'rgba(16,40,70,.78)'; rr(g, 12, 12, 268, 46, 12); g.fill();
+    txt('EXPLORATION · ' + C.name.toUpperCase(), 22, 28, fitText('EXPLORATION · ' + C.name.toUpperCase(), 248, 14), '#9fdcff', 'left', 900);
+    txt('SIZE and SPEED: use + and −', 22, 47, 12, '#fff', 'left');
     return;
   }
   if (R.kind === 'ispy') {
-    g.fillStyle = 'rgba(20,14,46,.82)'; rr(g, 12, 12, 300, 34 + R.tg.length * 62, 16); g.fill();
-    txt('I SPY…', 26, 30, 17, '#ffd96a', 'left', 900);
+    g.fillStyle = 'rgba(20,14,46,.82)'; rr(g, 12, 12, 260, 30 + R.tg.length * 44, 12); g.fill();   // v5.2: denser rows
+    txt('I SPY…', 22, 27, 15, '#ffd96a', 'left', 900);
     R.tg.forEach((t, i) => {
-      const y = 48 + i * 62;
-      g.fillStyle = t.done ? 'rgba(46,184,74,.35)' : 'rgba(255,255,255,.08)'; rr(g, 20, y, 284, 56, 10); g.fill();
-      const im = t.o && thumb(t.o.mc || C, t.o.k, t.o.pal); if (im) g.drawImage(im, 24, y + 2, 52, 52);
-      txt(t.name, 84, y + 28, fitText(t.name, 180, 17), t.done ? '#9ff0a8' : '#fff');
-      tick(286, y + 28, 10, t.done);
+      const y = 40 + i * 44;
+      g.fillStyle = t.done ? 'rgba(46,184,74,.35)' : 'rgba(255,255,255,.08)'; rr(g, 18, y, 248, 40, 8); g.fill();
+      const im = t.o && thumb(t.o.mc || C, t.o.k, t.o.pal); if (im) g.drawImage(im, 21, y + 2, 36, 36);
+      txt(t.name, 63, y + 20, fitText(t.name, 168, 15), t.done ? '#9ff0a8' : '#fff');
+      tick(252, y + 20, 8, t.done);
     });
     return;
   }
   const st = R.steps[R.si]; if (!st) return;
-  const set = C.edu[R.set], h = st.k === 'm' ? 112 : 78 + (st.t.length > 1 ? st.t.length * 24 : 0);
-  g.fillStyle = 'rgba(16,40,70,.86)'; rr(g, 12, 12, 400, h, 16); g.fill(); g.strokeStyle = 'rgba(106,209,255,.6)'; g.lineWidth = 2; g.stroke();
-  txt(`${set.n.toUpperCase()} · ${R.si + 1}/${R.steps.length}`, 26, 30, fitText(set.n.toUpperCase(), 300, 14), '#9fdcff');
-  if (st.k === 'm') { txt('Find the answer:', 26, 56, 15, '#cfe'); txt(st.txt, 26, 88, fitText(st.txt, 370, 30), '#fff', 'left', 900); }
+  const set = C.edu[R.set], h = st.k === 'm' ? 86 : 56 + (st.t.length > 1 ? st.t.length * 19 : 0), EW = 290;   // v5.2: denser card
+  g.fillStyle = 'rgba(16,40,70,.86)'; rr(g, 12, 12, EW, h, 12); g.fill(); g.strokeStyle = 'rgba(106,209,255,.6)'; g.lineWidth = 1.5; g.stroke();
+  const hd = `${set.n.toUpperCase()} · ${R.si + 1}/${R.steps.length}`; txt(hd, 22, 26, fitText(hd, EW - 20, 13), '#9fdcff');
+  if (st.k === 'm') { txt('Find the answer:', 22, 46, 13, '#cfe'); txt(st.txt, 22, 70, fitText(st.txt, EW - 20, 26), '#fff', 'left', 900); }
   else {
-    txt(st.txt, 26, 58, fitText(st.txt, 370, 18), '#fff');
-    if (st.t.length > 1) st.t.forEach((t, i) => { tick(36, 92 + i * 24, 8, t.done); txt(t.name, 52, 92 + i * 24, 15, t.done ? '#9ff0a8' : '#fff'); });
+    txt(st.txt, 22, 46, fitText(st.txt, EW - 20, 16), '#fff');
+    if (st.t.length > 1) st.t.forEach((t, i) => { tick(29, 70 + i * 19, 6.5, t.done); txt(t.name, 41, 70 + i * 19, 13, t.done ? '#9ff0a8' : '#fff'); });
   }
-  txt('Tap ? for help', 398, h + 2, 12, '#9fdcff', 'right');
+  txt('Tap ? for help', EW + 8, h + 20, 12, '#9fdcff', 'right');
 }
 function compassArrow(o, col, label) {
   if (G.C.layered && G.C.routeTo && o.fl !== undefined && o.fl !== G.fl) o = G.C.routeTo(o);
