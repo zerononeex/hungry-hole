@@ -969,7 +969,8 @@ const CH = [null];
   }
   CH.push({
     n: 2, key: 'van', mus: 'ch2.mp3', name: 'Metro Vancouver', short: 'Vancouver', c1: '#2d9cdb', c2: '#145a86', bgc: '#cfd8b8', rim: '#6ad1ff', metric: 1,
-    W, H, start: P(-123.1185, 49.2835), cost: 1.8, need: 25, needP: 1.6, xpk: 3, spd: 3.6, pv: 0.6, view: 13, agridSize: 900, bld: BLD, tries: t => t >= 5 ? 16 : 4,
+    W, H, start: P(-123.1185, 49.2835), storyStart: P(-123.1128, 49.2864), cost: 1.8,   // v5.2: Story opens at Canada Place, a hop from the Steam Clock
+    need: 25, needP: 1.6, xpk: 3, spd: 3.6, pv: 0.6, view: 13, agridSize: 900, bld: BLD, tries: t => t >= 5 ? 16 : 4,
     fill: .3, fillKeep: new Set(['streettree', 'bigtree', ...BLD]),           // v5 density: filler cut 70%, trees and streets of buildings stay
     // the objective ladder (story): Gastown → Chinatown → Coal Harbour → the North Shore → Richmond → the whole region
     beats: ['steamclock', 'chinagate', 'cauldron', 'harbourctr', 'grouse', 'scienceworld', 'cannery', 'aquarium', 'bcplace', 'canadaplace'],
@@ -1157,7 +1158,9 @@ const CH = [null];
       A('chalet', -122.9497, 50.0635, { label: 'Roundhouse Lodge', sub: 'Whistler Mountain' }); A('chalet', -122.9013, 50.0819, { label: 'Rendezvous Lodge', sub: 'Blackcomb Mountain' });
       for (let i = 0; i < 4; i++) A('gondola', -122.92, 50.07, { path: poly([-122.9497, 50.0635, -122.9013, 50.0819]), spd: 7, ph: i / 4, lift: 40, label: i ? '' : 'Peak 2 Peak Gondola', id: i ? undefined : 'peak2peak' });
       for (let i = 0; i < 8; i++) A('snowboarder', -122.95, 50.08, { path: poly([-122.9497 + i * .001, 50.0645, -122.954 + i * .001, 50.108]), spd: 6 + i % 3, ph: i / 8, face: 1, label: '' });
-      A('seabus', -123.1, 49.3, { path: poly([-123.0815, 49.3095, -123.111, 49.2865]), spd: 6, ph: 0, face: 1, label: 'SeaBus', id: 'seabus' });
+      // v5.2: the SeaBus runs its real route, Waterfront Station <-> Lonsdale Quay, resting at each terminal
+      A('seabus', -123.1, 49.3, { path: poly([-123.1093, 49.2878, -123.1078, 49.2915, -123.0950, 49.3020, -123.0850, 49.3082, -123.0826, 49.3096]), spd: 7, dwell: 25, ph: 0, face: 1, label: 'SeaBus', id: 'seabus', sub: 'Waterfront Station to Lonsdale Quay' });
+      A('seabus', -123.1, 49.3, { path: poly([-123.1093, 49.2878, -123.1078, 49.2915, -123.0950, 49.3020, -123.0850, 49.3082, -123.0826, 49.3096]), spd: 7, dwell: 25, ph: .5, face: 1, label: '' });
       A('ferry', -123.27, 49.373, { path: poly([-123.272, 49.372, -123.29, 49.36, -123.33, 49.33]), spd: 8, ph: .2, face: 1, label: 'BC Ferries', sub: 'Horseshoe Bay' });
       A('ferry', -123.135, 49.006, { path: poly([-123.135, 49.006, -123.2, 49.0, -123.3, 48.995]), spd: 8, ph: .6, face: 1, label: 'BC Ferries', sub: 'Tsawwassen' });
       A('ferry', -123.128, 49.0045, { label: '' });
@@ -2570,7 +2573,7 @@ function loadChapter(n, kind) {
   else if (story) {
     // v2/v3 saves: the v4 maps are new, so position + size restart once; wallets, upgrades, boards, checklists,
     // eaten landmarks and completed chapters are all kept (spec K27)
-    if (st.x == null || st.mv !== 5) { st.x = C.start[0]; st.y = C.start[1]; [st.lvl, st.xp] = startSize(st); st.fl = C.startFl || 0; G.fl = C.layered ? st.fl : 0; }
+    if (st.x == null || st.mv !== 5) { [st.x, st.y] = C.storyStart || C.start; [st.lvl, st.xp] = startSize(st); st.fl = C.startFl || 0; G.fl = C.layered ? st.fl : 0; }
     st.mv = 5;
     C.CK.forEach((q, j) => { if (st.check[j] > q.n) st.check[j] = q.n; });
     G.x = st.x; G.y = st.y; G.lvl = clamp(st.lvl, 1, C.N); G.xp = st.xp;
@@ -2595,7 +2598,7 @@ function gridAdd(o) {
 function startSize(st) { const h = START_P + UPF.head(st.up[9]), L = Math.min(G.C.N, 1 + Math.floor(h)); return [L, (h % 1) * need(L)]; }
 function restartRun(fresh) {
   const C = G.C, st = G.st;
-  st.x = C.start[0]; st.y = C.start[1]; [st.lvl, st.xp] = startSize(st);
+  [st.x, st.y] = C.storyStart || C.start; [st.lvl, st.xp] = startSize(st);
   if (C.beats) { st.beat = 0; st.eaten = {}; }     // v5: a restart replays the ladder from the first objective
   st.fl = C.startFl || 0;
   if (!fresh) loadChapter(C.n);
@@ -3771,6 +3774,11 @@ function moveOnPath(o, T) {
   const p = o.path, n = p.length / 2 - 1;
   if (!o.len) { o.len = 0; o.seg = []; for (let i = 0; i < n; i++) { const l = Math.hypot(p[i * 2 + 2] - p[i * 2], p[i * 2 + 3] - p[i * 2 + 1]); o.seg.push(l); o.len += l; } }
   let s = (T * o.spd + o.ph * o.len) % (o.len * (o.loop ? 1 : 2));
+  if (o.dwell && !o.loop) {                          // v5.2: a ferry rests at each terminal, then crosses back
+    const run = o.len / o.spd, cyc = 2 * (run + o.dwell), t = ((T + o.ph * cyc) % cyc + cyc) % cyc;
+    s = t < o.dwell ? 0 : t < o.dwell + run ? (t - o.dwell) * o.spd : t < 2 * o.dwell + run ? o.len : o.len + (t - 2 * o.dwell - run) * o.spd;
+    o.docked = t < o.dwell || (t >= o.dwell + run && t < 2 * o.dwell + run);
+  }
   const back = s > o.len; if (back) s = 2 * o.len - s;
   for (let i = 0; i < n; i++) {
     if (s <= o.seg[i] || i === n - 1) {
@@ -3918,6 +3926,10 @@ const MODEL = (() => {
     gondola: p => [bx(1, 1.1, 1.2, 0, 1.2, 0, p.a || '#d22'), bx(1.02, .4, 1, 0, 1.35, 0, WIN), cy(.08, 1.6, .08, 0, 2.5, 0, '#444'), cy(.06, .7, .06, 0, .35, 0, '#444')],
     /* ---- boats ---- */
     boat: p => { const L = p.d || 2.6; return [bx(1, .45, L, 0, .25, 0, p.a, {}), pr(1, .45, .8, 0, .25, L / 2 + .3, p.a, { rx: 1.5708 }), ...(p.cab ? [bx(.75, p.cab, L * .4, 0, .45 + p.cab / 2, -L * .1, p.b || '#fff'), bx(.77, .15, L * .38, 0, .45 + p.cab * .7, -L * .1, WIN)] : []), ...(p.mast ? [cy(.06, p.mast, .06, 0, p.mast / 2 + .4, 0, '#ddd'), pr(.05, p.mast * .8, L * .6, 0, p.mast * .5 + .5, -L * .1, '#fff')] : [])]; },
+    // v5.2: the SeaBus is a double-ended catamaran: two slim hulls, one wide cabin across them, wheelhouses at both ends
+    twinhull: p => { const L = p.d || 2.8; return [bx(.28, .34, L, -.36, .17, 0, '#263238'), bx(.28, .34, L, .36, .17, 0, '#263238'), bx(1, .1, L * .96, 0, .38, 0, p.b || '#1565c0'),
+      bx(.94, .36, L * .82, 0, .61, 0, p.a || '#fafafa'), bx(.96, .1, L * .8, 0, .62, 0, '#37474f'), bx(.98, .05, L * .84, 0, .81, 0, p.b || '#1565c0'),
+      bx(.4, .2, .3, 0, .93, L * .34, '#fafafa'), bx(.42, .08, .32, 0, 1, L * .34, '#263238'), bx(.4, .2, .3, 0, .93, -L * .34, '#fafafa'), bx(.42, .08, .32, 0, 1, -L * .34, '#263238')]; },
     ship: p => { const L = p.d || 4.5; return [bx(1, .8, L, 0, .4, 0, p.a || '#2a3d66'), pr(1, .8, 1, 0, .4, L / 2 + .4, p.a || '#2a3d66', { rx: 1.5708 }), bx(1.02, .15, L, 0, .75, 0, p.b || '#d22'), ...(p.decks ? Array.from({ length: p.decks }, (_, i) => bx(.8 - i * .08, .4, L * (.7 - i * .1), 0, 1.05 + i * .4, -L * .05, '#fafafa')) : []), ...(p.box ? [-1, 0, 1].map(i => bx(.75, .55, L * .2, 0, 1.1, i * L * .25, ['#e74', '#3a8', '#36c'][i + 1])) : []), ...(p.stack ? [cy(.35, .7, .35, 0, 1.2 + (p.decks || 0) * .4, -L * .25, p.stack)] : [])]; },
     canoe: p => [bx(.8, .3, 3, 0, .15, 0, p.a || '#c0392b'), co(.8, .7, .3, 0, .15, 1.8, p.a || '#c0392b', { rx: 1.5708, seg: 4 }), co(.8, .7, .3, 0, .15, -1.8, p.a || '#c0392b', { rx: -1.5708, seg: 4 }), sp(.4, .5, .4, 0, .55, 0, '#e74'), sp(.3, .3, .3, 0, .95, 0, SKIN)],
     wreck: p => [bx(1, .7, 4, 0, .35, 0, '#5a4632', { rz: .25 }), pr(1, .7, 1, 0, .45, 2.4, '#5a4632', { rx: 1.5708, rz: .25 }), cy(.12, 2, .12, .2, 1.2, .3, '#6b5a43', { rz: .6 }), bx(.9, .2, .6, 0, .9, -1.3, '#7a6a52', { rz: .25 })],
@@ -4383,7 +4395,7 @@ const MODEL = (() => {
     tractor: ['tractor', {}], deer: ['quad', { a: '#b0784a', d: 1.7, lh: .9, horn: '#d9c8a8', neck: .3 }], sailboat: ['boat', { a: '#fafafa', mast: 3, d: 2.6 }], foodtruck: ['van', { a: '#ff7043', c: '#fdd835', d: 2.6 }], van: ['van', { a: '#eceff1', d: 2.4 }],
     speedboat: ['boat', { a: '#fafafa', b: '#e53935', cab: .3, d: 2.4 }], bear: ['quad', { a: '#3a2a22', d: 1.8, lh: .55, ears: 1 }], grizzly: ['quad', { a: '#7a5233', d: 1.9, lh: .6, ears: 1 }], gondola: ['gondola', {}],
     bigtree: ['pine', { n: 5, hh: 1.8, a: '#1b5e20', b: '#235f2a' }], barn: ['barn', {}], shop: ['shop', { v: [{ b: '#e74c3c' }, { b: '#27ae60' }, { b: '#2980b9' }] }], school: ['school', {}], church: ['church', {}], hotel: ['hotel', {}],
-    smallplane: ['airplane', { a: '#fafafa', b: '#1e88e5' }], yacht: ['boat', { a: '#fafafa', cab: .5, d: 3 }], orca: ['fish', { a: '#111', belly: '#fafafa', fin: .8, d: 2.8, h: 1 }], cabin: ['cabin', {}], seabus: ['ship', { a: '#fafafa', b: '#1565c0', decks: 1, d: 3.2 }],
+    smallplane: ['airplane', { a: '#fafafa', b: '#1e88e5' }], yacht: ['boat', { a: '#fafafa', cab: .5, d: 3 }], orca: ['fish', { a: '#111', belly: '#fafafa', fin: .8, d: 2.8, h: 1 }], cabin: ['cabin', {}], seabus: ['twinhull', { a: '#fafafa', b: '#1565c0', d: 2.8 }],
     whiterock: ['whiterock', {}], quay: ['market', {}], tower: ['tower', { hh: 3.4, v: [{ a: '#9aa6b5', b: '#5d7ea8' }, { a: '#b8c2cc', b: '#3f6f9f' }, { a: '#8090a4', b: '#7fb0d8', spire: .5 }] }],
     parkade: ['parkade', {}], hangar: ['hangar', {}], ctower: ['ctower', {}], airplane: ['airplane', {}], ferry: ['ship', { a: '#fafafa', b: '#1565c0', decks: 2, stack: '#e53935', d: 4.5 }], mall: ['mall', {}], cargo: ['ship', { a: '#263238', b: '#c62828', box: 1, d: 5 }], stadium: ['stadium', { a: '#e8ecef' }],
     cruise: ['ship', { a: '#fafafa', b: '#0d47a1', decks: 4, stack: '#0d47a1', d: 5 }], terminal: ['terminal', {}], lodge: ['mountain', { h: .7, chalet: 1, a: '#5f7f4f', b: '#4f6f3f', snow: '#e8eef2' }], totem: ['totem', {}],
