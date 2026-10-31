@@ -251,6 +251,14 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     HH.startChapter(1); step(1);
     return { ok: ufos.length === 2 && spots === spots2 && !kinds.UFO_FILLER && noStorm && hiOk && coinsHi > 0, info: { ufos: ufos.length, spots, same: spots === spots2, hiKinds: kinds, coinsHi, cellsHi, noStorm } };`));
 
+  await T('Globe says where you are (v5.2 Part 13): the country name alone in yellow at the bottom; nothing over the ocean', new Function(STEP + `
+    const { G, S } = HH; S.ch[4].u = 1; HH.startChapter(4, 'explore'); step(1); const C = G.C, out = {};
+    for (const [nm, lo, la] of [['ca', -106.6, 52.1], ['jp', 139.7, 35.7], ['eg', 31.2, 30.0], ['us', -98, 39], ['ocean', -150, 0]]) {
+      [G.x, G.y] = C.P(lo, la); G.cam.x = G.x; G.cam.y = G.y; step(2); HH.render(); out[nm] = G.here; }
+    HH.startChapter(1); step(1);
+    const ok = out.ca === 'Canada' && out.jp === 'Japan' && out.eg === 'Egypt' && out.us === 'United States' && out.ocean === null;
+    return { ok, info: out };`));
+
   await T('upgrade buy spends the chapter wallet only', new Function(`
     const { S } = HH; S.ch[1].w = 100; S.ch[2].w = 77; S.ch[1].up[0] = 0;
     const c = HH.upCost(1, 1), ok = HH.buyUpgrade(1, 0);

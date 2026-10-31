@@ -1789,6 +1789,9 @@ const CH = [null];
     regionAt: (x, y) => ccAt(x, y),
     regionPos: cc => CTRY[cc] && CTRY[cc].at,
     regionName: cc => CTRY[cc] ? CTRY[cc].nm : cc,
+    /* v5.2 Part 13: the country under the hole's centre, by its plain name only ("Canada", "United States", "UK"); null over the sea */
+    hereName(x, y) { if (surf(x, y) === 0) return null; const cc = ccAt(x, y); if (!cc || !CTRY[cc]) return null;
+      return ({ US: 'United States', GB: 'UK', AE: 'UAE', CD: 'DR Congo' })[cc] || CTRY[cc].nm.replace(/^the /, ''); },
     countries: Object.fromEntries(CLIST.map(c => [c.cc, [c.nm]])),
     P, ll, surf, ccAt, cityAt, LMS, CITY,
     build(add, rng) {
@@ -5413,6 +5416,9 @@ function drawHUD() {
     g.fillStyle = 'rgba(120,60,0,.85)'; rr(g, STAGE_W / 2 - w / 2, 70, w, 36, 18); g.fill();
     txt(msg, STAGE_W / 2, 88, fs, '#fff3c4', 'center');
   }
+  // v5.2 Part 13: the Globe says where you are: the country's name in yellow along the bottom (nothing over open sea)
+  const here = C.hereName && !G.cine ? C.hereName(G.x, G.y) : null; G.here = here;
+  if (here) txt(here, STAGE_W / 2, STAGE_H - 30, fitText(here, 560, 34), '#ffd23f', 'center', 900);
   drawRing(); drawMiniMap(); if (G.bigmap) drawBigMap();
   // compass arrows
   for (const c of G.compass) compassArrow(c.o, c.col);
