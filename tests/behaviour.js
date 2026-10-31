@@ -19,14 +19,27 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     const L0 = G.lvl; HH.addXP(HH.need(G.lvl) + 1); const grew = G.lvl === L0 + 1;
     return { ok: fits && falling && ate && xpUp && grew, info: { fits, falling, ate, xpUp, grew, xp0, xp1: G.xp, lvlFrom: L0, lvlTo: G.lvl } };`));
 
-  await T('too big: leans toward the hole, never eaten', new Function(STEP + `
+  await T('too big: sits still against the hole (no teeter), never eaten', new Function(STEP + `
     const { G } = HH; HH.restartRun(true); step(1);
     const D = HH.holeD(), bk = Object.keys(G.C.T).find(k => G.C.T[k].t === G.lvl + 2 && k !== 'coin' && !G.C.T[k].mv && !G.C.T[k].nosolid), bed = G.add(bk, G.x + 1.5, G.y);
     G.x = bed.x; G.y = bed.y; G.vx = G.vy = 0; step(1);
     const R = bed.md ? 0.5 * bed.fw * Math.sqrt(bed.md.w * bed.md.d) : bed.fw / 2;
     G.x = bed.x + R; G.vx = G.vy = 0; step(6); const lean = bed.lean || 0;
     for (let i = 0; i < 60; i++) { G.x = bed.x + R * (i % 2 ? 0.9 : 1.1); G.vx = (i % 2 ? -1 : 1) * 400; step(1); }
-    return { ok: !HH.fits(bed, D) && !bed.dead && !bed.fall && lean > 0.01 && bed.wob > 0, info: { lvl: G.lvl, type: bed.k, tier: bed.t, ratio: +(D / bed.fw).toFixed(2), lean: +lean.toFixed(3), wobbled: bed.wob > 0 } };`));
+    // v5.1 Part 11: overlapped and bumped, a thing that does not qualify sits still: no lean, and its pose never changes frame to frame
+    const md = HH.G.vis.includes(bed) && bed.md, poses = [];
+    for (let i = 0; i < 20; i++) { G.x = bed.x + R * 0.8; G.vx = G.vy = 0; step(1); HH.poseOf(bed, bed.md, 0, 0, D / 2); poses.push(HH.V3 && [bed.lean || 0, +(bed.yaw || 0).toFixed(6)].join()); }
+    const still = poses.every(p => p === poses[0]) && (bed.lean || 0) === 0;
+    return { ok: !HH.fits(bed, D) && !bed.dead && !bed.fall && lean === 0 && still && bed.wob > 0, info: { lvl: G.lvl, type: bed.k, tier: bed.t, ratio: +(D / bed.fw).toFixed(2), lean: +lean.toFixed(3), bumped: bed.wob > 0, still } };`));
+
+  await T('no perpetual teeter (v5.1 Part 11): the Stanley Park picnic blanket lies flat and still under the starting hole', new Function(STEP + `
+    const { G, S } = HH; S.ch[3].u = 1; HH.startChapter(3, 'explore'); step(3);
+    const bl = G.vis.find(o => o.k === 'blanket'); if (!bl) return { ok: false, info: 'no blanket' };
+    const q = [], Q = HH.V3 && null;
+    for (let i = 0; i < 60; i++) { G.vx = (i % 2 ? -1 : 1) * 0.3; step(1); HH.poseOf(bl, HH.G.vis.includes(bl) && bl.md, 0, 0, HH.holeD() / 2); q.push((bl.lean || 0) + ',' + (bl.wobble || 0).toFixed(3)); }
+    const under = Math.hypot(bl.x - G.x, bl.y - G.y) < bl.fw / 2;
+    HH.startChapter(1); step(1);
+    return { ok: under && q.every(v => v === '0,0.000'), info: { under, sample: q.slice(0, 3), distinct: [...new Set(q)].length } };`));
 
   await T('wobble rule: >=85% bumps tip it in, <85% never', new Function(STEP + `
     const { G } = HH; HH.restartRun(true); step(1);

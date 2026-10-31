@@ -719,7 +719,7 @@ const CH = [null];
     },
     tick(dt) {
       // the rocking horse rocks, the TV flickers (via glow), the nursery mobile turns
-      for (const o of G.vis) { if (o.rock) o.lean = 0.12 * Math.sin(G.t * 2.2); if (o.k === 'mobile') o.yaw = G.t * 0.8; if (o.k === 'hairdryer') o.wob = G.now - 300; }
+      for (const o of G.vis) { if (o.rock) o.lean = Math.hypot(o.x - G.x, o.y - G.y) < holeD() / 2 + footR(o) ? 0 : 0.12 * Math.sin(G.t * 2.2);   /* (v5.1: still while the hole is against it) */ if (o.k === 'mobile') o.yaw = G.t * 0.8; if (o.k === 'hairdryer') o.buzz = 1; }
     },
     hud() {
       // kettle steam: soft puffs rising from the spout (projected, so it reads at any zoom)
@@ -2675,7 +2675,6 @@ function coverFrac(d, R, r) {
   return a / (Math.PI * r * r);
 }
 const leanMax = o => clamp(0.3 + 0.22 * (o.hh || o.fw) / (2 * o.fr), 0.3, 1.05);     // tall things lean more
-const leanRest = o => Math.min(leanMax(o), 0.24 + 0.07 * (o.hh || o.fw) / (2 * o.fr), 0.5);
 /* it fits (or wobbled in): tip over the rim; update() runs the eat pipeline when the fall ends */
 function capture(o, ox, oy) {
   o.fall = { t0: G.now, x0: ox, y0: oy, dur: o.slow ? 2600 : FALL_MS, l0: o.lean || 0, spin: 3.5 };
@@ -3109,7 +3108,7 @@ function update(dt) {
       if (mag && d < pullR && !o.path) { const m = Math.min(d, r * (1.5 + 0.35 * mag) * dt) / (d || 1); o.bx -= ox * m; o.by -= oy * m; if (!o.T.mv) { o.x = o.bx; o.y = o.by; } }
       tl = Math.min(1.2, (1 - sup) * leanMax(o) * 1.25);
     } else {
-      tl = Math.min((1 - sup) * leanMax(o), leanRest(o));
+      tl = 0;                                        // v5.1: no idle teeter. Too big (or not its turn) = it sits still; only a qualifying bump topples it, once
       if (d < r + fr * 0.5) bump(o, sup, D, speed);
     }
     o.lean = (o.lean || 0) + (tl - (o.lean || 0)) * kL;
@@ -4117,9 +4116,7 @@ function poseOf(o, md, hx, hz, R) {
   let sc = 1, yaw = o.yaw || 0;
   if (o.born && now - o.born < 400) sc = Math.max(0.05, (now - o.born) / 400);
   let lean = o.lean || 0, ld = o.ldir || 0;
-  const wt = now - (o.wob || -1e9);
-  const wob = (wt < 450 ? (1 - wt / 450) * 0.16 : 0) + (o.wobble || 0) * 0.14;
-  if (wob) lean += Math.sin(G.t * 19 + (o.ph || 0)) * wob;
+  if (o.buzz && !o.fall) yaw += Math.sin(G.t * 47) * 0.02;   // a switched-on hair dryer hums (it never tilts or rocks)
   if ((o.sway || (o.T && o.T.sway)) && !lean) { lean = Math.sin(G.t * 2 + (o.ph || 0)) * 0.035; ld = 0.6; }
   if (o.T && o.T.mv === 'fly') y += fw * 1.1;
   if (o.lift && !o.fall) y += o.lift;                // resting on a counter / stove top
@@ -5146,7 +5143,7 @@ requestAnimationFrame(frame);
 /* test hook for automated checks (harmless in play) */
 window.HH = { get S() { return S; }, G, CH, UI, prep, loadChapter, startChapter, eat, holeD, need, addXP, bankerTransfer, bankerArrive, buyUpgrade, upCost,
   setHoleD, ringNow, goals, capD, syncBeat, solidPush, solidBoxes,
-  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole, labelOn, MODES, genCell, tierOf, mkObj, debugAudio, syncMusic };
+  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole, labelOn, poseOf, MODES, genCell, tierOf, mkObj, debugAudio, syncMusic };
 </script>
 </body>
 </html>
