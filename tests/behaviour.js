@@ -259,6 +259,20 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     const ok = out.ca === 'Canada' && out.jp === 'Japan' && out.eg === 'Egypt' && out.us === 'United States' && out.ocean === null;
     return { ok, info: out };`));
 
+  await T('Globe geography layers (v5.2 Part 12): every country bordered; capitals starred; names inside borders; tiny/mid/giant tiers; Europe never a wall of text', new Function(STEP + `
+    const { G, S } = HH; S.ch[4].u = 1; HH.startChapter(4, 'explore'); step(1); const C = G.C;
+    const at = (lo, la, sz) => { HH.setHoleD(C.sizes[sz]); [G.x, G.y] = C.P(lo, la); G.cam.x = G.x; G.cam.y = G.y; G.cam.z = 0; step(3); HH.render(); const L = G.mapLabels || [];
+      const k = n => L.filter(l => l.kind === n).length, ov = L.some((a, i) => L.some((b, j) => j > i && a.kind === 'country' && b.kind === 'country' && a.b[0] < b.b[2] && a.b[2] > b.b[0] && a.b[1] < b.b[3] && a.b[3] > b.b[1]));
+      return { tier: C.labelTier(HH.holeD()), cap: k('capital'), ctry: k('country'), cont: k('continent'), overlap: ov, names: L.map(l => l.s) }; };
+    const tinyAt = at(2.33, 48.869, 2), [px, py] = C.P(2.33, 48.869), TL = C.labelSet({ z: G.cam.z, x0: px - 2, x1: px + 2, y0: py - 2, y1: py + 2 }, 0), tiny = { tier: tinyAt.tier, cap: TL.filter(l => l.kind === 'capital').length, ctry: TL.filter(l => l.kind === 'country').length, cont: TL.filter(l => l.kind === 'continent').length }, mid = at(2.42, 48.80, 8), giant = at(15, 50, 12);
+    const paris = mid.names.includes('★ Paris');
+    // every country has a drawn border (its polygons), and a name placed inside it
+    const cl = Object.keys(C.countries), noPoly = cl.filter(cc => !C.regionPos(cc)), sov = Object.keys(window.HH_AN.c), inside = sov.map(cc => { const c = C.labelAt(cc); return c && C.inCountry(cc, c[0], c[1]) ? 1 : cc; }), outside = inside.filter(v => v !== 1);
+    const inPct = inside.filter(v => v === 1).length / inside.length;
+    HH.startChapter(1); step(1);
+    const ok = cl.length >= 195 && sov.every(cc => C.regionPos(cc)) && inPct === 1 && paris && tiny.tier === 0 && tiny.cap === 1 && tiny.cont === 0 && mid.cont === 0 && mid.cap > 0 && mid.ctry >= 0 && giant.cap === 0 && giant.cont > 0 && giant.ctry > 0 && giant.ctry <= 24 && !giant.overlap && !mid.overlap;
+    return { ok, info: { countries: cl.length, sovereign: sov.length, noPolyTerritories: noPoly, namesInside: +inPct.toFixed(3), outside, paris, tiny: [tiny.tier, tiny.cap, tiny.ctry, tiny.cont], mid: [mid.tier, mid.cap, mid.ctry, mid.cont], giant: [giant.tier, giant.cap, giant.ctry, giant.cont, giant.overlap] } };`));
+
   await T('upgrade buy spends the chapter wallet only', new Function(`
     const { S } = HH; S.ch[1].w = 100; S.ch[2].w = 77; S.ch[1].up[0] = 0;
     const c = HH.upCost(1, 1), ok = HH.buyUpgrade(1, 0);

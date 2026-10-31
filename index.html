@@ -206,6 +206,7 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
 <script src="data/stanley.js"></script>
 <script src="data/globe.js"></script>
 <script src="data/globe-landmarks.js"></script>
+<script src="data/globe-animals.js"></script>
 <script src="audio/manifest.js"></script>
 <!-- co-op only (v5.1): PeerJS, loaded as an OPTIONAL script; if it never arrives the game is untouched and co-op says it can't connect -->
 <script>
@@ -1637,6 +1638,16 @@ const CH = [null];
   const toW = r => { const a = new Float32Array(r.length); for (let i = 0; i < r.length; i += 2) { a[i] = (r[i] + 18000) * Q; a[i + 1] = (9000 - r[i + 1]) * Q; } return a; };
   const bbox = p => { let a = 1e9, b = 1e9, c = -1e9, d = -1e9; for (let i = 0; i < p.length; i += 2) { if (p[i] < a) a = p[i]; if (p[i] > c) c = p[i]; if (p[i + 1] < b) b = p[i + 1]; if (p[i + 1] > d) d = p[i + 1]; } return [a, b, c, d]; };
   const polyW = rings => { const rs = rings.map(toW); return { rs, b: bbox(rs[0]) }; };
+  /* v5.2 Part 12: the five sovereign countries too small for the map data (no polygon at all) get small round outlines at
+     their real places, so every one of the 195 countries has a border; the island ones are land too */
+  const MICRO = { VA: [[12.4534, 41.9029, .006]], MC: [[7.4246, 43.7384, .012]], NR: [[166.931, -.5228, .035]],
+    TV: [[179.19, -8.52, .04], [177.15, -7.48, .03], [178.68, -7.48, .03], [179.88, -9.38, .03], [176.12, -5.69, .03]],
+    MV: [[73.51, 4.18, .07], [73.42, 3.22, .06], [73.08, 1.87, .06], [73.15, -.62, .07], [72.98, 5.62, .06], [73.02, 6.65, .06], [73.55, 2.3, .05]] };
+  for (const [cc, dots] of Object.entries(MICRO)) {
+    const row = GD.countries.find(r => r[0] === cc); if (!row || row[3].length) continue;
+    for (const [lo, la, r] of dots) { const ring = []; for (let a = 0; a < 10; a++) ring.push(Math.round((lo + Math.cos(a * .628) * r) * 100 * 100) / 100, Math.round((la + Math.sin(a * .628) * r) * 100 * 100) / 100);
+      row[3].push([ring]); if (cc !== 'VA' && cc !== 'MC') GD.land.push([ring]); }
+  }
   const LAND = GD.land.map(polyW), LAKES = GD.lakes.map(polyW);
   const RIV = GD.rivers.map(([n, l]) => { const p = toW(l); return { n, p, b: bbox(p) }; });
   const HWY = GD.hwy.map(l => { const p = toW(l); let L = 0; for (let i = 2; i < p.length; i += 2) L += Math.hypot(p[i] - p[i - 2], p[i + 1] - p[i - 1]); return { p, b: bbox(p), L }; });
@@ -1686,9 +1697,39 @@ const CH = [null];
   function ccAt(x, y) {
     x = wrapX(x); y = wrapY(y);
     const k = cell(x, y); let v = CMAP[k];
-    if (!v) for (const o of [1, -1, MW, -MW, MW + 1, MW - 1, 1 - MW, -1 - MW]) if ((v = CMAP[k + o])) break;
-    return v ? CLIST[v - 1].cc : null;
+    /* v5.2 Part 13: a raster cell on a border is a blend of two countries' codes (canvas anti-aliasing), which can read
+       as some third, faraway country; there, the exact polygons decide among the neighbourhood's codes */
+    const NB = [1, -1, MW, -MW, MW + 1, MW - 1, 1 - MW, -1 - MW];
+    if (v && NB.every(o => CMAP[k + o] === v)) return CLIST[v - 1].cc;
+    const cand = new Set([v, ...NB.map(o => CMAP[k + o])].filter(c => c && CLIST[c - 1]));
+    for (const c of cand) if (inSet(x, y, CLIST[c - 1].polys)) return CLIST[c - 1].cc;
+    for (const c of cand) if (CMAP[k] === c || NB.filter(o => CMAP[k + o] === c).length >= 3) return CLIST[c - 1].cc;   // the simplified coast: nearest real neighbour
+    return null;
   }
+  /* v5.2 Part 12: where a country's name goes: the point of its land farthest from any border or coast (a distance
+     transform over the country raster), so the name sits inside its borders; tiny countries keep their bbox centre */
+  let LPTS = 0, MCX = null; const CBYAREA = [], TW = new Map();
+  function labelPts() {
+    if (LPTS) return; LPTS = 1; if (!CMAP) raster();
+    const Dt = new Uint16Array(MW * MH), best = new Uint16Array(CLIST.length + 1), bk = new Int32Array(CLIST.length + 1).fill(-1);
+    for (let j = 0; j < MH; j++) for (let i = 0; i < MW; i++) { const k = j * MW + i, v = CMAP[k]; if (!v) continue; let d = 60000;
+      if (i && j) { const a = CMAP[k - 1] === v ? Dt[k - 1] + 1 : 1, b = CMAP[k - MW] === v ? Dt[k - MW] + 1 : 1; d = Math.min(a, b); } else d = 1; Dt[k] = d; }
+    for (let j = MH - 1; j >= 0; j--) for (let i = MW - 1; i >= 0; i--) { const k = j * MW + i, v = CMAP[k]; if (!v) continue; let d = Dt[k];
+      if (i < MW - 1 && j < MH - 1) { const a = CMAP[k + 1] === v ? Dt[k + 1] + 1 : 1, b = CMAP[k + MW] === v ? Dt[k + MW] + 1 : 1; d = Math.min(d, a, b); } else d = 1; Dt[k] = d;
+      if (d > best[v]) { best[v] = d; bk[v] = k; } }
+    for (const c of CLIST) { const k = bk[c.i + 1]; let p = k >= 0 ? [((k % MW) + .5) / MK, (Math.floor(k / MW) + .5) / MK] : null;
+      if (p && !inSet(p[0], p[1], c.polys)) p = null;                  // a blended border pixel is not the country (see ccAt)
+      if (!p) {                                                        // too small for the raster: a point inside its biggest piece
+        const q = c.polys.reduce((m, q) => (q.b[2] - q.b[0]) * (q.b[3] - q.b[1]) > (m.b[2] - m.b[0]) * (m.b[3] - m.b[1]) ? q : m, c.polys[0]), r = q && q.rs[0], n = r ? r.length / 2 : 0;
+        const tries = r ? [[(q.b[0] + q.b[2]) / 2, (q.b[1] + q.b[3]) / 2]] : [];
+        for (let i = 0; i < n && tries.length < 60; i += Math.max(1, n / 40 | 0)) { const j = (i + (n >> 1)) % n; tries.push([(r[i * 2] + r[j * 2]) / 2, (r[i * 2 + 1] + r[j * 2 + 1]) / 2], [(r[i * 2] * 3 + r[j * 2]) / 4, (r[i * 2 + 1] * 3 + r[j * 2 + 1]) / 4]); }
+        p = tries.find(t => inSet(t[0], t[1], c.polys)) || null; }
+      c.lab = p || c.at; c.area = p && k >= 0 && inSet(...p, c.polys) ? best[c.i + 1] : 0; }
+    CBYAREA.push(...CLIST.filter(c => c.lab && c.cc !== 'AQ').sort((a, b) => b.area - a.area || b.big - a.big));
+  }
+  const CAPS = GD.cities.filter(r => r[5]).map(([n, a3, lo, la]) => ({ n, x: (lo + 18000) * Q, y: (9000 - la) * Q }));
+  const CONTS = [['NORTH AMERICA', -102, 47], ['SOUTH AMERICA', -60, -12], ['EUROPE', 22, 56], ['AFRICA', 18, 6], ['ASIA', 92, 50], ['OCEANIA', 150, -14], ['ANTARCTICA', 40, -78]];
+  const OCEANS = [['PACIFIC OCEAN', -150, 5], ['ATLANTIC OCEAN', -35, 25], ['INDIAN OCEAN', 78, -20], ['ARCTIC OCEAN', 0, 82], ['SOUTHERN OCEAN', 60, -62], ['PACIFIC OCEAN', 170, 30]];
   // cities (Natural Earth populated places): a grey town with a street grid, sized by population
   const CITY = GD.cities.map(([n, a3, lo, la, pop]) => ({ n, x: (lo + 18000) * Q, y: (9000 - la) * Q, pop, r: clamp(Math.sqrt(pop) / 17, 8, 250) }));
   const CGS = 1000, CG = new Map();
@@ -1771,6 +1812,7 @@ const CH = [null];
       colosseum: ['Colosseum', 1, { tags: 'landmark,wonder' }], greatwall: ['Great Wall of China', 1, { tags: 'landmark,wonder' }], taj: ['Taj Mahal', 1, { tags: 'landmark,wonder' }],
       christ: ['Christ the Redeemer', 1, { tags: 'landmark,wonder' }], chichen: ['Chichen Itza', 1, { tags: 'landmark,wonder' }], petra: ['Petra', 1, { tags: 'landmark,wonder' }], machu: ['Machu Picchu', 1, { tags: 'landmark,wonder' }],
       lm_themepark: ['theme park', 1, { tags: 'landmark,themepark' }],
+      animal: ['animal', 1, { m: [.01, .006], tags: 'animal' }],     // v5.2 Part 16: every country's animals (shape per family, name per species)
     }, Object.fromEntries([...new Set(LMS.filter(l => l.k && l.k.startsWith('lm_')).map(l => l.k)), 'lm_palace'].filter(k => k !== 'lm_themepark').map(k => [k, ['landmark', 1, { tags: 'landmark' }]]))),
     zones: {
       city: { d: 1.1, coin: .3, at: onStreet, t: ['car:4,tree:2,hat:.04', 'house:4,bus,truck', 'lowrise:3,shop,church', 'tower:3,stadium:.3,factory', 'hotel:3', 'skyline:2', 'skyline', 'cloud', 'cloud2', 'cloud3', 'cloud4', 'cloud5'] },
@@ -1794,6 +1836,32 @@ const CH = [null];
       return ({ US: 'United States', GB: 'UK', AE: 'UAE', CD: 'DR Congo' })[cc] || CTRY[cc].nm.replace(/^the /, ''); },
     countries: Object.fromEntries(CLIST.map(c => [c.cc, [c.nm]])),
     P, ll, surf, ccAt, cityAt, LMS, CITY,
+    /* v5.2 Part 12: label layers keyed to the hole's size. 0 tiny: capitals + countries (no continents at street level);
+       1 mid: capitals + countries; 2 giant: capitals fade out, countries thinned so dense places never become a wall of
+       text, continents spread over their land */
+    labelTier: D => D < .5 ? 0 : D < 100 ? 1 : 2,
+    labelAt: cc => { labelPts(); return CTRY[cc] && CTRY[cc].lab; }, inCountry: (cc, x, y) => !!CTRY[cc] && inSet(x, y, CTRY[cc].polys),
+    labelSet(V, tier, proj) {                                         // proj(x, y) -> stage px (or null): boxes and the density rule work on screen
+      if (tier === undefined) tier = this.labelTier(holeD());
+      const pw = 1 / V.z, out = [], boxes = [], MC = MCX || (MCX = document.createElement('canvas').getContext('2d'));
+      const offs = [-W, 0, W].filter(ox => V.x1 > ox && V.x0 < ox + W);
+      const put = (s, x, y, px, col, kind, wt, thin) => {
+        const key = wt + px + s; let tw = TW.get(key); if (tw === undefined) { MC.font = `${wt} ${px}px ${UI_FONT}`; TW.set(key, tw = MC.measureText(s).width + px * .6); }
+        for (const ox of offs) { const X = x + ox; if (X < V.x0 || X > V.x1 || y < V.y0 || y > V.y1) continue;
+          let b;
+          if (proj) { const q = proj(X, y); if (!q) continue; b = [q[0] - tw / 2, q[1] - px * .65, q[0] + tw / 2, q[1] + px * .65]; if (b[2] < 0 || b[0] > STAGE_W || b[3] < 0 || b[1] > STAGE_H) continue; }
+          else b = [X - tw * pw / 2, y - px * .65 * pw, X + tw * pw / 2, y + px * .65 * pw];
+          const m = thin ? (tier === 2 ? 2.6 : .3) * px * (proj ? 1 : pw) : 0;   // giant: generous air round each name (the density rule)
+          if (thin && boxes.some(q => b[0] - m < q[2] && b[2] + m > q[0] && b[1] - m < q[3] && b[3] + m > q[1])) continue;
+          boxes.push(b); out.push({ s, x: X, y, px, col, kind, wt, b }); }
+      };
+      labelPts();
+      if (tier === 2) for (const [n, lo, la] of CONTS) put(n, ...P(lo, la), 30, 'rgba(255,248,225,.9)', 'continent', 900, 0);
+      if (tier < 2) for (const c of CAPS) put('★ ' + c.n, c.x, c.y, 15, '#fff3a8', 'capital', 900, 0);
+      for (const c of CBYAREA) if (tier < 2 || c.area >= 4) put(c.nm.replace(/^the /, '').toUpperCase(), c.lab[0], c.lab[1], tier === 2 ? 14 : 17, S.passport[c.cc] ? '#ffd23f' : 'rgba(255,255,255,.92)', 'country', 900, 1);
+      if (pw > .8) for (const [n, lo, la] of OCEANS) put(n, ...P(lo, la), 20, 'rgba(200,230,255,.8)', 'ocean', 900, 1);
+      return out;
+    },
     build(add, rng) {
       const C = this, N = SIZES.length - 1;
       const sized = (o, fw) => { if (!o) return o; o.fw = fw; o.r = fw / 2; o.t = tierOf(C, fw); o.sv = 1; return o; };
@@ -1852,12 +1920,61 @@ const CH = [null];
           o.path = s.slice(); o.len = 0; o.pb = null; o.spd = .06 + (j % 5) * .012; o.ph = (j * .37) % 1; o.dead = 0; o.parked = 0;
         }
       }
+      /* v5.2 Part 16: every country's own animals (the owner's dataset), streamed round the hole: each one stays in its
+         country (its land, its shore, its coastal sea, or its lakes and rivers), wanders, is eatable when it fits, and is
+         replaced by another later. The flagship animal is the commonest and the biggest. From the start sizes to mid; none
+         at the giant tier. Nothing about them is saved. (Off in co-op: the two iPads would each roll their own.) */
+      const AN = (window.HH_AN || { c: {} }).c, REL = { insect: .12, frog: .12, snail: .12, crab: .14, jelly: .16, salamander: .14,
+        bird: .2, parrot: .2, rodent: .2, rabbit: .2, bat: .2, glider: .2, lizard: .22, smallmammal: .25, smallcarnivore: .25, fowl: .22, waterfowl: .24, seabird: .24,
+        monotreme: .22, fish: .24, penguin: .26, snake: .3, otter: .28, turtle: .28, cat: .42, canine: .38, hyena: .4, goat: .38, antelope: .45, deer: .5, pig: .36,
+        primate: .38, marsupial: .4, seal: .45, seaturtle: .4, raptor: .3, wader: .4, ratite: .5, croc: .55, dolphin: .6, ray: .5, octopus: .4, tapir: .5,
+        bear: .65, panda: .6, bovine: .7, horse: .7, camelid: .7, seacow: .7, shark: .8, elephant: .85, rhino: .8, hippo: .8, giraffe: .85, whale: 1.3 };
+      const nearRiver = (x, y, r) => { for (const v of RIV) { const b = v.b; if (x < b[0] - r || x > b[2] + r || y < b[1] - r || y > b[3] + r) continue; const p = v.p;
+        for (let i = 2; i < p.length; i += 2) { const x0 = p[i - 2], y0 = p[i - 1], vx = p[i] - x0, vy = p[i + 1] - y0, l2 = vx * vx + vy * vy || 1, t = clamp(((x - x0) * vx + (y - y0) * vy) / l2, 0, 1);
+          if (Math.hypot(x0 + vx * t - x, y0 + vy * t - y) < r) return true; } } return false; };
+      const coastCC = (x, y, R) => { for (const d of [R * .15, R * .4, R]) for (let a = 0; a < 8; a++) { const px = x + Math.cos(a * .785) * d, py = y + Math.sin(a * .785) * d; if (surf(px, py) === 1) { const c = ccAt(px, py); if (c) return c; } } return null; };
+      const okAt = (o, x, y) => { const s0 = surf(x, y);                // may this animal stand here?
+        if (o.hab === 'sea') return s0 === 0 && Math.hypot(wrapD(x - o.hx, W), y - o.hy) < o.roam;
+        if (o.hab === 'river') return (s0 === 2 || (s0 === 1 && nearRiver(x, y, o.fw))) && ccAt(x, y) === o.cc;
+        return s0 === 1 && ccAt(x, y) === o.cc && (o.hab !== 'coast' || Math.hypot(wrapD(x - o.hx, W), y - o.hy) < o.roam); };
+      let anT = 0;
+      C.animalsOn = () => !G.net && G.run.kind !== 'cine' && C.labelTier(holeD()) < 2;
+      function animals(dt) {
+        const D0 = holeD(), on = C.animalsOn();
+        G.extra = G.extra.filter(o => !(o.an && (o.dead && !o.fall)));                  // an eaten one is gone (another comes later)
+        if (!on) { G.extra = G.extra.filter(o => !o.an); return; }
+        const vr = viewRect(G.cam.z), R = Math.max(vr[2] - vr[0], vr[3] - vr[1]) * .55;
+        G.extra = G.extra.filter(o => !o.an || o.fall || Math.hypot(wrapD(o.x - G.x, W), o.y - G.y) < R * 2.2 && o.fw > D0 * .05 && o.fw < D0 * 4);   // out of range or out of scale: wander off
+        const have = G.extra.filter(o => o.an).length, MAX = 40;
+        for (let i = 0; i < 14 && G.extra.filter(o => o.an).length < MAX; i++) {
+          const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * R, x = wrapX(G.x + Math.cos(a) * r), y = clamp(G.y + Math.sin(a) * r, 1, H - 1), s0 = surf(x, y);
+          const cc = s0 === 0 ? coastCC(x, y, Math.max(R * .5, 40)) : ccAt(x, y); const L = cc && AN[cc]; if (!L) continue;
+          const habs = s0 === 0 ? ['sea'] : s0 === 2 ? ['river', 'sea'] : ['land', 'coast', 'river'];
+          const pool = []; L.a.forEach((sp, j) => { if (!habs.includes(sp[2])) return; if (sp[2] === 'coast' && !coastCC(x, y, 0) && ![0, 1, 2, 3].some(k => surf(x + Math.cos(k * 1.57) * D0 * 3, y + Math.sin(k * 1.57) * D0 * 3) === 0)) return;
+            if (sp[2] === 'river' && s0 === 1 && !nearRiver(x, y, D0 * .5)) return; for (let w = j ? 1 : 3; w > 0; w--) pool.push(j); });
+          if (!pool.length) continue;
+          const j = pool[Math.random() * pool.length | 0], sp = L.a[j], ex = sp[5] || {}, fw = D0 * (REL[sp[1]] || .3) * (j ? 1 : 1.25) * (.85 + Math.random() * .3);
+          const pal = Object.assign({ a: sp[3] }, sp[4] ? { b: sp[4] } : null, ex); delete pal.m;
+          const o = mkObj(C, 'animal', x, y, { an: 1, label: sp[0], sub: j ? L.n : 'the flagship animal of ' + L.n, cc, hab: sp[2], fam: sp[1], flag: j === 0, mk: 'an_' + (ex.m || sp[1]), pal, hx: x, hy: y, roam: Math.max(D0 * 8, 30), hd: Math.random() * 6.28, born: G.now });
+          o.fw = fw; o.r = fw / 2; o.hm = undefined; o.sv = 1; o.t = tierOf(C, fw); o.yaw = -o.hd;
+          if (!okAt(o, x, y)) continue;
+          G.extra.push(o);
+        }
+        return have;
+      }
+      function roam(dt) {
+        for (const o of G.extra) { if (!o.an || o.dead || o.fall) continue;
+          o.hd += (Math.random() - .5) * dt * 1.5; const st = o.fw * (o.hab === 'sea' ? .5 : .35) * dt, nx = wrapX(o.x + Math.cos(o.hd) * st), ny = o.y + Math.sin(o.hd) * st;
+          if (okAt(o, nx, ny)) { o.x = nx; o.y = ny; o.bx = nx; o.by = ny; } else o.hd += Math.PI * (.6 + Math.random() * .8);
+          o.yaw = Math.PI / 2 - o.hd; }
+      }
       // the visited-places glow on the mini globe
       this.tick = dt => {
         const st = G.st, i = Math.floor(wrapY(G.y) / H * 18) * 36 + Math.floor(wrapX(G.x) / W * 36);
         if (!st.seen || st.seen.length !== 648) st.seen = '0'.repeat(648);
         if (st.seen[i] !== '1') st.seen = st.seen.slice(0, i) + '1' + st.seen.slice(i + 1);
         if ((hwT -= dt) <= 0) { hwT = 1.5; traffic(); }
+        if ((anT -= dt) <= 0) { anT = .8; animals(dt); } roam(dt);
       };
     },
     // the objective ladder: home in Vancouver → the Pacific Northwest → the west → New York → Paris → Giza → China → Everest
@@ -1936,19 +2053,16 @@ const CH = [null];
       const bw = Math.max(lw(mini ? .6 : 1.3), .05);
       g.save(); g.beginPath(); g.rect(V.x0, 2 * bw, V.x1 - V.x0, H - 4 * bw); g.clip();       // a country's edge along the pole itself is not a border (v5.1: you can drive over it)
       g.beginPath(); for (const [ox, oy] of offs) for (const c of CLIST) for (const q of c.polys) if (vis(q.b, ox, oy, 0)) path(q, ox, oy);
-      g.strokeStyle = 'rgba(90,70,40,.45)'; g.lineWidth = bw; g.stroke(); g.restore();
+      g.strokeStyle = 'rgba(80,60,35,.62)'; g.lineWidth = bw; g.stroke(); g.restore();   // v5.2 Part 12: every country's border, a touch bolder
       g.beginPath(); for (const [ox, oy] of offs) for (const r of RIV) if (vis(r.b, ox, oy, 0)) line(r.p, ox, oy);
       g.strokeStyle = '#4a8fd6'; g.lineWidth = Math.max(lw(mini ? .8 : 1.8), 1.2); g.stroke();
       if (!mini) {
         g.beginPath(); for (const [ox, oy] of offs) for (const h of HWY) if (vis(h.b, ox, oy, 0)) line(h.p, ox, oy);
         if (pw < .05) { g.strokeStyle = '#5a5d66'; g.lineWidth = Math.max(lw(2.2), .05); g.stroke(); }
         g.strokeStyle = pw < .05 ? '#f0b43c' : 'rgba(240,180,60,.75)'; g.lineWidth = Math.max(lw(1.2), .022); g.stroke();
-        // map labels: countries and oceans from far out, the Nile by its river
+        // (v5.2 Part 12: the map labels moved to the HUD layer, drawMapLabels, so buildings never cover them)
         g.textAlign = 'center'; g.textBaseline = 'middle';
-        const lab = (s, x, y, px, col) => { for (const [ox, oy] of offs) { const X = x + ox, Y = y + oy; if (X < V.x0 - 400 * pw || X > V.x1 + 400 * pw || Y < V.y0 - 40 * pw || Y > V.y1 + 40 * pw) continue; g.font = `900 ${px * pw}px ${UI_FONT}`; g.fillStyle = col; g.fillText(s, X, Y); } };
-        if (pw > .25) for (const c of CLIST) if (c.at && c.big > 4e5 * Math.min(1, pw / 8)) lab(c.nm.replace(/^the /, '').toUpperCase(), c.at[0], c.at[1], 16, S.passport[c.cc] ? '#ffd23f' : 'rgba(255,255,255,.75)');
-        if (pw > .8) for (const [n, lo, la] of [['PACIFIC OCEAN', -150, 5], ['ATLANTIC OCEAN', -35, 25], ['INDIAN OCEAN', 78, -20], ['ARCTIC OCEAN', 0, 82], ['SOUTHERN OCEAN', 60, -62], ['PACIFIC OCEAN', 170, 30]]) lab(n, ...P(lo, la), 22, 'rgba(200,230,255,.7)');
-        if (pw > .05) lab('Nile River', ...P(32.4, 21.5), 14, '#d4ecff');
+        if (pw > .05) { const [nx, ny] = P(32.4, 21.5); for (const [ox] of offs) { g.save(); g.translate(nx + ox, ny); g.scale(pw, pw); g.font = `900 14px ${UI_FONT}`; g.fillStyle = '#d4ecff'; g.fillText('Nile River', 0, 0); g.restore(); } }
       }
     },
     miniPaint(x, k) {
@@ -2579,7 +2693,7 @@ function loadChapter(n, kind) {
   if (story && !guest) S.last = n;
   G.mate = null; G.netPause = null;
   if (G.net) { G.nidA = 0; G.byNid = new Map(); G.built = 0; }
-  G.auth = []; G.agrid = new Map(); G.cells = new Map(); G.movers = []; G.tiles = []; G.help = []; G.toasts = []; G.combo = []; G.rollAt = 0;
+  G.auth = []; G.agrid = new Map(); G.cells = new Map(); G.movers = []; G.tiles = []; G.help = []; G.extra = []; G.toasts = []; G.combo = []; G.rollAt = 0;
   G.fl = C.layered ? (story && st.x != null && st.mv === 5 && st.fl != null ? st.fl : C.startFl || 0) : 0;
   G.flash = null; G.big = null; G.cine = null; G.joy = null; G.helpOn = null; V3.reg = null; V3.holeScale = 1; V3.swirl = 1;
   for (const m of V3.tiles.values()) V3.scene.remove(m); V3.tiles.clear(); buildStatic(C);
@@ -2704,6 +2818,7 @@ function gather(x0, y0, x1, y1, z) {
   }
   if (G.cells.size > 6000) { let i = 0; for (const k of G.cells.keys()) { if (i++ > 2500) break; G.cells.delete(k); } }
   for (const o of G.tiles) if (!o.dead) out.push(o);
+  for (const o of G.extra) if (!o.dead) out.push(o);           // v5.2: streamed ambience (the Globe's animals)
   for (const o of G.help) if (!o.dead) out.push(o);
   return out;
 }
@@ -4133,6 +4248,19 @@ const MODEL = (() => {
     starfighter: p => [bx(.55, .4, 2.4, 0, .5, 0, p.a || '#eceff1'), co(.28, .7, .28, 0, .5, 1.55, p.a || '#eceff1', { rx: 1.5708 }), bx(2.6, .08, .8, 0, .48, -.45, p.b || '#ff7043'),
       bx(.08, .6, .5, 1.25, .62, -.55, p.b || '#ff7043'), bx(.08, .6, .5, -1.25, .62, -.55, p.b || '#ff7043'), sp(.35, .25, .6, 0, .76, .35, '#7ff3ff'),
       cy(.18, .3, .18, .3, .5, -1.3, '#ffb300', { rx: 1.5708, glow: 1 }), cy(.18, .3, .18, -.3, .5, -1.3, '#ffb300', { rx: 1.5708, glow: 1 })],
+    /* v5.2 Part 16 animal shapes: an upright primate, a kangaroo, a sitting koala, a bat, a platypus / echidna */
+    ape: p => { const a = p.a, k = p.big ? 1.25 : 1; return [sp(.9 * k, 1.1 * k, .7 * k, 0, .9 * k, 0, a), sp(.6 * k, .6 * k, .6 * k, 0, 1.75 * k, .05, p.head || a), sp(.3 * k, .25 * k, .2, 0, 1.65 * k, .3 * k, p.b || '#d9b38c'),
+      sp(.14, .14, .14, -.16 * k, 1.82 * k, .3 * k, '#111'), sp(.14, .14, .14, .16 * k, 1.82 * k, .3 * k, '#111'), cy(.2, .95 * k, .2, -.55 * k, .85 * k, .1, a, { rz: .35 }), cy(.2, .95 * k, .2, .55 * k, .85 * k, .1, a, { rz: -.35 }),
+      cy(.22, .5, .22, -.25, .25, .05, a), cy(.22, .5, .22, .25, .25, .05, a), ...(p.tail !== 0 ? [cy(.08, 1.3, .08, 0, .8, -.65, a, { rx: -.9 })] : [])]; },
+    roo: p => { const a = p.a, t = p.tail || 1.6; return [sp(.8, 1.2, .8, 0, 1.0, 0, a), sp(.45, .45, .55, 0, 1.85, .2, a), co(.15, .45, .1, -.15, 2.2, .15, a), co(.15, .45, .1, .15, 2.2, .15, a),
+      sp(.1, .1, .1, -.13, 1.92, .45, '#111'), sp(.1, .1, .1, .13, 1.92, .45, '#111'), bx(.25, .3, 1.2, -.3, .15, .3, a), bx(.25, .3, 1.2, .3, .15, .3, a), cy(.12, .5, .12, -.3, 1.15, .45, a, { rx: .9 }), cy(.12, .5, .12, .3, 1.15, .45, a, { rx: .9 }),
+      co(.35, t, .35, 0, .45, -.8, a, { rx: -1.9 })]; },
+    koala: p => { const a = p.a; return [sp(.9, 1, .8, 0, .55, 0, a), sp(.75, .7, .7, 0, 1.25, .1, a), sp(.4, .4, .15, -.4, 1.5, .05, a), sp(.4, .4, .15, .4, 1.5, .05, a), sp(.18, .24, .14, 0, 1.2, .45, '#222'),
+      sp(.1, .1, .1, -.18, 1.35, .42, '#111'), sp(.1, .1, .1, .18, 1.35, .42, '#111')]; },
+    bat: p => { const a = p.a; return [sp(.45, .7, .45, 0, .9, 0, a), sp(.35, .35, .35, 0, 1.35, .05, a), co(.1, .25, .08, -.12, 1.6, 0, a), co(.1, .25, .08, .12, 1.6, 0, a),
+      pr(1.4, .06, .7, -.85, 1.0, 0, p.b || '#3a2e28', { rz: .25 }), pr(1.4, .06, .7, .85, 1.0, 0, p.b || '#3a2e28', { rz: -.25 }), cy(.05, .4, .05, 0, .3, 0, '#2a2a2a')]; },
+    mono: p => { const a = p.a; return p.spikes ? [sp(1, .7, 1.4, 0, .35, 0, a), ...Array.from({ length: 14 }, (_, i) => co(.12, .4, .12, Math.cos(i * 2.4) * .45, .65, Math.sin(i * 1.7) * .6, '#e8dcc0')), co(.12, .5, .12, 0, .3, .85, '#333', { rx: 1.4 })]
+      : [sp(1, .45, 1.6, 0, .25, 0, a), bx(.55, .1, .5, 0, .22, 1.0, '#2a2a2a'), bx(.7, .1, .7, 0, .12, -1.0, a), sp(.1, .1, .1, -.2, .45, .6, '#111'), sp(.1, .1, .1, .2, .45, .6, '#111')]; },
     serpent: p => { const a = p.a || '#26a69a', b = p.b || '#80cbc4', o = []; for (let i = 0; i < 9; i++) o.push(sp(.62 - i * .04, .52 - i * .03, .6, Math.sin(i * .9) * .5, .4, 1.3 - i * .42, i % 2 ? a : b));
       return o.concat([sp(.75, .6, .85, 0, .5, 1.9, a), sp(.13, .13, .13, -.22, .78, 2.15, '#ffeb3b', { glow: 1 }), sp(.13, .13, .13, .22, .78, 2.15, '#ffeb3b', { glow: 1 }),
         co(.12, .45, .12, -.25, .95, 1.75, '#fff'), co(.12, .45, .12, .25, .95, 1.75, '#fff'), bx(.06, .5, .5, 0, .85, 1.0, '#ff7043')]); },
@@ -4476,6 +4604,27 @@ const MODEL = (() => {
     sparkle: ['sparkle', {}], star: ['sparkle', { a: '#ffe066' }], planet: ['planet', { a: '#f4b860', ring: '#e8d0a0' }], icemoon: ['planet', { a: '#d6f5ff', b: '#9fd3e8' }], redplanet: ['planet', { a: '#ff8a65', b: '#c0502a' }],
     giantplanet: ['planet', { a: '#c3a6ff', band: '#8a6fd0' }], giantmoon: ['planet', { a: '#f0f0e8', b: '#bdbdb5' }], yellowstar: ['star', { a: '#ffd23f' }], redstar: ['star', { a: '#ff5e57' }], bluestar: ['star', { a: '#6ad1ff' }],
     crystalmoon: ['crystal', {}], giantufo: ['ufo', { a: '#9aa6b5', b: '#ff4fd8' }], superplanet: ['planet', { a: '#7cf7c6', ring: '#bff', band: '#3ab090' }], giantstar: ['star', { a: '#ff9f43', b: '#ffcf8a' }], supergiant: ['star', { a: '#e8f4ff', b: '#bfe0ff' }],
+    // v5.2 Part 16: the Globe's animal families (per-species colours come in as a palette; shape details as params)
+    an_cat: ['quad', { a: '#d9a441', d: 1.9, lh: .5, ears: 1 }], an_bear: ['quad', { a: '#6d4c33', d: 1.9, lh: .5, ears: 1 }], an_panda: ['quad', { a: '#f5f5f5', leg: '#1e1e1e', b: '#1e1e1e', d: 1.8, lh: .5, ears: 1 }],
+    an_canine: ['quad', { a: '#9a7b5a', d: 1.7, lh: .55, ears: 1 }], an_hyena: ['quad', { a: '#a08a62', d: 1.7, lh: .7, ears: 1, spots: 1, b: '#4a3a2a' }],
+    an_deer: ['quad', { a: '#9c6b3f', d: 1.8, lh: .95, neck: .35, horn: '#d9c8a8' }], an_antelope: ['quad', { a: '#b98a52', d: 1.7, lh: .9, neck: .3, horn: '#3a2a1a' }],
+    an_goat: ['quad', { a: '#a59580', d: 1.5, lh: .6, horn: '#8a7a6a' }], an_bovine: ['quad', { a: '#5b4636', d: 2.2, lh: .55, horn: '#ddd', hump: 1 }],
+    an_horse: ['quad', { a: '#8b5a2b', d: 2.1, lh: .95, neck: .45, mane: '#2a1a10' }], an_camelid: ['quad', { a: '#cfa875', hump: 1, neck: .6, d: 2, lh: 1 }],
+    an_elephant: ['quad', { a: '#8e9196', d: 2.3, lh: 1, trunk: 1, ears: 1 }], an_rhino: ['quad', { a: '#8a8d90', d: 2.2, lh: .6, nose: '#d5d5d0' }],
+    an_hippo: ['quad', { a: '#8d7f86', d: 2.2, lh: .35 }], an_tapir: ['quad', { a: '#4a4a4f', d: 1.9, lh: .55, trunk: 1 }],
+    an_giraffe: ['quad', { a: '#d8a752', b: '#7a4a22', d: 1.8, lh: 1.6, neck: 1.8, spots: 1, horn: '#7a4a22' }], an_pig: ['quad', { a: '#6e5545', d: 1.6, lh: .4, ears: 1 }],
+    an_primate: ['ape', { a: '#6b4a35' }], an_marsupial: ['roo', { a: '#a9805a' }], an_roo: ['roo', { a: '#a9805a' }], an_koala: ['koala', { a: '#9e9e9e' }], an_quadlow: ['quad', { a: '#5a4a3a', d: 1.5, lh: .3, ears: 1 }],
+    an_monotreme: ['mono', { a: '#6d5240' }], an_rodent: ['quad', { a: '#8a6a4a', d: 1.3, lh: .25, ears: 1 }], an_rabbit: ['quad', { a: '#a68b6c', d: 1.2, lh: .3, ears: 1 }],
+    an_smallmammal: ['quad', { a: '#7b6450', d: 1.4, lh: .3 }], an_smallcarnivore: ['quad', { a: '#a28b6a', d: 1.5, lh: .35, ears: 1 }], an_otter: ['quad', { a: '#5b4231', d: 2.6, lh: .2 }],
+    an_bat: ['bat', { a: '#4a3b33' }], an_glider: ['quad', { a: '#8a7a6a', d: 1.2, lh: .25, ears: 1 }],
+    an_whale: ['fish', { a: '#4f6577', belly: '#cfd8dc', d: 3.6, h: 1.1, fin: .3 }], an_dolphin: ['fish', { a: '#8fa3b5', belly: '#e8eef2', d: 2.6, h: .7, fin: .5 }],
+    an_seal: ['blob', { a: '#7d8790', h: .7 }], an_seacow: ['blob', { a: '#8e8f8a', h: .8 }], an_shark: ['fish', { a: '#7c8c99', belly: '#eceff1', fin: .9, d: 3 }],
+    an_ray: ['fish', { a: '#4d5b66', d: 1.3, h: .22 }], an_fish: ['fish', { a: '#e08a3c', d: 2, fin: .3 }], an_seaturtle: ['turtle', { a: '#5d8a4f' }], an_turtle: ['turtle', { a: '#6b7a45' }],
+    an_croc: ['lizard', { a: '#55703b' }], an_snake: ['serpent', { a: '#5b7d3a', b: '#86a65a' }], an_lizard: ['lizard', { a: '#6f9a4a' }], an_frog: ['frog', { a: '#4caf50' }], an_salamander: ['lizard', { a: '#e5884f' }],
+    an_bird: ['bird', { a: '#4f8fd6', lg: .3 }], an_raptor: ['bird', { a: '#6b4b2f', lg: .35, beak: '#f5c542', wing: '#5a3c22' }], an_parrot: ['bird', { a: '#2fae4f', head: '#fdd835', wing: '#1e88e5', lg: .25 }],
+    an_wader: ['bird', { a: '#e8e8e2', lg: 1.3, neck: .9, beak: '#2b2b2b' }], an_waterfowl: ['duck', { a: '#f2f2ee' }], an_seabird: ['bird', { a: '#ecf0f1', lg: .3, wing: '#90a4ae' }],
+    an_penguin: ['blob', { a: '#222831', h: 1.6 }], an_ratite: ['bird', { a: '#5a4a40', lg: 1.6, neck: 1.2 }], an_fowl: ['bird', { a: '#b5651d', lg: .4, head: '#c0392b' }],
+    an_insect: ['insect', { a: '#f39c12' }], an_jelly: ['jelly', { a: '#f7c948' }], an_octopus: ['octopus', { a: '#d9734e' }], an_snail: ['snail', {}], an_crab: ['crab', { a: '#c0392b' }],
     coin: ['coin', {}],
     up_speed: ['ibolt', {}], up_growth: ['iarrows', {}], up_points: ['istar', {}], up_coin: ['icoin', {}], up_magnet: ['imagnet', {}],
     up_vacuum: ['ifunnel', {}], up_lucky: ['iclover', {}], up_payday: ['iclip', {}], up_wide: ['ieye', {}], up_head: ['iflag', {}],
@@ -5063,8 +5212,24 @@ function hidesHole(o, md, hx, hz, R) {
   return H > R * 0.6 && H * TAN_TILT > oz - hr - R * 0.5;
 }
 /* name plates: projected from the object's top onto the HUD canvas so they stay readable at any zoom */
+/* v5.2 Part 12: the Globe's map labels (capital stars, countries, continents) in screen space, under the HUD panels */
+function drawMapLabels() {
+  const C = G.C; G.mapLabels = null; if (!C.labelSet || G.cine) return;
+  const vr = viewRect(G.cam.z), p = [0, 0];
+  const V = { z: G.cam.z, x0: G.cam.x + vr[0], y0: G.cam.y + vr[1], x1: G.cam.x + vr[2], y1: G.cam.y + vr[3] };
+  const L = G.mapLabels = C.labelSet(V, undefined, (x, y) => toScreen(dx(x, G.cam.x), dy(y, G.cam.y), 0, p) ? [p[0], p[1]] : null);
+  g.setTransform(K, 0, 0, K, 0, 0);
+  for (const l of L) txt(l.s, (l.b[0] + l.b[2]) / 2, (l.b[1] + l.b[3]) / 2, l.px, l.col, 'center', l.wt);
+  // v5.2 Part 16: each animal wears its species name (never two names on top of each other; none on the map labels)
+  const boxes = L.map(l => l.b); G.anLabels = [];
+  for (const o of G.extra) { if (!o.an || o.dead || o.fall) continue;
+    if (!toScreen(dx(o.x, G.cam.x), dy(o.y, G.cam.y), o.fw * .9, p) || p[0] < 0 || p[0] > STAGE_W || p[1] < 0 || p[1] > STAGE_H) continue;
+    const s = o.label, w = s.length * 7.4 + 10, b = [p[0] - w / 2, p[1] - 22, p[0] + w / 2, p[1] - 6];
+    if (boxes.some(q => b[0] < q[2] && b[2] > q[0] && b[1] < q[3] && b[3] > q[1])) continue;
+    boxes.push(b); G.anLabels.push(s); txt(s, p[0], p[1] - 14, 13, o.flag ? '#ffe27a' : '#d8ffc8', 'center', 800); }
+}
 function drawLabels() {
-  drawBeacons();
+  drawMapLabels(); drawBeacons();
   const p = [0, 0];
   for (const o of LABELS) {
     const md = o.md, top = md ? md.h * o.fw * (o.sv || 1) : o.fw;
