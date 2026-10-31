@@ -97,6 +97,18 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
 @keyframes flycoin{0%{transform:translate(0,0);opacity:1}100%{transform:translate(260px,-10px);opacity:0}}
 .banker{animation:bob 1.2s ease-in-out infinite;transform-origin:50% 90%}
 .flycoin{animation:flycoin .8s ease-in forwards}
+#s-main .strip{position:absolute;left:0;right:0;bottom:0;height:112px;background:#fff6d8;border-top:4px solid #f0d488;box-sizing:border-box;padding:14px 96px 16px 16px;display:flex;gap:14px}
+.mbtn{flex:1;display:flex;align-items:center;justify-content:center;gap:12px;border-radius:20px;font-weight:900;font-size:30px;letter-spacing:1px;color:#3a1d00;background:linear-gradient(#ffcf4a,#f59e0b);box-shadow:0 6px 0 #a35c00,0 8px 14px rgba(80,50,0,.25)}
+.mbtn:active{transform:translateY(4px);box-shadow:0 2px 0 #a35c00}
+.mbtn.blue{background:linear-gradient(#6ad1ff,#2b8fe0);color:#06213b;box-shadow:0 6px 0 #165a96,0 8px 14px rgba(0,40,80,.25)}
+.mbtn.green{background:linear-gradient(#8ef08e,#2eb84a);color:#06300f;box-shadow:0 6px 0 #18752c,0 8px 14px rgba(0,60,20,.25)}
+.mbtn.pink{background:linear-gradient(#ff9ad5,#e0459b);color:#3b0626;box-shadow:0 6px 0 #92245f,0 8px 14px rgba(80,0,40,.25)}
+.mbtn .mi{font-size:38px;display:flex}
+#b-settings{position:absolute;right:18px;bottom:26px;width:58px;height:58px;font-size:28px;background:#c9b77a;border-color:#fff}
+#main-sub{position:absolute;left:0;right:0;bottom:122px;text-align:center;font-size:19px;font-weight:800;color:#fff;text-shadow:0 2px 4px #000}
+#sizebtns{position:absolute;right:20px;top:250px;display:none;flex-direction:column;align-items:center;gap:8px;z-index:5;font-weight:900;font-size:15px;color:#fff;text-shadow:0 2px 3px #000}
+#sizebtns.on{display:flex}
+#sizebtns .round{font-size:40px;font-weight:900;background:rgba(224,69,155,.85)}
 </style>
 </head>
 <body>
@@ -104,27 +116,22 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
   <canvas id="gl" width="1280" height="720"></canvas>
   <canvas id="cv" width="1280" height="720"></canvas>
 
-  <!-- MAIN SCREEN -->
+  <!-- MAIN SCREEN: a living Vancouver title scene (drawn on the canvas) over a cream strip of four modes -->
   <div class="scr" id="s-main">
-    <div class="title" style="position:absolute;left:0;right:0;top:26px">HUNGRY HOLE</div>
-    <div style="position:absolute;left:0;right:0;top:146px;display:flex;justify-content:center;gap:22px">
-      <button class="btn" id="b-start" style="font-size:40px;padding:16px 46px">STORY</button>
-      <button class="btn blue" id="b-ispy" style="font-size:40px;padding:16px 40px">I SPY</button>
-      <button class="btn green" id="b-edu" style="font-size:40px;padding:16px 30px">EDUCATIONAL</button>
+    <div id="main-sub"></div>
+    <div class="strip">
+      <button class="mbtn" id="b-start"><span class="mi" id="mi-story"></span>STORY</button>
+      <button class="mbtn blue" id="b-ispy"><span class="mi" id="mi-ispy"></span>I SPY</button>
+      <button class="mbtn green" id="b-edu"><span class="mi" id="mi-edu"></span>EDUCATIONAL</button>
+      <button class="mbtn pink" id="b-explore"><span class="mi" id="mi-explore"></span>EXPLORATION</button>
     </div>
-    <div style="position:absolute;left:0;right:0;top:590px;display:flex;justify-content:center;gap:26px">
-      <button class="btn blue" id="b-chapters">CHAPTERS</button>
-      <button class="btn pink" id="b-upgrades">UPGRADES</button>
-      <button class="btn green" id="b-settings">SETTINGS</button>
-    </div>
-    <div style="position:absolute;left:0;right:0;top:246px;text-align:center;font-size:20px;opacity:.85" id="main-sub"></div>
-    <button class="round" id="b-gear" style="position:absolute;right:18px;bottom:18px" aria-label="Settings"></button>
+    <button class="round" id="b-settings" aria-label="Settings"></button>
   </div>
 
   <!-- CHAPTERS (story) / chapter picker for I SPY + EDUCATIONAL -->
   <div class="scr" id="s-chapters">
     <button class="round top-back" data-back aria-label="Back"></button>
-    <div class="h2" id="chap-title">CHAPTERS</div>
+    <div class="h2" id="chap-title">WORLDS</div>
     <div class="cards" id="chap-cards"></div>
   </div>
 
@@ -145,7 +152,7 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
       <span class="wallet" id="up-wallet"></span>
       <button class="btn" id="b-banker">BANKER</button>
     </div>
-    <div style="position:absolute;left:24px;top:540px;width:770px;font-size:17px;opacity:.8;line-height:1.4">Tap a card to pick it. Press and hold a card to read about it. Upgrades only help the chapter they were bought in.</div>
+    <div style="position:absolute;left:24px;top:540px;width:770px;font-size:17px;opacity:.8;line-height:1.4">Tap a card to pick it. Press and hold a card to read about it. Upgrades only help the world they were bought in.</div>
     <div class="holdpop" id="holdpop"></div>
   </div>
 
@@ -168,6 +175,8 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
     <button class="round" id="b-sound-hud" aria-label="Sound"></button>
     <button class="round" id="b-pause" aria-label="Pause"></button>
   </div>
+
+  <div id="sizebtns"><button class="round" id="b-bigger" aria-label="Bigger">+</button><div>SIZE</div><button class="round" id="b-smaller" aria-label="Smaller">&minus;</button></div>
 
   <div class="modal" id="modal"><div class="mbox panel" id="mbox"></div></div>
 </div>
@@ -232,6 +241,12 @@ const ICON = {
   board:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
   help:'<circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 1 1 3.8 2.6c-.8.3-1.1.9-1.1 1.7v.6M12 17.2v.3"/>',
 };
+Object.assign(ICON, {
+  book: '<path d="M4 5c3-1 6-1 8 1 2-2 5-2 8-1v14c-3-1-6-1-8 1-2-2-5-2-8-1z"/><path d="M12 6v14"/>',
+  eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  grad: '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2 9 2 12 0v-5"/>',
+  compass: '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
+});
 const svg = (k, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24">${ICON[k]}</svg>`;
 
 /* Real-world size labels for the "How big am I?" readout (metres). */
@@ -1836,6 +1851,7 @@ function loadChapter(n, kind) {
     C.CK.forEach((q, j) => { if (st.check[j] > q.n) st.check[j] = q.n; });
     G.x = st.x; G.y = st.y; G.lvl = clamp(st.lvl, 1, C.N); G.xp = st.xp;
   } else { G.x = C.start[0]; G.y = C.start[1]; [G.lvl, G.xp] = startSize(st); }
+  G.goal = null; G.capT = 0; G.bigmap = null; G.ring0 = null; syncBeat();
   G.vx = G.vy = 0; G.cam.x = G.x; G.cam.y = G.y; G.cam.z = targetZoom();
   if (story) {   // checklist sequences (tiles / ordered objects) and tiny quests: the optional bonus layer
     st.act = st.act.filter(a => C.Q[a.i] && !(st.board[a.i] && !boardDone()));
@@ -1854,6 +1870,7 @@ function startSize(st) { const h = START_P + UPF.head(st.up[9]), L = Math.min(G.
 function restartRun(fresh) {
   const C = G.C, st = G.st;
   st.x = C.start[0]; st.y = C.start[1]; [st.lvl, st.xp] = startSize(st);
+  if (C.beats) { st.beat = 0; st.eaten = {}; }     // v5: a restart replays the ladder from the first objective
   if (!fresh) loadChapter(C.n);
 }
 
@@ -1903,7 +1920,11 @@ function gather(x0, y0, x1, y1, z) {
       if (C.wrap) { const nx = Math.ceil(C.W / A), ny = Math.ceil(C.H / A); kx = ((cx % nx) + nx) % nx; ky = ((cy % ny) + ny) % ny; }
       const a = G.agrid.get(akey(kx, ky)); if (a) for (const o of a) if (!o.dead) out.push(o);
     }
-  for (const o of G.movers) if (!o.dead) out.push(o);
+  for (const o of G.movers) {
+    if (o.dead) continue;
+    const b = o.pb || (o.pb = pathBox(o));
+    if (C.wrap || (b[2] >= x0 - P && b[0] <= x1 + P && b[3] >= y0 - P && b[1] <= y1 + P)) out.push(o);
+  }
   const rD = holeD() * 4;
   for (const t of activeLayers(z)) {
     const cs = C.LC[t], hp = C.sizes[t] * 0.5;
@@ -1926,6 +1947,7 @@ function gather(x0, y0, x1, y1, z) {
   return out;
 }
 
+function pathBox(o) { const p = o.path, b = [1e30, 1e30, -1e30, -1e30], m = (o.lane || 0) + o.fw; for (let i = 0; i < p.length; i += 2) { b[0] = Math.min(b[0], p[i]); b[1] = Math.min(b[1], p[i + 1]); b[2] = Math.max(b[2], p[i]); b[3] = Math.max(b[3], p[i + 1]); } b[0] -= m; b[1] -= m; b[2] += m; b[3] += m; return b; }
 /* ---------- hole size / upgrades ---------- */
 const need = L => Math.max(1, Math.round((G.C ? G.C.need : 20) * Math.pow(L, G.C && G.C.needP || 2) * NEED_K));   // needP: a finite map (the house) flattens the late curve
 const UPL = k => G.st.up[UPGRADES.findIndex(u => u.k === k)];
@@ -1944,18 +1966,77 @@ function realSize() {
 function targetZoom() { return STAGE_W / (holeD() * (G.C.view || 13) * UPF.wide(UPL('wide'))); }
 function upCost(n, lv) { return Math.round(UP_BASE * Math.pow(UP_GROW, lv - 1) * CH[n].cost); }
 function addXP(v) {
-  const C = G.C;
+  const C = G.C, R = G.run;
+  if (R.kind === 'explore') return;                   // Exploration: the player sets the size, nothing grows it
+  const D0 = holeD(), L0 = G.lvl;
   G.xp += v * GROW(UPL('growth'));
   while (G.xp >= need(G.lvl)) {
     if (G.lvl >= C.N) { G.xp = need(G.lvl); break; }
     G.xp -= need(G.lvl); G.lvl++;
-    SFX.up(); toast('SIZE UP!  Size ' + G.lvl, '#8ef08e');
-    if (G.lvl >= C.N && G.run.kind === 'story' && !G.st.c && !G.cine) chapterDone();   // v4 gate: reaching the target size completes the chapter
   }
+  const cap = capD();                                 // v5.0: the cap is the next objective
+  if (holeD() > cap * 1.000001) { setHoleD(Math.max(D0, cap)); if (v > 0) G.capT = G.now; }
+  if (G.lvl > L0) { SFX.up(); toast('SIZE UP!  Size ' + G.lvl, '#8ef08e'); }
+  if (!C.beats && G.lvl >= C.N && R.kind === 'story' && !G.st.c && !G.cine) chapterDone();
   G.st.bm = Math.max(G.st.bm, realSize());
 }
+/* the inverse of holeD(): put the hole at diameter D (clamped to the world's ladder) */
+function setHoleD(D) {
+  const C = G.C; D = clamp(D, C.sizes[1], C.sizes[C.N] * 1.45);
+  let L = 1; while (L < C.N && C.sizes[L + 1] <= D) L++;
+  const a = C.sizes[L], b = L < C.N ? C.sizes[L + 1] : a * 1.45;
+  G.lvl = L; G.xp = clamp(Math.log(D / a) / Math.log(b / a), 0, 0.999999) * need(L);
+}
+/* ---------- v5 OBJECTIVE LADDER (spec v5.0 + addendum): objectives run smallest to largest; growth stops at the size
+   that fits the current one and eating it opens the next. Story = the world's beats (C.beats, ids of authored
+   landmarks); I Spy = the hand of 5 sorted by size; Educational = the set's steps. Exploration has none. ---------- */
+function goals() {
+  const R = G.run;
+  if (R.kind === 'story') return G.goal && !G.goal.dead ? [G.goal] : [];
+  if (R.kind === 'ispy') { const t = R.tg && R.tg.find(t => !t.done); return t && t.o ? [t.o] : []; }
+  if (R.kind === 'edu') { const st = R.steps && R.steps[R.si]; return st && st.t ? st.t.filter(t => !t.done && t.o).map(t => t.o) : []; }
+  return [];
+}
+function capD() {
+  const C = G.C, top = C.sizes[C.N] * 1.45, R = G.run;
+  if (R.kind === 'explore') return top;
+  if (R.kind === 'edu') { const st = R.steps && R.steps[R.si]; if (st && st.k === 'm') return holeD(); }
+  const gs = goals();
+  if (!gs.length) return R.kind === 'story' && C.beats && !G.st.c ? holeD() : top;
+  return Math.min(top, Math.max(...gs.map(o => o.fw)) * 1.04);
+}
+const goalName = o => o ? (o.label || o.nm || tname(G.C, o.k)) : '';
+/* story: point G.goal at the current beat; beats already eaten (saved) are skipped */
+function syncBeat() {
+  const C = G.C, st = G.st; G.goal = null;
+  if (G.run.kind !== 'story' || !C.beats) return;
+  while (st.beat < C.beats.length) {
+    const o = G.auth.find(a => a.id === C.beats[st.beat]);
+    if (o && !o.dead) { G.goal = o; o.tgt = 1; return; }
+    st.beat++;
+  }
+}
+function beatDone(o) {
+  const C = G.C, st = G.st, r0 = ringNow();
+  o.tgt = 0; st.beat++; syncBeat(); persist();
+  if (st.beat >= C.beats.length) { if (!G.cine) chapterDone(); return; }
+  SFX2.found(); toast('Objective done! Next: ' + goalName(G.goal), '#ffd23f');
+  const r1 = ringNow(); if (r1 !== r0) setTimeout(() => toast('The world just got bigger. Go explore!', '#8ef08e'), 1200);
+}
+/* v4.7 zone expansion: the playable ring for the current objective (story), or the smallest ring that holds the
+   current target (I Spy). Educational and Exploration roam the whole map. Rings are nested rects. */
+function ringNow() {
+  const C = G.C, R = G.run; if (!C.rings) return null;
+  if (R.kind === 'story') return C.beats && G.st.beat < C.beats.length ? C.rings[Math.min(G.st.beat, C.rings.length - 1)] : null;
+  if (R.kind === 'ispy') {
+    const o = goals()[0]; if (!o) return null;
+    for (const rg of C.rings) if (rg && o.x >= rg[0] && o.x <= rg[2] && o.y >= rg[1] && o.y <= rg[3]) return rg;
+    return null;
+  }
+  return null;
+}
 function addCoins(n, quest) {
-  const st = G.st;
+  const st = G.st; if (G.run.kind === 'explore') return;   // Exploration pays nothing: any size, so it can't be a coin farm
   st.cf += n * UPF.coin(UPL('coin')) * (quest ? UPF.payday(UPL('payday')) : 1);
   const w = Math.floor(st.cf); st.cf -= w; st.w += w;
 }
@@ -2017,7 +2098,7 @@ function eat(o) {
     const nm = o.label || o.T.n;
     G.flash = { t0: G.now, a: nm[0].toUpperCase() + nm.slice(1), b: o.sub || '', c: S.settings.learn !== 'off' ? (o.fact || '') : '' };
   }
-  if (story) questEvent('eat', o); else MODES[G.run.kind].eat(o);
+  if (story) { questEvent('eat', o); if (C.beats && o === G.goal) beatDone(o); } else MODES[G.run.kind].eat(o);
   if (C.onEat) C.onEat(o);
 }
 /* too big (or not its turn yet): it leans on the rim and thuds. WOBBLE RULE: at >= 85% of the size it
@@ -2290,7 +2371,10 @@ const MODES = {
       const C = G.C, rng = mulberry((Math.random() * 1e9) | 0), R = G.run;
       R.hand = MODES.ispy.deal(C.n); R.t0 = G.now; R.lastFind = G.now;
       R.tg = R.hand.map(i => { const spec = C.ispy[i].split('|')[0], o = findTarget(spec, rng); if (o) { o.tgt = 1; if (!o.label) o.label = tgtName(C, C.ispy[i], o); } return { spec: C.ispy[i], o, done: 0, name: tgtName(C, C.ispy[i], o) }; });
+      R.tg.sort((a, b) => (a.o ? a.o.fw : 0) - (b.o ? b.o.fw : 0));          // v5.0: the hand is a ladder, smallest first
     },
+    /* v4.3: a target is never lost; a missing one is placed again (inside the current ring) */
+    heal() { const R = G.run, C = G.C, rng = mulberry((Math.random() * 1e9) | 0); for (const t of R.tg) if (!t.done && (!t.o || t.o.dead && !t.o.fall)) { t.o = findTarget(t.spec.split('|')[0], rng); if (t.o) { t.o.tgt = 1; if (!t.o.label) t.o.label = t.name; } } },
     eat(o) {
       const R = G.run, t = R.tg.find(t => t.o === o && !t.done); if (!t) return;
       t.done = 1; R.lastFind = G.now; o.tgt = 0; SFX2.found(); toast('Found: ' + t.name + '!', '#ffd23f');
@@ -2300,14 +2384,18 @@ const MODES = {
       }
     },
     /* the compass only helps after a while without a find (spotting things yourself is the game) */
-    compass() { const R = G.run; if (G.now - R.lastFind < 45000 && !G.helpOn) return null; return nearestOf(R.tg.filter(t => !t.done && t.o && !t.o.dead).map(t => t.o)); },
+    compass() { return goals()[0] || null; },          // v4.3: always on, pointing at the current rung
   },
   edu: {
     setup() { const C = G.C, E = S.edu[C.n] || (S.edu[C.n] = { set: 0, done: 0 }); G.run.set = E.set % C.edu.length; MODES.edu.startSet(); },
     startSet() {
       const R = G.run, C = G.C; R.steps = C.edu[R.set].s.map(parseStep); R.si = 0;
       toast(C.edu[R.set].n, '#ffd23f'); MODES.edu.startStep();
+      // v4.9 pre-sizing survives as the ladder's start: big enough for step 1 (the cap then follows each step)
+      const fw = Math.max(0, ...goals().map(o => o.fw)); if (fw) setHoleD(Math.max(holeD(), fw * 1.04));
+      G.cam.z = targetZoom();
     },
+    heal() { const R = G.run, st = R.steps && R.steps[R.si], rng = mulberry((Math.random() * 1e9) | 0); if (!st || !st.t) return; for (const t of st.t) if (!t.done && (!t.o || t.o.dead && !t.o.fall)) { t.o = findTarget(t.spec, rng, t.pal); if (t.o) { t.o.tgt = 1; t.o.label = t.o.label || t.name; } } },
     startStep() {
       const R = G.run, st = R.steps[R.si], C = G.C, rng = mulberry((Math.random() * 1e9) | 0);
       G.tiles = []; G.helpOn = null;
@@ -2330,12 +2418,18 @@ const MODES = {
       const E = S.edu[C.n]; E.done++; E.set = (R.set + 1) % C.edu.length; const bonus = Math.round(EDU_BONUS * C.cost); addCoins(bonus, true); persist();
       setTimeout(() => { SFX2.win(); UI.eduWin(bonus); }, 700);
     },
-    compass() { return G.helpOn && !G.helpOn.dead ? G.helpOn : null; },
+    compass() { return G.helpOn && !G.helpOn.dead ? G.helpOn : MODES.edu.target(); },   // v5: the arrow is on from the start
     target() {          // what "Help me find it" points at: the next uneaten target (for a sum: the nearest answer tile, never the right one)
       const R = G.run, st = R.steps && R.steps[R.si]; if (!st) return null;
       if (st.k === 'm') return nearestOf(G.tiles.filter(t => t.owner === st.owner && !t.dead));
       return nearestOf(st.t.filter(t => !t.done && t.o && !t.o.dead).map(t => t.o));
     },
+  },
+  /* v5.1 EXPLORATION: any world, the whole map, the player picks the size (+ / - buttons); no objectives, no growth */
+  explore: {
+    setup() { toast('Exploration: use + and - to change size', '#8ef08e'); },
+    eat() {}, compass() { return null; }, heal() {},
+    resize(k) { setHoleD(holeD() * k); },
   },
 };
 function nearestOf(list) { let b = null, bd = 1e30; for (const o of list) { const d = Math.hypot(dx(o.x, G.x), dy(o.y, G.y)); if (d < bd) { bd = d; b = o; } } return b; }
@@ -2372,7 +2466,17 @@ function update(dt) {
   G.x += G.vx * dt; G.y += G.vy * dt;
   if (C.wrap) { G.x = (G.x % C.W + C.W) % C.W; G.y = (G.y % C.H + C.H) % C.H; }
   else { G.x = clamp(G.x, r * 0.4, C.W - r * 0.4); G.y = clamp(G.y, r * 0.4, C.H - r * 0.4); }
+  const rg = ringNow();
+  if (rg) {                                          // the current zone's border (story ladder / I Spy rung)
+    const m = Math.min(r * 0.4, (rg[2] - rg[0]) / 2, (rg[3] - rg[1]) / 2);
+    if (C.wrap) { G.x = rg[0] + clamp(wrapD(G.x - rg[0], C.W), m, rg[2] - rg[0] - m); }
+    else G.x = clamp(G.x, rg[0] + m, rg[2] - m);
+    G.y = clamp(G.y, rg[1] + m, rg[3] - m);
+    if (G.ring0 && G.ring0 !== rg) G.ringT = G.now;
+    G.ring0 = rg;
+  }
   if (C.collide) C.collide(r * 0.45);
+  solidPush(r);
   // camera
   const tz = targetZoom();
   G.cam.z += (tz - G.cam.z) * Math.min(1, dt * 2.5);
@@ -2413,7 +2517,7 @@ function update(dt) {
   if (story) questEvent('tick');
   G.toasts = G.toasts.filter(t => G.now - t.t0 < 2600);
   if (G.rollAt && G.now > G.rollAt) { G.rollAt = 0; rollQuests(); }
-  if ((G.relocT += dt) > 3) { G.relocT = 0; relocateTiles(); if (story) refreshHelpers(); }
+  if ((G.relocT += dt) > 3) { G.relocT = 0; relocateTiles(); if (story) refreshHelpers(); else MODES[G.run.kind].heal(); }
   if ((G.compT += dt) > 0.4) {
     G.compT = 0;
     if (story) G.compass = compassTargets();
@@ -2422,6 +2526,25 @@ function update(dt) {
     G.qlab = G.compass.map(c => c.o); for (const o of G.qlab) o.qlab = 1;
   }
   if ((G.saveT += dt) > 2.5) { G.saveT = 0; persist(); }
+}
+/* v4.2/v5.5 collision: what the hole can't eat yet is solid where its body meets the ground (an oriented box from
+   its model, inset a little so the rim can tuck under the edge and tip it). Open-legged things (tables, chairs,
+   beds on legs: T.open) and flat things (rugs, blankets) never block; movers bump instead of blocking. */
+function solidPush(r) {
+  const D = r * 2;
+  for (const o of G.vis) {
+    if (o.dead || o.fall || o.path || o.deco || o.exit || o.tile || o.coin || o.helper || o.nosolid || (o.T && (o.T.mv || o.T.open))) continue;
+    if (fits(o, D) && !isInactive(o)) continue;
+    const md = o.md || modelOf(o); if (!md) continue;
+    const H = md.h * o.fw * (o.sv || 1); if (H < o.fw * 0.12 && !o.solid) continue;
+    const ox = dx(G.x, o.x), oy = dy(G.y, o.y), hw = md.w * o.fw * 0.42, hd = md.d * o.fw * 0.42, e = r * 0.35;
+    if (Math.abs(ox) > hw + hd + e || Math.abs(oy) > hw + hd + e) continue;
+    const c = Math.cos(o.yaw || 0), sn = Math.sin(o.yaw || 0), lx = ox * c - oy * sn, lz = ox * sn + oy * c;
+    const px = hw + e - Math.abs(lx), pz = hd + e - Math.abs(lz);
+    if (px <= 0 || pz <= 0) continue;
+    let mx = 0, mz = 0; if (px < pz) mx = Math.sign(lx || 1) * px; else mz = Math.sign(lz || 1) * pz;
+    G.x += mx * c + mz * sn; G.y += -mx * sn + mz * c;
+  }
 }
 function moveOnPath(o, T) {
   const p = o.path, n = p.length / 2 - 1;
@@ -2442,7 +2565,7 @@ function moveOnPath(o, T) {
 function compassTargets() {
   const C = G.C, st = G.st, out = [];
   const nearest = (fn) => { let b = null, bd = 1e30; for (const o of G.auth) { if (o.dead || !fn(o)) continue; const d = Math.hypot(dx(o.x, G.x), dy(o.y, G.y)); if (d < bd) { bd = d; b = o; } } return b; };
-  let best = null;
+  let best = G.goal && !G.goal.dead ? G.goal : null;
   C.CK.forEach((q, j) => {
     if (best || qDone(q, st.check[j])) return;
     if (q.k === 'q') {
@@ -3406,6 +3529,7 @@ function hidesHole(o, md, hx, hz, R) {
 }
 /* name plates: projected from the object's top onto the HUD canvas so they stay readable at any zoom */
 function drawLabels() {
+  drawBeacons();
   const p = [0, 0];
   for (const o of LABELS) {
     const md = o.md, top = md ? md.h * o.fw * (o.sv || 1) : o.fw;
@@ -3413,6 +3537,203 @@ function drawLabels() {
     if (p[0] < -80 || p[0] > STAGE_W + 80 || p[1] < -40 || p[1] > STAGE_H + 40) continue;
     plate(o.label, o.sub, clamp(p[0], 90, STAGE_W - 90), clamp(p[1] - 34, 70, STAGE_H - 60), 17);
   }
+}
+/* v4.3 beacons: every live target carries a light pillar + its name, visible at any zoom */
+function beaconTargets() {
+  const R = G.run;
+  if (R.kind === 'ispy') return (R.tg || []).filter(t => !t.done && t.o && !t.o.dead).map(t => t.o);
+  return goals();
+}
+function drawBeacons() {
+  const p = [0, 0];
+  for (const o of beaconTargets()) {
+    if (!toScreen(dx(o.x, G.cam.x), dy(o.y, G.cam.y), 0, p)) continue;
+    if (p[0] < -40 || p[0] > STAGE_W + 40 || p[1] < -40 || p[1] > STAGE_H + 300) continue;
+    const top = Math.max(20, p[1] - 250), pul = 0.75 + 0.25 * Math.sin(G.t * 4);
+    const gr = g.createLinearGradient(0, p[1], 0, top); gr.addColorStop(0, `rgba(255,214,70,${0.75 * pul})`); gr.addColorStop(1, 'rgba(255,214,70,0)');
+    g.fillStyle = gr; g.fillRect(p[0] - 9, top, 18, p[1] - top);
+    g.strokeStyle = `rgba(255,230,120,${pul})`; g.lineWidth = 3; g.beginPath(); g.ellipse(p[0], p[1], 20, 8, 0, 0, 7); g.stroke();
+    plate(goalName(o), '', clamp(p[0], 90, STAGE_W - 90), clamp(top - 4, 60, STAGE_H - 60), 16);
+  }
+}
+/* the zone border: a soft gold line on the ground, only near the hole */
+function drawRing() {
+  const rg = ringNow(); if (!rg) return;
+  const D = holeD(), near = D * 10 + 8 / G.cam.z * 60, a = [0, 0], b = [0, 0];
+  const edges = [[rg[0], rg[1], rg[2], rg[1]], [rg[2], rg[1], rg[2], rg[3]], [rg[2], rg[3], rg[0], rg[3]], [rg[0], rg[3], rg[0], rg[1]]];
+  g.save(); g.lineWidth = 4; g.setLineDash([14, 10]); g.lineDashOffset = -G.t * 30;
+  for (const [x0, y0, x1, y1] of edges) {
+    for (let i = 0; i < 24; i++) {
+      const f0 = i / 24, f1 = (i + 1) / 24, ax = lerp(x0, x1, f0), ay = lerp(y0, y1, f0), bx = lerp(x0, x1, f1), by = lerp(y0, y1, f1);
+      const dd = Math.hypot(dx((ax + bx) / 2, G.x), dy((ay + by) / 2, G.y)); if (dd > near) continue;
+      if (!toScreen(dx(ax, G.cam.x), dy(ay, G.cam.y), 0, a) || !toScreen(dx(bx, G.cam.x), dy(by, G.cam.y), 0, b)) continue;
+      g.strokeStyle = `rgba(255,214,90,${0.85 * (1 - dd / near)})`; g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke();
+    }
+  }
+  g.restore();
+}
+/* ---------- minimap (bottom-left, everywhere; the Globe keeps a globe look) + the tappable big map ---------- */
+function miniImg(C) {
+  if (C._mini) return C._mini;
+  const S0 = 1024, k = S0 / Math.max(C.W, C.H), c = document.createElement('canvas');
+  c.width = Math.max(64, Math.round(C.W * k)); c.height = Math.max(64, Math.round(C.H * k));
+  const x = c.getContext('2d'); x.fillStyle = C.bgc || '#000'; x.fillRect(0, 0, c.width, c.height);
+  if (C.miniPaint) C.miniPaint(x, k);
+  else { x.setTransform(k, 0, 0, k, 0, 0); try { C.bg(x, { z: k, cx: C.W / 2, cy: C.H / 2, x0: 0, y0: 0, x1: C.W, y1: C.H, px: 1 / k, mini: 1 }); } catch (e) { /* a painter that can't draw the whole map */ } }
+  return (C._mini = c);
+}
+function miniRect() {
+  const C = G.C;
+  if (C.wrap) return [14, STAGE_H - 14 - 180, 180, 180];
+  const k = Math.min(200 / C.W, 170 / C.H), w = C.W * k, h = C.H * k;
+  return [14, STAGE_H - 14 - h, w, h];
+}
+function drawMapLayer(X, Y, W, H, vx0, vy0, vw, vh, img, round) {
+  const C = G.C, k = W / vw, fx = img.width / C.W, fy = img.height / C.H;
+  g.save(); g.beginPath();
+  if (round) g.arc(X + W / 2, Y + H / 2, W / 2, 0, 7); else rr(g, X, Y, W, H, 10);
+  g.clip(); g.fillStyle = C.bgc || '#000'; g.fillRect(X, Y, W, H);
+  const reps = C.wrap ? [-C.W, 0, C.W] : [0];
+  for (const o of reps) g.drawImage(img, X + (o - vx0) * k, Y - vy0 * (H / vh), C.W * k, C.H * (H / vh));
+  const pt = (wx, wy) => { let u = wx - vx0; if (C.wrap) u = ((u % C.W) + C.W) % C.W; return [X + u * k, Y + (wy - vy0) * (H / vh)]; };
+  const rg = ringNow();
+  if (rg) { const [a0, b0] = pt(rg[0], rg[1]); g.setLineDash([6, 4]); g.strokeStyle = '#ffd25a'; g.lineWidth = 2; g.strokeRect(a0, b0, (rg[2] - rg[0]) * k, (rg[3] - rg[1]) * (H / vh)); g.setLineDash([]); }
+  for (const o of beaconTargets()) { const [a, b] = pt(o.x, o.y); star(a, b, round ? 6 : 8); }
+  if (G.mate) { const [a, b] = pt(G.mate.x, G.mate.y); g.fillStyle = '#4ff0d8'; g.beginPath(); g.arc(a, b, 6, 0, 7); g.fill(); }
+  const [hx, hy] = pt(G.x, G.y), pr = 5 + 2.5 * Math.sin(G.t * 5);
+  g.fillStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.arc(hx, hy, pr + 5, 0, 7); g.fill();
+  g.fillStyle = C.rim || '#9b6bff'; g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(hx, hy, pr, 0, 7); g.fill(); g.stroke();
+  if (round) { const sh = g.createRadialGradient(X + W * .38, Y + H * .35, W * .1, X + W / 2, Y + H / 2, W / 2); sh.addColorStop(0, 'rgba(255,255,255,.18)'); sh.addColorStop(1, 'rgba(0,0,20,.55)'); g.fillStyle = sh; g.fillRect(X, Y, W, H); }
+  g.restore();
+}
+function star(x, y, r) {
+  g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr2 = i % 2 ? r * 0.45 : r; g.lineTo(x + Math.cos(a) * rr2, y + Math.sin(a) * rr2); }
+  g.closePath(); g.fillStyle = '#ffd23f'; g.strokeStyle = '#7a4a00'; g.lineWidth = 1.5; g.fill(); g.stroke();
+}
+function drawMiniMap() {
+  const C = G.C, [X, Y, W, H] = miniRect(), img = miniImg(C);
+  if (C.wrap) drawMapLayer(X, Y, W, H, G.x - C.W / 2, 0, C.W, C.H, img, 1);
+  else drawMapLayer(X, Y, W, H, 0, 0, C.W, C.H, img, 0);
+  g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 3; g.beginPath();
+  if (C.wrap) g.arc(X + W / 2, Y + H / 2, W / 2, 0, 7); else rr(g, X, Y, W, H, 10);
+  g.stroke();
+}
+const BIGMAP = [1, 0.5, 0.25];
+function bigRect() { return [170, 70, 940, 580]; }
+function drawBigMap() {
+  const C = G.C, [X, Y, W, H] = bigRect(), f = BIGMAP[G.bigmap.zi];
+  let vw = C.W, vh = vw * H / W;                     // 100% = the whole map fits; 50% / 25% show that share of it
+  if (vh < C.H && !C.wrap) { vh = C.H; vw = vh * W / H; }
+  vw *= f; vh *= f;
+  let vx0 = G.x - vw / 2, vy0 = G.y - vh / 2;
+  if (f === 1) { vx0 = C.wrap ? G.x - vw / 2 : (C.W - vw) / 2; vy0 = (C.H - vh) / 2; }
+  else if (!C.wrap) { vx0 = clamp(vx0, Math.min(0, C.W - vw), Math.max(0, C.W - vw)); vy0 = clamp(vy0, Math.min(0, C.H - vh), Math.max(0, C.H - vh)); }
+  else vy0 = clamp(vy0, 0, Math.max(0, C.H - vh));
+  g.fillStyle = 'rgba(0,0,0,.55)'; rr(g, X - 10, Y - 40, W + 20, H + 50, 18); g.fill();
+  txt(`MAP · ${Math.round(f * 100)}%   (tap the map to zoom)`, X + 6, Y - 20, 17, '#ffd96a');
+  drawMapLayer(X, Y, W, H, vx0, vy0, vw, vh, miniImg(C), 0);
+  g.strokeStyle = '#fff'; g.lineWidth = 3; rr(g, X, Y, W, H, 10); g.stroke();
+  g.fillStyle = '#e03b3b'; g.beginPath(); g.arc(X + W - 4, Y - 24, 18, 0, 7); g.fill(); txt('X', X + W - 4, Y - 23, 20, '#fff', 'center', 900);
+}
+/* a tap that starts on the minimap opens the map, and never also steers */
+function mapTap(x, y) {
+  const [mx, my, mw, mh] = miniRect();
+  if (x >= mx - 6 && x <= mx + mw + 6 && y >= my - 6 && y <= my + mh + 6) { G.bigmap = G.bigmap ? null : { zi: 0 }; SFX2.ping && SFX2.ping(); return true; }
+  if (!G.bigmap) return false;
+  const [X, Y, W, H] = bigRect();
+  if (Math.hypot(x - (X + W - 4), y - (Y - 24)) < 28) { G.bigmap = null; return true; }
+  if (x >= X && x <= X + W && y >= Y - 40 && y <= Y + H) { G.bigmap.zi = (G.bigmap.zi + 1) % 3; return true; }
+  return false;
+}
+/* ---------- v5.3 TITLE: a living Vancouver street (concept #2) — North Shore mountains, the harbour, glass towers,
+   the SkyTrain gliding across over the title, a blue bus, and the faced swirl sitting in the intersection.
+   The face is title art only; the in-game hole stays a pure swirl. Drawn on the 2D canvas (no 3D cost on the menu). ---------- */
+const TITLE = { cv: null };
+function titleStatic() {
+  if (TITLE.cv) return TITLE.cv;
+  const c = document.createElement('canvas'); c.width = STAGE_W; c.height = STAGE_H; const x = c.getContext('2d'), r = mulberry(20261031);
+  const sky = x.createLinearGradient(0, 0, 0, 340); sky.addColorStop(0, '#5fb4ea'); sky.addColorStop(1, '#d7f0fb'); x.fillStyle = sky; x.fillRect(0, 0, STAGE_W, 340);
+  const ridge = (base, amp, col, seed, snow) => {
+    const rr2 = mulberry(seed), pts = []; for (let X = -40; X <= STAGE_W + 40; X += 40) pts.push([X, base - amp * (0.35 + 0.65 * Math.abs(Math.sin(X * 0.004 + seed) * Math.cos(X * 0.0023 + seed * 2))) - rr2() * 14]);
+    x.fillStyle = col; x.beginPath(); x.moveTo(-40, 360); for (const [a, b] of pts) x.lineTo(a, b); x.lineTo(STAGE_W + 40, 360); x.fill();
+    if (snow) { x.fillStyle = 'rgba(255,255,255,.9)'; for (const [a, b] of pts) if (b < base - amp * 0.72) { x.beginPath(); x.moveTo(a - 22, b + 16); x.lineTo(a, b); x.lineTo(a + 22, b + 16); x.lineTo(a + 8, b + 12); x.lineTo(a - 6, b + 18); x.fill(); } }
+  };
+  ridge(300, 120, '#7d97bd', 3, true); ridge(330, 80, '#4d7a6a', 7, false);
+  x.fillStyle = '#2d83c2'; x.fillRect(0, 330, STAGE_W, 78);                           // the harbour
+  x.fillStyle = '#1f6aa3'; x.fillRect(0, 330, STAGE_W, 6);
+  // glass towers (left and right of centre), lower in the middle so the swirl reads
+  for (let i = 0; i < 26; i++) {
+    const left = i < 13, bx = left ? 10 + i * 40 + r() * 12 : 760 + (i - 13) * 40 + r() * 12, mid = Math.abs((bx + 18) - 640) / 640;
+    const h = 60 + r() * 140 * (0.45 + mid), w = 30 + r() * 22, top = 412 - h;
+    const col = ['#9fc6dd', '#7fb0cf', '#b9d4e3', '#6e9fbe', '#c8d8e0'][(r() * 5) | 0];
+    x.fillStyle = col; x.fillRect(bx, top, w, h);
+    x.fillStyle = 'rgba(255,255,255,.35)'; for (let wy = top + 6; wy < 405; wy += 9) for (let wx = bx + 4; wx < bx + w - 4; wx += 7) if (r() < 0.7) x.fillRect(wx, wy, 4, 5);
+    x.fillStyle = 'rgba(0,0,0,.12)'; x.fillRect(bx + w * 0.62, top, w * 0.38, h);
+  }
+  // ground: sidewalks, the cross street, the intersection
+  x.fillStyle = '#d6cfc2'; x.fillRect(0, 408, STAGE_W, 312);
+  x.fillStyle = '#4b4f58'; x.fillRect(0, 456, STAGE_W, 120); x.fillRect(548, 408, 184, 230);
+  x.fillStyle = '#f5f1e6'; for (let X = 0; X < STAGE_W; X += 56) if (X < 520 || X > 740) x.fillRect(X, 514, 30, 4);
+  for (let k = 0; k < 7; k++) { x.fillRect(560 + k * 25, 432, 14, 22); x.fillRect(560 + k * 25, 578, 14, 22); x.fillRect(510, 466 + k * 15, 26, 8); x.fillRect(744, 466 + k * 15, 26, 8); }
+  x.fillStyle = '#9a9488'; x.fillRect(0, 452, 548, 4); x.fillRect(732, 452, 548, 4); x.fillRect(0, 576, 548, 4); x.fillRect(732, 576, 548, 4);
+  // street trees on the sidewalks + four streetlights at the corner
+  for (const X of [60, 170, 280, 390, 880, 990, 1100, 1210]) for (const Y of [436, 600]) {
+    x.fillStyle = '#6b4b2e'; x.fillRect(X - 3, Y - 6, 6, 18);
+    x.fillStyle = '#3f8f45'; x.beginPath(); x.arc(X, Y - 16, 18, 0, 7); x.fill(); x.fillStyle = '#58a85a'; x.beginPath(); x.arc(X - 5, Y - 21, 10, 0, 7); x.fill();
+  }
+  return (TITLE.cv = c);
+}
+function drawTitle() {
+  const x = g, t = G.t;
+  x.drawImage(titleStatic(), 0, 0);
+  // drifting clouds
+  for (let i = 0; i < 6; i++) {
+    const cx = ((i * 260 + t * (8 + i * 2)) % (STAGE_W + 300)) - 150, cy = 40 + (i % 3) * 52;
+    x.fillStyle = 'rgba(255,255,255,.85)'; for (const [a, b, rr2] of [[0, 0, 26], [24, -10, 30], [52, 0, 24], [26, 8, 26]]) { x.beginPath(); x.arc(cx + a, cy + b, rr2, 0, 7); x.fill(); }
+  }
+  // harbour shimmer + a little ferry
+  x.strokeStyle = 'rgba(255,255,255,.35)'; x.lineWidth = 2;
+  for (let i = 0; i < 18; i++) { const y = 344 + (i % 6) * 10, xx = ((i * 137 + t * 14 * (i % 2 ? 1 : -1)) % STAGE_W + STAGE_W) % STAGE_W; x.beginPath(); x.moveTo(xx, y); x.lineTo(xx + 22, y); x.stroke(); }
+  const fx = ((t * 18) % (STAGE_W + 200)) - 100; x.fillStyle = '#fff'; x.fillRect(fx, 348, 60, 10); x.fillStyle = '#1565c0'; x.fillRect(fx + 6, 340, 44, 8);
+  // traffic: the blue bus on the far lane, cars on the near one
+  const bx = STAGE_W + 120 - ((t * 70) % (STAGE_W + 340));
+  x.fillStyle = '#1565c0'; rr(x, bx, 446, 150, 38, 7); x.fill(); x.fillStyle = '#bfe3ff'; for (let k = 0; k < 6; k++) x.fillRect(bx + 10 + k * 22, 452, 16, 13);
+  x.fillStyle = '#fff'; x.fillRect(bx, 470, 150, 3); x.fillStyle = '#222'; x.beginPath(); x.arc(bx + 28, 485, 8, 0, 7); x.arc(bx + 122, 485, 8, 0, 7); x.fill();
+  for (let k = 0; k < 3; k++) {
+    const cx = ((t * 95 + k * 470) % (STAGE_W + 200)) - 100, col = ['#e53935', '#fdd835', '#43a047'][k];
+    x.fillStyle = col; rr(x, cx, 548, 70, 22, 6); x.fill(); x.fillStyle = '#bfe3ff'; x.fillRect(cx + 14, 540, 38, 10); x.fillStyle = col; x.fillRect(cx + 10, 538, 46, 4);
+    x.fillStyle = '#222'; x.beginPath(); x.arc(cx + 15, 571, 6, 0, 7); x.arc(cx + 55, 571, 6, 0, 7); x.fill();
+  }
+  // the faced swirl in the intersection
+  const hx = 640, hy = 516, R = 64;
+  x.save(); x.translate(hx, hy); x.scale(1, 0.48);
+  const rim = x.createRadialGradient(0, 0, R * 0.2, 0, 0, R * 1.18); rim.addColorStop(0, '#070012'); rim.addColorStop(0.8, '#2a0d5c'); rim.addColorStop(0.92, '#9b6bff'); rim.addColorStop(1, 'rgba(155,107,255,0)');
+  x.fillStyle = rim; x.beginPath(); x.arc(0, 0, R * 1.18, 0, 7); x.fill();
+  x.rotate(-t * 1.4); x.strokeStyle = 'rgba(180,140,255,.55)'; x.lineWidth = 5;
+  for (let k = 0; k < 3; k++) { x.beginPath(); for (let a = 0; a < 5.5; a += 0.15) { const rr2 = R * 0.95 * (1 - a / 6); x.lineTo(Math.cos(a + k * 2.09) * rr2, Math.sin(a + k * 2.09) * rr2); } x.stroke(); }
+  x.restore();
+  const blink = (t % 4) > 3.85 ? 0.15 : 1;
+  x.fillStyle = '#fff'; for (const s2 of [-1, 1]) { x.beginPath(); x.ellipse(hx + s2 * 20, hy - 6, 9, 11 * blink, 0, 0, 7); x.fill(); }
+  x.fillStyle = '#1a0838'; for (const s2 of [-1, 1]) { x.beginPath(); x.arc(hx + s2 * 20 + 2, hy - 4, 4 * blink, 0, 7); x.fill(); }
+  x.strokeStyle = '#fff'; x.lineWidth = 4; x.lineCap = 'round'; x.beginPath(); x.arc(hx, hy + 2, 14, 0.25, Math.PI - 0.25); x.stroke(); x.lineCap = 'butt';
+  // the title, then the SkyTrain guideway + train crossing over it
+  x.save(); x.font = `900 108px ${UI_FONT}`; x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+  x.lineWidth = 14; x.strokeStyle = '#3b1a86'; x.strokeText('HUNGRY HOLE', 640, 168);
+  const tg = x.createLinearGradient(0, 80, 0, 170); tg.addColorStop(0, '#fff7c2'); tg.addColorStop(1, '#ffc23a'); x.fillStyle = tg; x.fillText('HUNGRY HOLE', 640, 168);
+  x.restore();
+  x.fillStyle = '#c9c9c9'; x.fillRect(0, 186, STAGE_W, 14); x.fillStyle = '#9e9e9e'; x.fillRect(0, 198, STAGE_W, 4);
+  for (let X = 70; X < STAGE_W; X += 285) { x.fillStyle = '#b5b5b5'; x.fillRect(X - 9, 202, 18, 250); x.fillStyle = 'rgba(0,0,0,.12)'; x.fillRect(X + 3, 202, 6, 250); }
+  const tx = ((t * 120) % (STAGE_W + 900)) - 450;
+  for (let k = 0; k < 4; k++) {
+    const cx = tx + k * 104;
+    x.fillStyle = '#f4f6f8'; rr(x, cx, 150, 100, 36, 9); x.fill();
+    x.fillStyle = '#1e5aa8'; x.fillRect(cx, 176, 100, 6); x.fillStyle = '#ffd200'; x.fillRect(cx, 182, 100, 3);
+    x.fillStyle = '#26343f'; for (let w = 0; w < 4; w++) x.fillRect(cx + 8 + w * 23, 157, 17, 13);
+  }
+  x.fillStyle = '#fff'; x.font = `800 22px ${UI_FONT}`; x.textAlign = 'center';
+  x.fillText('a hole that eats things and grows!', 640, 236);
+  x.textAlign = 'left';
+  if (G.screen !== 'main') { x.fillStyle = 'rgba(12,8,36,.62)'; x.fillRect(0, 0, STAGE_W, STAGE_H); }
 }
 /* ---------- main menu backdrop: the same pit on a starry purple floor, with toys circling in ---------- */
 function drawMenu3D() {
@@ -3475,15 +3796,24 @@ function drawHUD() {
   let y = 12;
   if (G.run.kind !== 'story') drawModeHUD();
   else {
-  g.fillStyle = 'rgba(20,14,46,.78)'; rr(g, 12, y, 372, 124, 16); g.fill();
-  txt(`CHAPTER ${C.n} · ${C.name.toUpperCase()}`, 26, y + 18, fitText(`CHAPTER ${C.n} · ${C.name.toUpperCase()}`, 340, 15), '#ffd96a');
+  g.fillStyle = 'rgba(20,14,46,.78)'; rr(g, 12, y, 372, 190, 16); g.fill();
+  const head = `WORLD ${C.n} · ${C.name.toUpperCase()}`;
+  txt(head, 26, y + 18, fitText(head, 340, 15), '#ffd96a');
+  // the objective ladder (story tasks are its size-gate beats)
+  g.fillStyle = 'rgba(255,210,63,.16)'; rr(g, 20, y + 32, 356, 62, 11); g.fill();
+  if (G.goal) {
+    const im = thumb(G.goal.mc || C, G.goal.k, G.goal.pal); if (im) g.drawImage(im, 24, y + 35, 56, 56);
+    txt(`OBJECTIVE ${st.beat + 1}/${C.beats.length}`, 88, y + 48, 13, '#ffd96a');
+    const gn = 'Eat ' + goalName(G.goal); txt(gn, 88, y + 74, fitText(gn, 280, 20), '#fff', 'left', 900);
+  } else txt(C.beats ? 'World complete! Roam and eat anything.' : '', 30, y + 63, 17, '#9ff0a8');
+  txt('BONUS CHECKLIST', 26, y + 108, 11, '#cbd');
   C.CK.forEach((q, j) => {
-    const p = Math.min(st.check[j], q.n), d = p >= q.n, yy = y + 46 + j * 27;
-    tick(32, yy, 10, d);
-    const s = fitText(q.txt, 255, 16); txt(q.txt, 50, yy, s, d ? '#9ff0a8' : '#fff');
-    txt(q.k === 'q' ? `${p}/${q.n}` : `${fmt(p)}/${fmt(q.n)}`, 372, yy, 15, '#cfe', 'right');
+    const p = Math.min(st.check[j], q.n), d = p >= q.n, yy = y + 128 + j * 22;
+    tick(30, yy, 8, d);
+    const s = fitText(q.txt, 262, 14); txt(q.txt, 46, yy, s, d ? '#9ff0a8' : '#eee');
+    txt(q.k === 'q' ? `${p}/${q.n}` : `${fmt(p)}/${fmt(q.n)}`, 372, yy, 13, '#cfe', 'right');
   });
-  y += 132;
+  y += 198;
   // Tiny Quest chips
   for (const a of st.act) {
     const q = C.Q[a.i], h = (q.k === 'q' || q.k === 'f') ? 58 : 38;
@@ -3518,12 +3848,20 @@ function drawHUD() {
   txt(`SIZE ${G.lvl}/${C.N}`, STAGE_W - 240, 72, 14, '#fff');
   g.fillStyle = 'rgba(255,255,255,.15)'; rr(g, STAGE_W - 150, 64, 124, 16, 8); g.fill();
   g.fillStyle = G.lvl >= C.N ? '#ffd23f' : '#8ef08e'; rr(g, STAGE_W - 150, 64, Math.max(16, 124 * p), 16, 8); g.fill();
-  // "How big am I?" readout (left edge)
+  // "How big am I?" readout (under the wallet; the minimap owns the bottom-left)
   const m = realSize();
-  g.fillStyle = 'rgba(20,14,46,.78)'; rr(g, 12, 600, 262, 78, 14); g.fill();
-  txt('HOW BIG AM I?', 26, 616, 12, '#ffd96a');
-  txt(fmtSize(m), 26, 642, 24, '#fff', 'left', 900);
-  txt(sizeWord(m), 26, 666, fitText(sizeWord(m), 240, 14), '#cfe');
+  g.fillStyle = 'rgba(20,14,46,.78)'; rr(g, STAGE_W - 252, 104, 240, 72, 14); g.fill();
+  txt('HOW BIG AM I?', STAGE_W - 240, 119, 12, '#ffd96a');
+  txt(fmtSize(m), STAGE_W - 240, 143, 22, '#fff', 'left', 900);
+  txt(sizeWord(m), STAGE_W - 240, 165, fitText(sizeWord(m), 220, 13), '#cfe');
+  // the friendly cap message (v5.0)
+  if (G.now - (G.capT || -1e9) < 4000) {
+    const gl = goals()[0], msg = gl ? `You're not growing anymore until you get ${goalName(gl)}. Complete your objective to grow more!` : 'Solve this one to grow more!';
+    const fs = fitText(msg, 640, 18); g.font = `800 ${fs}px ${UI_FONT}`; const w = g.measureText(msg).width + 36;
+    g.fillStyle = 'rgba(120,60,0,.85)'; rr(g, STAGE_W / 2 - w / 2, 70, w, 36, 18); g.fill();
+    txt(msg, STAGE_W / 2, 88, fs, '#fff3c4', 'center');
+  }
+  drawRing(); drawMiniMap(); if (G.bigmap) drawBigMap();
   // compass arrows
   for (const c of G.compass) compassArrow(c.o, c.col);
   if (G.joy) {                                       // the floating joystick under the finger
@@ -3585,7 +3923,8 @@ function compassArrow(o, col) {
   const p = [0, 0], X = dx(o.x, G.cam.x), Y = dy(o.y, G.cam.y);
   if (toScreen(X, Y, 0, p) && p[0] > 40 && p[0] < STAGE_W - 40 && p[1] > 40 && p[1] < STAGE_H - 40) return;
   const a = Math.atan2(Y - dy(G.y, G.cam.y), X - dx(G.x, G.cam.x));   // map direction (the camera never turns)
-  const ex = clamp(STAGE_W / 2 + Math.cos(a) * 900, 420, STAGE_W - 40), ey = clamp(STAGE_H / 2 + Math.sin(a) * 900, 120, STAGE_H - 110);
+  let ex = clamp(STAGE_W / 2 + Math.cos(a) * 900, 420, STAGE_W - 40), ey = clamp(STAGE_H / 2 + Math.sin(a) * 900, 120, STAGE_H - 110);
+  if (ex < 250 && ey > STAGE_H - 240) ex = 250;
   g.save(); g.translate(ex, ey); g.rotate(a);
   g.fillStyle = col; g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 3;
   g.beginPath(); g.moveTo(26, 0); g.lineTo(-12, -18); g.lineTo(-4, 0); g.lineTo(-12, 18); g.closePath(); g.stroke(); g.fill();
@@ -3598,7 +3937,7 @@ function render() {
   if (G.mode === 'play' && G.C) {
     drawWorld3D(); drawLabels(); drawHUD(); if (G.C.hud) G.C.hud();
     if (G.cine && G.C.cineDraw) G.C.cineDraw();
-  } else drawMenu3D();
+  } else drawTitle();
 }
 
 /* =====================================================================
@@ -3627,29 +3966,31 @@ const UI = {
     G.screen = name;
     $('hudbtns').classList.toggle('on', name === 'game');
     $('hudbtns').classList.toggle('mode', name === 'game' && G.run.kind === 'edu');
+    $('sizebtns').classList.toggle('on', name === 'game' && G.run.kind === 'explore');
     if (name !== 'game') { G.mode = 'menu'; G.joy = null; }
   },
   main() {
     const n = S.last, C = CH[n];
-    $('main-sub').textContent = S.ch[n].x == null && n === 1 && !S.ch[1].pts ? 'Story · Chapter 1: ' + C.name : 'Story · resume Chapter ' + n + ': ' + C.name;
+    $('main-sub').textContent = S.ch[n].x == null && n === 1 && !S.ch[1].pts ? '' : 'Last played: World ' + n + ' · ' + C.name;
     UI.show('main');
   },
-  /* the chapter cards: STORY (resume + boards), or a picker for I SPY (chapters unlocked in Story) / EDUCATIONAL (all) */
+  /* every mode opens a world pick: STORY (your worlds), I SPY (worlds unlocked in Story), EDUCATIONAL and EXPLORATION (all) */
   chapters(kind) {
     kind = kind || 'story'; UI.chKind = kind;
-    $('chap-title').textContent = kind === 'ispy' ? 'I SPY · PICK A WORLD' : kind === 'edu' ? 'EDUCATIONAL · PICK A WORLD' : 'CHAPTERS';
+    $('chap-title').textContent = { story: 'STORY · PICK A WORLD', ispy: 'I SPY · PICK A WORLD', edu: 'EDUCATIONAL · PICK A WORLD', explore: 'EXPLORATION · PICK A WORLD' }[kind];
     const box = $('chap-cards'); box.innerHTML = '';
     for (let n = 1; n <= NW; n++) {
-      const C = CH[n], st = S.ch[n], prepd = prep(C), open = kind === 'edu' || st.u;
+      const C = CH[n], st = S.ch[n], prepd = prep(C), open = kind === 'edu' || kind === 'explore' || st.u;
       const done = prepd.CK.filter((q, j) => st.check[j] >= q.n).length, bd = st.board.filter(Boolean).length;
       const el = document.createElement('div');
       el.className = 'ccard' + (open ? '' : ' locked'); el.style.setProperty('--c1', C.c1); el.style.setProperty('--c2', C.c2);
       const rows = kind === 'ispy' ? `<div class="row"><span>I Spy wins</span><b>${(S.ispy[n] && S.ispy[n].wins) || 0}</b></div><div class="row"><span>New targets left</span><b>${S.ispy[n] && S.ispy[n].deck.length === 30 ? 30 - S.ispy[n].pos : 30}/30</b></div>`
         : kind === 'edu' ? `<div class="row"><span>Lesson sets done</span><b>${(S.edu[n] && S.edu[n].done) || 0}</b></div><div class="row"><span>Next set</span><b>${((S.edu[n] && S.edu[n].set) || 0) % prepd.edu.length + 1}/${prepd.edu.length}</b></div>`
-        : `<div class="row"><span>Size reached</span><b>${st.bm ? fmtSize(st.bm) : '—'}</b></div><div class="row"><span>Checklist (bonus)</span><b>${done}/3</b></div><div class="row"><span>Tiny Quests</span><b>${bd}/40</b></div>`;
-      el.innerHTML = `<div class="num">CHAPTER ${n}${st.c ? ' · COMPLETE' : ''}</div><div class="nm">${esc(C.name)}</div>${rows}
+        : kind === 'explore' ? `<div class="row"><span>The whole map</span><b>open</b></div><div class="row"><span>Size</span><b>you pick</b></div>`
+        : `<div class="row"><span>Objectives</span><b>${Math.min(st.beat, (prepd.beats || []).length)}/${(prepd.beats || []).length}</b></div><div class="row"><span>Checklist (bonus)</span><b>${done}/3</b></div><div class="row"><span>Tiny Quests</span><b>${bd}/40</b></div>`;
+      el.innerHTML = `<div class="num">WORLD ${n}${st.c ? ' · COMPLETE' : ''}</div><div class="nm">${esc(C.name)}</div>${rows}
         <div class="row"><span>Coins</span><b>${fmt(st.w)}</b></div>
-        ${!open ? `<div class="lock">${svg('lock')}</div><div class="acts" style="font-size:15px;opacity:.9">Reach Chapter ${n - 1}'s full size in Story to unlock</div>`
+        ${!open ? `<div class="lock">${svg('lock')}</div><div class="acts" style="font-size:15px;opacity:.9">Finish World ${n - 1} in Story to unlock</div>`
         : kind === 'story' ? `<div class="acts"><button class="btn sm green" data-play="${n}">${svg('play')} ${st.x == null ? 'PLAY' : 'RESUME'}</button><button class="btn sm blue" data-board="${n}">${svg('board')} BOARD</button></div>`
         : `<div class="acts"><button class="btn sm green" data-play="${n}">${svg('play')} PLAY</button></div>`}`;
       box.appendChild(el);
@@ -3663,7 +4004,7 @@ const UI = {
     $('board-title').textContent = `QUEST BOARD · ${C.name} · ${st.board.filter(Boolean).length}/40`;
     $('board-list').innerHTML = C.Q.map((q, i) => `<div class="qitem${st.board[i] ? ' done' : ''}"><span class="tk">${st.board[i] ? svg('check') : ''}</span><span>${i + 1}. ${esc(q.k === 'f' ? (q.op === 'word' ? 'Find the missing letter' : q.op === 'miss' ? 'Find the missing number' : 'Find the answer to a ' + (q.op === 'add' ? 'plus' : q.op === 'sub' ? 'minus' : 'times') + ' question') : q.txt)}</span></div>`).join('')
       + (C.countries ? `<div class="qitem pp"><b>PASSPORT · ${Object.keys(S.passport).length}/${Object.keys(C.countries).length}</b><br>${Object.keys(C.countries).map(cc => `<span style="margin-right:14px;opacity:${S.passport[cc] ? 1 : .4}">${S.passport[cc] ? svg('check') : ''}${esc(C.regionName(cc))}</span>`).join('')}</div>` : '');
-    $('board-back').onclick = () => back === 'pause' ? (UI.show('game'), UI.pause()) : UI.chapters();
+    $('board-back').onclick = () => back === 'pause' ? (UI.show('game'), UI.pause()) : UI.chapters('story');
     G.joy = null;
     UI.show('board');
   },
@@ -3725,7 +4066,7 @@ const UI = {
       const arrive = bankerArrive(amt);
       const chips = (sel, key) => unl.map(n => `<button class="tab${n === sel ? ' sel' : ''}" data-${key}="${n}">${n}. ${esc(CH[n].short)} · ${fmt(S.ch[n].w)}</button>`).join(' ');
       UI.modal(`<div style="display:flex;gap:18px;align-items:center;text-align:left"><div id="bk-fig">${BANKER_SVG}</div>
-        <div><div class="h2" style="margin:0;text-align:left">THE BANKER</div><div style="font-size:18px;opacity:.9">"I move coins between chapters. I keep 40% for my trouble!"</div></div></div>
+        <div><div class="h2" style="margin:0;text-align:left">THE BANKER</div><div style="font-size:18px;opacity:.9">"I move coins between worlds. I keep 40% for my trouble!"</div></div></div>
         <div style="margin:12px 0 4px;font-weight:800">FROM</div><div>${chips(from, 'from')}</div>
         <div style="margin:12px 0 4px;font-weight:800">TO</div><div>${chips(to, 'to')}</div>
         <div style="margin:14px 0;display:flex;gap:8px;justify-content:center;align-items:center">
@@ -3772,7 +4113,7 @@ const UI = {
       <textarea id="t-code" spellcheck="false"></textarea>
       <button class="btn sm" id="b-import" style="margin-top:8px">IMPORT CODE</button>
       <div style="font-size:22px;font-weight:900;margin:16px 0 6px">RESET</div>
-      <div class="set-row" style="font-size:18px">Chapter <span class="seg" id="rs-seg">${WN.map(n => `<button data-rs="${n}" class="${n === (UI.rsCh || 1) ? 'sel' : ''}">${n}</button>`).join('')}</span></div>
+      <div class="set-row" style="font-size:18px">World <span class="seg" id="rs-seg">${WN.map(n => `<button data-rs="${n}" class="${n === (UI.rsCh || 1) ? 'sel' : ''}">${n}</button>`).join('')}</span></div>
       <button class="btn sm red" id="b-rch"></button> <button class="btn sm red" id="b-rall"></button>
       <div style="font-size:15px;opacity:.75;margin-top:16px">Credits: Metro Vancouver map data © OpenStreetMap contributors (ODbL), via Overture Maps. Music slots: see audio/manifest.js.</div>`;
     document.querySelectorAll('[data-set]').forEach(b => b.onclick = () => {
@@ -3787,7 +4128,7 @@ const UI = {
     $('b-file').onclick = () => $('f-import').click();
     $('f-import').onchange = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => UI.tryImport(String(r.result)); r.readAsText(f); };
     $('b-import').onclick = () => UI.tryImport($('t-code').value);
-    twoTap($('b-rch'), 'RESET CHAPTER ' + (UI.rsCh || 1), () => { resetChapter(UI.rsCh || 1); UI.settings(UI.setBack); });
+    twoTap($('b-rch'), 'RESET WORLD ' + (UI.rsCh || 1), () => { resetChapter(UI.rsCh || 1); UI.settings(UI.setBack); });
     twoTap($('b-rall'), 'RESET EVERYTHING', () => { S = freshSave(); persist(); UI.settings(UI.setBack); });
     UI.show('settings');
   },
@@ -3795,7 +4136,7 @@ const UI = {
     const d = parseImport(text);
     if (!d) { UI.modal(`<div class="h2">That code didn't work</div><p style="font-size:20px">Check you copied the whole save code and try again. Your current save is safe.</p><button class="btn" id="m-ok">OK</button>`); $('m-ok').onclick = UI.closeModal; return; }
     const tq = WN.reduce((a, n) => a + d.ch[n].board.filter(Boolean).length, 0), cc = WN.filter(n => d.ch[n].c).length;
-    UI.modal(`<div class="h2">Replace your save?</div><p style="font-size:20px">The imported save has ${cc} chapter${cc === 1 ? '' : 's'} complete and ${tq} Tiny Quests done.<br>This will overwrite the save on this device.</p>
+    UI.modal(`<div class="h2">Replace your save?</div><p style="font-size:20px">The imported save has ${cc} world${cc === 1 ? '' : 's'} complete and ${tq} Tiny Quests done.<br>This will overwrite the save on this device.</p>
       <button class="btn green" id="m-yes">YES, IMPORT</button><button class="btn grey" id="m-no">CANCEL</button>`);
     $('m-yes').onclick = () => { S = d; persist(); UI.closeModal(); UI.settings(UI.setBack); };
     $('m-no').onclick = UI.closeModal;
@@ -3811,13 +4152,13 @@ const UI = {
       <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
       <button class="btn green" id="p-res" style="width:380px">RESUME</button>
       ${story ? '<button class="btn blue" id="p-board" style="width:380px">QUEST BOARD</button>' : ''}
-      <button class="btn" id="p-restart" style="width:380px">${story ? 'RESTART CHAPTER RUN' : 'START OVER'}</button>
+      <button class="btn" id="p-restart" style="width:380px">${story ? 'RESTART WORLD RUN' : 'START OVER'}</button>
       <button class="btn pink" id="p-menu" style="width:380px">SAVE &amp; MAIN MENU</button>
       <button class="btn grey" id="p-snd" style="width:380px">SOUND: ${S.settings.sound ? 'ON' : 'OFF'}</button></div>
-      <div style="font-size:15px;opacity:.8;margin-top:8px">${story ? 'Restart puts you back at the chapter start, small again. Coins, upgrades and quest boards are kept.' : 'Start over makes a fresh run. Coins you earned are kept.'}</div>`);
+      <div style="font-size:15px;opacity:.8;margin-top:8px">${story ? 'Restart puts you back at the start of this world, small again, with the objectives from the top. Coins, upgrades and quest boards are kept.' : 'Start over makes a fresh run. Coins you earned are kept.'}</div>`);
     $('p-res').onclick = UI.resume;
     if ($('p-board')) $('p-board').onclick = () => { UI.closeModal(); UI.board(G.C.n, 'pause'); G.mode = 'play'; };
-    twoTap($('p-restart'), story ? 'RESTART CHAPTER RUN' : 'START OVER', () => { UI.closeModal(); if (story) restartRun(); else loadChapter(G.C.n, G.run.kind); UI.show('game'); G.paused = false; });
+    twoTap($('p-restart'), story ? 'RESTART WORLD RUN' : 'START OVER', () => { UI.closeModal(); if (story) restartRun(); else loadChapter(G.C.n, G.run.kind); UI.show('game'); G.paused = false; });
     $('p-menu').onclick = () => { persist(); UI.closeModal(); G.paused = false; G.mode = 'menu'; UI.main(); };
     $('p-snd').onclick = () => { S.settings.sound = S.settings.sound ? 0 : 1; persist(); syncSoundBtn(); $('p-snd').textContent = 'SOUND: ' + (S.settings.sound ? 'ON' : 'OFF'); };
   },
@@ -3826,8 +4167,8 @@ const UI = {
   complete() {
     const C = G.C, n = C.n;
     G.paused = true; G.joy = null;
-    UI.modal(`<div class="h2">CHAPTER ${n} COMPLETE!</div><p style="font-size:22px">${esc(C.doneTxt || 'You reached full size!')}</p>
-      <p style="font-size:19px">${n < 7 ? `Chapter ${n + 1}: <b>${esc(CH[n + 1].name)}</b> is unlocked.` : 'Every chapter stays open forever.'}</p>
+    UI.modal(`<div class="h2">WORLD ${n} COMPLETE!</div><p style="font-size:22px">${esc(C.doneTxt || 'You ate every objective!')}</p>
+      <p style="font-size:19px">${n < NW ? `World ${n + 1}: <b>${esc(CH[n + 1].name)}</b> is unlocked.` : 'Every world stays open forever.'}</p>
       <button class="btn green" id="c-menu">MAIN MENU</button>`);
     $('c-menu').onclick = () => { UI.closeModal(); G.paused = false; persist(); UI.main(); };
   },
@@ -3863,9 +4204,9 @@ const UI = {
     UI.show('credits'); G.mode = 'menu';
     $('credits-roll').innerHTML = `<div style="font-size:64px;font-weight:900;color:#ffd23f">YOU ARE THE BLACK HOLE</div><br>
       <div>HUNGRY HOLE</div><br><div>From one Lego brick…</div><div>…to a whole galaxy.</div><br>
-      <div>The House · The Neighbourhood · Metro Vancouver</div><div>The Wilderness · World Tour · Space · The Humbling</div><br>
-      <div>Thanks for playing!</div><br><div>+5,000 coins added to Chapter 7</div><br><div>Journey COMPLETE</div>
-      <div style="font-size:22px;opacity:.85">Every chapter stays open forever. Go back and finish your Quest Boards!</div><br>
+      <div>The Home · Metro Vancouver · Stanley Park</div><div>Space · The Globe</div><br>
+      <div>Thanks for playing!</div><br><div>+5,000 coins added to World 5</div><br><div>Journey COMPLETE</div>
+      <div style="font-size:22px;opacity:.85">Every world stays open forever. Go back and finish your Quest Boards!</div><br>
       <button class="btn" id="cr-done">MAIN MENU</button>`;
     const roll = $('credits-roll'); roll.style.transition = 'none'; roll.style.top = '720px';
     requestAnimationFrame(() => { roll.style.transition = 'top 14s linear'; roll.style.top = '60px'; });
@@ -3890,7 +4231,7 @@ function bankerTransfer(from, to, amt) {
 function resetChapter(n) { const u = S.ch[n].u; S.ch[n] = freshCh(n); S.ch[n].u = u || n === 1 ? 1 : 0; if (n === 5) S.passport = {}; persist(); }
 function startChapter(n, kind) {
   audioInit(); kind = kind || 'story';
-  if (!S.ch[n].u && kind !== 'edu') return;  // Educational: every chapter is always open
+  if (!S.ch[n].u && kind !== 'edu' && kind !== 'explore') return;  // Educational + Exploration: every world is always open
   if (G.mode === 'play') persist();          // keep the chapter we are leaving exactly where it was
   UI.closeModal(); loadChapter(n, kind); UI.show('game'); G.mode = 'play'; persist();
 }
@@ -3925,7 +4266,9 @@ function stagePt(e) { const r = $('stage').getBoundingClientRect(); return [(e.c
 cv.addEventListener('pointerdown', e => {
   audioInit();
   if (G.mode !== 'play' || G.paused || G.cine || G.joy) return;
-  const [x, y] = stagePt(e); G.joy = { id: e.pointerId, x0: x, y0: y, x, y };
+  const [x, y] = stagePt(e);
+  if (mapTap(x, y)) return;
+  G.joy = { id: e.pointerId, x0: x, y0: y, x, y };
   try { cv.setPointerCapture(e.pointerId); } catch (er) { /* ok */ }
 });
 cv.addEventListener('pointermove', e => { const j = G.joy; if (j && e.pointerId === j.id) [j.x, j.y] = stagePt(e); });
@@ -3936,17 +4279,18 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) { if 
 window.addEventListener('pagehide', persist);
 
 /* buttons */
-$('b-start').onclick = () => { audioInit(); startChapter(S.ch[S.last] && S.ch[S.last].u ? S.last : 1); };
+$('b-start').onclick = () => { audioInit(); UI.chapters('story'); };
+$('b-explore').onclick = () => { audioInit(); UI.chapters('explore'); };
+$('b-bigger').onclick = () => { if (G.run.kind === 'explore') MODES.explore.resize(1.6); };
+$('b-smaller').onclick = () => { if (G.run.kind === 'explore') MODES.explore.resize(1 / 1.6); };
+$('mi-story').innerHTML = svg('book'); $('mi-ispy').innerHTML = svg('eye'); $('mi-edu').innerHTML = svg('grad'); $('mi-explore').innerHTML = svg('compass');
 $('b-ispy').onclick = () => { audioInit(); UI.chapters('ispy'); };
 $('b-edu').onclick = () => { audioInit(); UI.chapters('edu'); };
 $('b-quest-hud').innerHTML = svg('help');
 $('b-up-hud').onclick = () => { if (G.mode !== 'play') return; G.paused = true; G.joy = null; persist(); UI.upgrades(G.C.n, true); };
 $('b-quest-hud').onclick = () => UI.quests();
-$('b-chapters').onclick = () => { audioInit(); UI.chapters(); };
-$('b-upgrades').onclick = () => { audioInit(); UI.upgrades(S.last, false); };
 $('b-settings').onclick = () => { audioInit(); UI.settings('main'); };
-$('b-gear').onclick = () => { audioInit(); UI.settings('main'); };
-$('b-gear').innerHTML = svg('gear');
+$('b-settings').innerHTML = svg('gear');
 $('b-pause').innerHTML = svg('pause');
 $('b-pause').onclick = () => UI.pause();
 $('b-sound-hud').onclick = () => { S.settings.sound = S.settings.sound ? 0 : 1; syncSoundBtn(); persist(); };
