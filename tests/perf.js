@@ -6,7 +6,7 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
 const SPOTS = [
   ['W2 Vancouver downtown', `const { G, S } = HH; S.ch[2].u = 1; HH.startChapter(2, 'explore'); const o = G.auth.find(o => o.id === 'canadaplace'); G.x = o.x; G.y = o.y + 120; HH.setHoleD(6);`],
   ['W3 Stanley Park West End', `const { G, S } = HH; S.ch[3].u = 1; HH.startChapter(3, 'explore'); const p = G.C.P(-123.1395, 49.2885); G.x = p[0]; G.y = p[1]; HH.setHoleD(4);`],
-  ['W5 Globe street start', `const { G, S } = HH; S.ch[5].u = 1; HH.startChapter(5, 'explore'); G.x = G.C.start[0]; G.y = G.C.start[1]; HH.setHoleD(.05);`],
+  ['W4 Globe street start', `const { G, S } = HH; S.ch[4].u = 1; HH.startChapter(4, 'explore'); G.x = G.C.start[0]; G.y = G.C.start[1]; HH.setHoleD(.05);`],
 ];
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });

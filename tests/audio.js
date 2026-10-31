@@ -32,8 +32,8 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
   const menu = await waitTrack('menu.mp3');
   results.push(['back on the menu: menu.mp3 plays', menu.track === 'menu.mp3' && menu.playing && menu.level > 0, menu]);
 
-  // v5.14 music per world: roster order ch1-ch5 (Home, Vancouver, Stanley Park, Space, Globe); ch6/ch7 retired
-  const MUS = { 1: 'ch1.mp3', 2: 'ch2.mp3', 3: 'ch3.mp3', 4: 'ch4.mp3', 5: 'ch5.mp3' }, chs = {};
+  // v5.14 music per world: each world keeps its own track: Home ch1, Vancouver ch2, Stanley Park ch3, Globe ch5, Space ch4 (v5.1 world order); ch6/ch7 retired
+  const MUS = { 1: 'ch1.mp3', 2: 'ch2.mp3', 3: 'ch3.mp3', 4: 'ch5.mp3', 5: 'ch4.mp3' }, chs = {};
   for (let n = 1; n <= 5; n++) { await p.evaluate(n => { HH.S.ch[n].u = 1; HH.startChapter(n); }, n); const d = await waitTrack(MUS[n]); chs[n] = d.track === MUS[n] && d.playing && d.level > 0; }
   results.push(['world changes: each of the five worlds plays its own track', Object.values(chs).every(Boolean), chs]);
 

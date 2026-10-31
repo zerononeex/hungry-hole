@@ -1549,205 +1549,7 @@ const CH = [null];
 })();
 
 
-/* ---------- WORLD 4: SPACE — from a footprint on the Moon to the Sun (play-scale sizes and distances, real order) ----------
-   You start beside the Apollo landing site on the Moon, small enough to eat moon dust. The Moon is the gateway: eat it
-   and Earth, its space junk and the ISS open up, then the planets (all eight orbit the Sun once the Moon is gone), their
-   moons (Jupiter has dozens, with aliens), the asteroid belt, the dwarf planets, the Kuiper belt, the Oort cloud and
-   Planet Nine (if it's real). The Sun is the last thing you eat. */
-(() => {
-  const W = 80000, H = 80000, SX = 40000, SY = 40000;
-  const orb = (r, a) => [SX + Math.cos(a) * r, SY + Math.sin(a) * r];
-  const circ = (cx, cy, r, n = 64, a0 = 0) => { const p = []; for (let i = 0; i <= n; i++) { const a = a0 + i / n * 6.2832; p.push(cx + Math.cos(a) * r, cy + Math.sin(a) * r); } return p; };
-  // id, orbit radius, start angle, label line 2, fact, orbit speed (units/s along the orbit)
-  const PLANETS = [
-    ['mercury', 2500, 0.6, 'Planet 1 — closest to the Sun', 'Mercury is the smallest planet.', 26],
-    ['venus', 3600, 2.2, 'Planet 2', 'Venus is the hottest planet.', 20],
-    ['earth', 4800, 4.0, 'Planet 3 — our home!', 'Earth is the only planet we know with life.', 16],
-    ['mars', 6200, 5.0, 'Planet 4 — the red planet', 'Mars has the tallest volcano in the solar system.', 13],
-    ['jupiter', 12500, 1.2, 'Planet 5 — the biggest', 'Jupiter is so big that all the other planets could fit inside it.', 9],
-    ['saturn', 16000, 3.0, 'Planet 6', 'Saturn\'s rings are made of ice and rock.', 7],
-    ['uranus', 19500, 4.6, 'Planet 7', 'Uranus spins on its side!', 6],
-    ['neptune', 23000, 0.2, 'Planet 8 — the farthest planet', 'Neptune has the fastest winds in the solar system.', 5],
-  ];
-  const BELT = [7600, 9600], KUIPER = [24500, 30000], OORT = [33000, 39500];
-  const EARTH = orb(4800, 4.0), MOON = [EARTH[0] + 380, EARTH[1] - 260], MOON_R = 30;   // the Moon's surface is a zoomed-in stage (the Moon you swallow is 15 across)
-  const RINGS = [260, 900];
-  let planetObj = {}, moonGone = () => false;
-  // where things are right now (the planets move): Saturn's rings and Jupiter's alien zone travel with them
-  const at0 = id => planetObj[id] || null;
-  function zoneAt(x, y) {
-    if (x < 0 || y < 0 || x > W || y > H) return null;
-    if (!moonGone() && Math.hypot(x - MOON[0], y - MOON[1]) < MOON_R) return 'moon';
-    const r = Math.hypot(x - SX, y - SY);
-    if (r < 1500) return null;
-    if (Math.hypot(x - EARTH[0], y - EARTH[1]) < 1300) return 'earthorbit';
-    if (r > BELT[0] && r < BELT[1]) return 'belt';
-    if (r > KUIPER[0] && r < KUIPER[1]) return 'kuiper';
-    if (r > OORT[0] && r < OORT[1]) return 'oort';
-    return 'space';
-  }
-  const PW = { pluto: 14, eris: 14, haumea: 11, makemake: 11, gonggong: 9, quaoar: 9, sedna: 8, ceres: 8, europa: 17, io: 18, moon: 15, callisto: 23, titan: 24, ganymede: 25,
-    mercury: 30, mars: 40, venus: 56, earth: 60, planet9: 90, neptune: 110, uranus: 118, saturn: 175, jupiter: 210, sun: 330 };   // fit widths in play units, compressed real order
-  const sized = (n, k, o) => [n, 1, Object.assign({ planet: 1, m: [PW[k], PW[k]] }, o || {})];
-  const E6 = ['', '', '', '', '', ''];                                // no space junk at moon-dust sizes
-  CH.push({
-    n: 4, key: 'space', mus: 'ch4.mp3', name: 'Space', short: 'Space', c1: '#3949ab', c2: '#0d1240', bgc: '#03030c', rim: '#a98bff', space: 1,
-    W, H, start: [MOON[0] - 1.2, MOON[1] + 5.2], cost: 3.6, need: 60, needP: 1.6, xpk: 2, spd: 1.4, pv: 1.2, view: 13,
-    sizes: [0, .25, .5, 1, 2, 4, 8, 16, 26, 42, 66, 100, 150, 230, 350, 520],
-    // "How big am I?": moon-walk sizes in metres, then the gateway jump to moon-sized and up
-    real: [0, .3, .8, 2, 4, 10, 1500, 3.5e6, 5e6, 7e6, 1e7, 1.4e7, 3e7, 6e7, 1.4e8, 1.4e9],
-    tagN: { asteroid: 'asteroid' },
-    types: {
-      // the Moon (Apollo landing site)
-      moondust: ['moon dust', 1, { pl: 'moon dust' }], pebble: ['moon pebble', 1], moonrock: ['moon rock', 2], boot: ['boot print', 1, { m: [.3, .02] }], camera: ['moon camera', 3],
-      flag: ['flag', 3], seismo: ['moonquake detector', 4], astronaut: ['astronaut', 4, { mv: 'w' }], lunarrover: ['the moon buggy', 1, { m: [3, 1.2] }], lander: ['the Apollo lander', 1, { m: [5.5, 6] }],
-      crater: ['small crater', 5], moonhill: ['moon hill', 1, { m: [4.5, 1.6] }], bigcrater: ['big crater', 1, { m: [6.5, .5] }], apolloflag: ['the Apollo flag', 1, { m: [.6, 1.4] }],
-      // space
-      rock: ['space rock', 7, { s: .6 }], ice: ['ice rock', 7], bolt: ['space bolt', 7], glove: ['lost glove', 7], stardust: ['stardust', 7, { pl: 'stardust' }], junk: ['space junk', 7, { pl: 'space junk' }],
-      satellite: ['satellite', 8], meteor: ['meteor', 8, { s: .7, mv: 'fly' }], asteroid: ['asteroid', 8, { tags: 'asteroid' }], probe: ['space probe', 8], telescope: ['space telescope', 8],
-      comet: ['comet', 9, { s: 1.2, mv: 'fly' }], ufo: ['UFO', 9, { mv: 'fly' }], rocket: ['rocket', 9, { mv: 'w' }], alien: ['alien', 9, { mv: 'w' }],
-      bigast: ['big asteroid', 9, { tags: 'asteroid', s: 1.1 }], iss: ['International Space Station', 1, { m: [14, 6] }],
-      station: ['space station', 10, {}], outpost: ['alien outpost', 10, {}], minimoon: ['small moon', 8], giantcomet: ['giant comet', 11, { s: 1.4, mv: 'fly' }], mothership: ['alien mothership', 11, { s: 1.3, mv: 'w' }],
-      moon: ['the Moon', 1, { planet: 1, m: [PW.moon, .15] }], pluto: sized('Pluto', 'pluto'), io: sized('Io', 'io'), europa: sized('Europa', 'europa'), ganymede: sized('Ganymede', 'ganymede'),
-      callisto: sized('Callisto', 'callisto'), titan: sized('Titan', 'titan'), ceres: sized('Ceres', 'ceres'), eris: sized('Eris', 'eris'), haumea: sized('Haumea', 'haumea'),
-      makemake: sized('Makemake', 'makemake'), gonggong: sized('Gonggong', 'gonggong'), quaoar: sized('Quaoar', 'quaoar'), sedna: sized('Sedna', 'sedna'), planet9: sized('Planet Nine', 'planet9'),
-      mercury: sized('Mercury', 'mercury'), venus: sized('Venus', 'venus'), earth: sized('Earth', 'earth'), mars: sized('Mars', 'mars'),
-      jupiter: sized('Jupiter', 'jupiter'), saturn: sized('Saturn', 'saturn'), uranus: sized('Uranus', 'uranus'), neptune: sized('Neptune', 'neptune'),
-      sun: ['the Sun', 1, { c1: '#ffcc33', m: [PW.sun, PW.sun] }],
-      rover: ['Mars rover', 1, { m: [9, 6] }], ringice: ['ring ice', 8, { s: .7 }], ringrock: ['ring rock', 8, { s: .8 }], hat: ['top hat', 7],
-    },
-    /* v5.1 Part 14 (spec v5.15 addendum 13, corrected): the ambient scatter between the clusters is cut by half (0.30 -> 0.15 of v3).
-       The Apollo site, Earth orbit, the planetary clusters and the placed discoveries keep their density; nothing else is rebalanced. */
-    zones: {
-      moon: { d: 1.6, coin: .2, t: ['moondust:5,pebble:3,boot:2', 'pebble:2,moonrock:4', 'moonrock:2,camera,flag:.3', 'seismo:.5,astronaut:.6,moonrock', 'crater:.8'] },
-      space: { d: .55 * SPACE_CUT, t: [...E6, 'rock:3,ice,bolt,glove,stardust:2', 'satellite,meteor:2,probe', 'comet:2,ufo,rocket', 'station:.2,outpost:.3', 'giantcomet'] },
-      earthorbit: { d: 1.1, coin: .3, t: [...E6, 'junk:4,bolt:3,glove:2,rock', 'satellite:4,telescope', 'rocket:2', 'station'] },
-      belt: { d: 1.3 * SPACE_CUT, t: [...E6, 'rock:4,stardust', 'asteroid:8', 'bigast:5,comet', 'outpost', 'mothership:.3'] },
-      kuiper: { d: .8 * SPACE_CUT, t: [...E6, 'ice:5,rock', 'meteor,minimoon', 'comet:3', '', 'giantcomet:2'] },
-      oort: { d: .35 * SPACE_CUT, t: [...E6, 'ice:6', 'meteor', 'comet:4', '', 'giantcomet:3'] },
-      xspace: { d: .2 * SPACE_CUT, deco: 1, t: [...E6, 'rock:3,ice:2', 'meteor,satellite', 'comet:2', '', 'giantcomet'] },
-    },
-    zoneAt, outside: () => 'xspace',
-    build(add, rng) {
-      const K = (k, x, y, o) => add(k, x, y, Object.assign({ keep: 1 }, o));
-      // the Moon: a grey disc you start on; the Apollo landing site with its lander, buggy, flag and boot prints
-      const moon = K('moon', MOON[0], MOON[1], { id: 'moon', label: 'The Moon', sub: 'Earth\'s moon', under: 1, nosolid: 1, flatMoon: 1, fact: 'Twelve astronauts have walked on the Moon.' }) || { dead: 1 };
-      moonGone = () => !!moon.dead;
-      K('apolloflag', MOON[0] + 1.8, MOON[1] + 4.6, { id: 'apolloflag', label: 'the Apollo flag', fact: 'Astronauts planted flags on the Moon. There is no wind, so a rod holds them out.' });
-      K('lunarrover', MOON[0] + 6, MOON[1] - 1.5, { id: 'lunarrover', label: 'the moon buggy', yaw: .6, fact: 'Astronauts drove an electric car on the Moon!' });
-      K('lander', MOON[0] - 4.2, MOON[1] - 3.4, { id: 'lander', label: 'the Apollo lander', fact: 'The lander carried two astronauts down to the Moon and back up again.' });
-      // hills and big craters to grow on before you can swallow the Moon itself
-      for (let i = 0; i < 14; i++) { const a = rng() * 6.28, d = 9 + rng() * 18; add(i % 3 ? 'moonhill' : 'bigcrater', MOON[0] + Math.cos(a) * d, MOON[1] + Math.sin(a) * d, { quiet: 1, s: .7 + rng() * .6 }); }
-      for (let i = 0; i < 16; i++) add('boot', MOON[0] - 1 + i * .25, MOON[1] + 2 + Math.sin(i) * .2, { yaw: .3 });
-      for (let i = 0; i < 2; i++) add('astronaut', MOON[0] + 1.2 + i * 1.5, MOON[1] + .8, { label: i ? '' : 'Astronaut', quiet: 1 });
-      // the planets, on their orbits (Earth holds still until the Moon is eaten, so your start can't drift away)
-      for (const [id, r, a, sub, fact, sp] of PLANETS) {
-        const [x, y] = orb(r, a), o = { id, label: tname(G.C, id), sub, fact };
-        Object.assign(o, id !== 'earth' ? { path: circ(SX, SY, r, 96, a), spd: sp, loop: 1, ph: 0 } : { path: [x, y, x + 1, y], spd: 0, orbit: 1 });
-        planetObj[id] = K(id, x, y, o) || { x, y, dead: 1 };          // (an eaten planet still anchors its moons' orbits)
-        if (planetObj[id].pb === undefined && id === 'earth') planetObj[id].pb = [0, 0, W, H];
-      }
-      // moons and followers: anything that orbits a planet rides along with it
-      const fol = [];
-      // a follower is a mover with no path of its own (orbit: 1): tick() places it around its planet, and it is always gathered
-      const follow = (k, par, R, a0, w, o) => { const p = planetObj[par], x = p.x + Math.cos(a0) * R, y = p.y + Math.sin(a0) * R, ob = add(k, x, y, Object.assign({ quiet: 1, path: [x, y, x + 1, y], spd: 0, orbit: 1 }, o)); if (ob) { ob.pb = [0, 0, W, H]; fol.push([ob, p, R, a0, w]); } return ob; };
-      const MO = {
-        mars: ['Phobos', 'Deimos'], jupiter: ['Io', 'Europa', 'Ganymede', 'Callisto', 'Amalthea', 'Himalia', 'Thebe', 'Elara', 'Pasiphae', 'Metis', 'Carme', 'Sinope', 'Lysithea', 'Ananke', 'Leda', 'Adrastea',
-          'Callirrhoe', 'Themisto', 'Megaclite', 'Taygete', 'Chaldene', 'Harpalyke', 'Kalyke', 'Iocaste', 'Erinome', 'Isonoe', 'Praxidike', 'Autonoe', 'Thyone', 'Hermippe', 'Aitne', 'Eurydome'],
-        saturn: ['Titan', 'Rhea', 'Iapetus', 'Dione', 'Tethys', 'Enceladus', 'Mimas', 'Hyperion', 'Phoebe'], uranus: ['Titania', 'Oberon', 'Umbriel', 'Ariel', 'Miranda'], neptune: ['Triton', 'Nereid', 'Proteus'],
-      };
-      const BIG = { Io: 'io', Europa: 'europa', Ganymede: 'ganymede', Callisto: 'callisto', Titan: 'titan' };
-      const FACT = { Io: 'Io has hundreds of volcanoes.', Europa: 'Europa has an ocean under its ice.', Ganymede: 'Ganymede is the biggest moon in the solar system.', Callisto: 'Callisto is covered in craters.',
-        Titan: 'Titan has lakes — but they are not water!', Phobos: 'Phobos is slowly falling toward Mars.', Triton: 'Triton orbits Neptune backwards!', Enceladus: 'Enceladus shoots water into space.' };
-      for (const [par, list] of Object.entries(MO)) list.forEach((nm, i) => {
-        const big = BIG[nm], R = (PW[par] * .7) + 60 + i * (par === 'jupiter' ? 34 : 70), id = big || nm.toLowerCase();
-        follow(big || 'minimoon', par, R, i * 2.39, (big ? .05 : .03) + rng() * .03, { keep: 1, id, label: nm, sub: 'a moon of ' + tname(G.C, par), fact: FACT[nm], quiet: big ? 0 : 1 });
-      });
-      // Jupiter's aliens, Saturn's rings (ice and rock riding around it), the rover on Mars
-      for (let i = 0; i < 10; i++) follow('alien', 'jupiter', 300 + rng() * 900, rng() * 6.28, .04 + rng() * .05, { label: i ? '' : 'Aliens near Jupiter' });
-      for (let i = 0; i < 4; i++) follow('ufo', 'jupiter', 500 + rng() * 800, rng() * 6.28, .06, {});
-      follow('mothership', 'jupiter', 1500, 1, .02, { keep: 1, id: 'mothership', label: 'the alien mothership' });
-      for (let i = 0; i < 70; i++) follow(i % 3 ? 'ringice' : 'ringrock', 'saturn', RINGS[0] + rng() * (RINGS[1] - RINGS[0]), rng() * 6.28, .05, {});
-      follow('rover', 'mars', 30, .8, 0, { keep: 1, id: 'rover', label: 'Mars rover', sub: 'exploring Mars', fact: 'Rovers are robots that drive on Mars and study its rocks.' });
-      // Earth: space junk, the ISS and a telescope (they ride with Earth once it starts to orbit)
-      follow('iss', 'earth', 300, .45, .06, { keep: 1, id: 'iss', label: 'International Space Station', sub: 'orbiting Earth', fact: 'Astronauts live and work on the ISS, high above the Earth.', quiet: 0 });
-      follow('telescope', 'earth', 360, 2.4, .02, { keep: 1, id: 'telescope', label: 'Space telescope' });
-      for (let i = 0; i < 40; i++) follow(i % 4 ? 'junk' : 'satellite', 'earth', 90 + rng() * 500, rng() * 6.28, .02 + rng() * .06, {});
-      // the dwarf planets (8), sparse discoveries far out, Voyager, Planet Nine
-      const DW = [['ceres', 8600, 1.9, 'a dwarf planet in the asteroid belt', 'Ceres is the biggest thing in the asteroid belt.'], ['pluto', 26500, 2.6, 'a dwarf planet', 'Pluto is a dwarf planet, far out past Neptune.'],
-        ['haumea', 27500, 4.1, 'a dwarf planet', 'Haumea spins so fast it is shaped like an egg.'], ['makemake', 28500, 5.4, 'a dwarf planet', 'Makemake was found just after Easter.'],
-        ['quaoar', 27000, .9, 'a dwarf planet', 'Quaoar has its own ring!'], ['gonggong', 29200, 3.4, 'a dwarf planet', 'Gonggong is reddish, like Mars.'],
-        ['eris', 31500, 5.9, 'a dwarf planet', 'Eris is almost the same size as Pluto.'], ['sedna', 35500, 1.6, 'a dwarf planet', 'Sedna takes about 11,000 years to go round the Sun.']];
-      for (const [id, r, a, sub, fact] of DW) K(id, ...orb(r, a), { id, label: tname(G.C, id), sub, fact });
-      K('planet9', ...orb(37500, 3.9), { id: 'planet9', label: 'Planet Nine?', sub: 'scientists think it might be out here', fact: 'Nobody has seen Planet Nine yet. Something far away seems to tug on the icy worlds.' });
-      K('probe', ...orb(31000, .4), { id: 'voyager', label: 'Voyager 1', sub: 'the farthest spacecraft', fact: 'Voyager 1 has been flying since 1977.' });
-      for (const [r, a] of [[11000, 3.3], [18000, 5.5], [21000, 1.9]]) add('station', ...orb(r, a), { quiet: 1 });
-      add('sun', SX, SY, { keep: 1, id: 'sun', label: 'The Sun', sub: 'our star', fact: 'The Sun is a star. All the planets go around it.' });
-      // followers move every frame; Earth (and its riders) start orbiting once the Moon is eaten
-      const E = planetObj.earth, er = 4800; let ea = 4.0;
-      if (moon && moon.dead === undefined) moon.dead = 0;
-      this.tick = dt => {
-        if (moon.dead) { ea += dt * 16 / er; E.x = SX + Math.cos(ea) * er; E.y = SY + Math.sin(ea) * er; }
-        const t = G.t;
-        for (const [o, p, R, a0, w] of fol) if (!o.dead && !o.fall) { const a = a0 + t * w; o.x = p.x + Math.cos(a) * R; o.y = p.y + Math.sin(a) * R; }
-      };
-    },
-    hint: w => w === 'asteroid' ? orb(8600, Math.atan2(G.y - SY, G.x - SX)) : null,
-    finish() { setTimeout(() => { SFX.fanfare(); UI.complete(); }, 1200); },
-    // the objective ladder: the Apollo site → the Moon (the gateway) → Earth → the giants → the Sun
-    beats: ['apolloflag', 'lunarrover', 'lander', 'moon', 'earth', 'neptune', 'saturn', 'jupiter', 'sun'],
-    rings: (() => { const m = [MOON[0] - MOON_R, MOON[1] - MOON_R, MOON[0] + MOON_R, MOON[1] + MOON_R], e = [EARTH[0] - 1400, EARTH[1] - 1400, EARTH[0] + 1400, EARTH[1] + 1400];
-      return [m, m, m, m, null, null, null, null, null]; })(),
-    ispy: ['#mercury', '#venus', '#earth', '#mars', '#jupiter', '#saturn', '#uranus', '#neptune', '#moon', '#pluto', '#iss', '#rover', '#io', '#europa', '#ganymede',
-      '#callisto', '#titan', '#voyager', '#lander', '#lunarrover', '#ceres', '#eris', '#planet9', '#mothership', 'satellite', 'astronaut', 'comet', 'ufo', 'alien', 'hat'],
-    eduSubj: 'science',
-    edu: [
-      { n: 'On the Moon', s: ['i:#apolloflag|Find the Apollo flag', 'i:#lunarrover|Find the moon buggy', 'i:#lander|Find the Apollo lander'] },
-      { n: 'Our corner of space', s: ['i:#iss|Find the International Space Station', 'i:#moon|Absorb the Moon', 'i:#earth|Absorb planet Earth'] },
-      { n: 'Mission to Mars', s: ['i:#rover|Find the Mars rover', 'i:#mercury|Absorb Mercury, closest to the Sun', 'i:#mars|Absorb Mars, the red planet'] },
-      { n: 'Moons first', s: ['i:#io|Find Io, a moon of Jupiter', 'i:#europa|Find Europa, the icy moon', 'i:#titan|Find Titan, a moon of Saturn'] },
-      { n: 'The giants', s: ['f:ringice,ringrock', 'i:#saturn|Absorb Saturn', 'i:#jupiter|Absorb Jupiter, the biggest planet'] },
-      { n: 'Dwarf planets', s: ['i:#ceres|Find Ceres in the asteroid belt', 'i:#pluto|Find Pluto', 'i:#eris|Find Eris'] },
-      { n: 'Far out', s: ['i:#neptune|Absorb Neptune', 'i:#voyager|Find Voyager 1', 'i:#planet9|Look for Planet Nine'] },
-      { n: 'Countdown maths', s: ['m:add', 'm:sub', 'm:mul'] },
-    ],
-    doneTxt: 'From moon dust to the Sun: the whole solar system is in your belly!',
-    words: ['MOON', 'STAR', 'SUN', 'MARS', 'COMET', 'ORBIT', 'PLANET', 'ROCKET', 'EARTH', 'SPACE'],
-    check: ['b:uranus|c|Eat Uranus, the planet that spins on its side', 'c:asteroid:10|c|Eat 10 asteroids from the belt', 'b:planet9|c|Find Planet Nine'],
-    quests: [
-      'c:moonrock:5|c', 't:30', 'c:satellite:3|c', 'x:5', 'c:comet:2|c', 'c:junk:5', 'a:alien:15', 'c:astronaut:2|c', 'b:iss|c|Eat the International Space Station', 'c:ufo:2',
-      'b:pluto|c|Eat Pluto, the dwarf planet', 'c:ice:5|c', 'c:asteroid:5|c', 'x:8', 'c:alien:3', 'c:minimoon:3', 'b:mars|c|Eat Mars, the red planet', 't:300',
-      'f:add', 'f:sub', 'f:mul', 'f:miss', 'f:mul', 'f:add', 'f:sub', 'q:10,9,8,7,6,5,4,3,2,1|m|Countdown: eat 10 to 1. Blast off!',
-      'q:MOON', 'q:STAR', 'l:S', 'l:M', 'f:word', 'q:SUN',
-      'p:rocket,ufo,rocket,ufo', 'p:comet,satellite,comet,satellite', 'p:ice,rock,ice,rock', 'p:alien,astronaut,alien,astronaut',
-      'r:4', 's:4000', 'r:8', 's:15000',
-    ],
-    bg(g, V) {
-      const pw = 1 / V.z;
-      const gl = g.createRadialGradient(SX, SY, 300, SX, SY, 4000); gl.addColorStop(0, 'rgba(255,200,80,.35)'); gl.addColorStop(1, 'rgba(255,200,80,0)');
-      g.fillStyle = gl; g.fillRect(SX - 4000, SY - 4000, 8000, 8000);
-      g.fillStyle = 'rgba(160,140,120,.18)'; g.beginPath(); g.arc(SX, SY, BELT[1], 0, 7); g.arc(SX, SY, BELT[0], 0, 7, true); g.fill();
-      g.fillStyle = 'rgba(140,180,220,.08)'; g.beginPath(); g.arc(SX, SY, KUIPER[1], 0, 7); g.arc(SX, SY, KUIPER[0], 0, 7, true); g.fill();
-      g.fillStyle = 'rgba(200,220,255,.045)'; g.beginPath(); g.arc(SX, SY, OORT[1], 0, 7); g.arc(SX, SY, OORT[0], 0, 7, true); g.fill();
-      g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = Math.max(6, 1.5 * pw);
-      for (const p of PLANETS) { g.beginPath(); g.arc(SX, SY, p[1], 0, 7); g.stroke(); }
-      // the Moon's surface (until you eat it): grey regolith with craters
-      if (!moonGone() && V.x1 > MOON[0] - MOON_R && V.x0 < MOON[0] + MOON_R && V.y1 > MOON[1] - MOON_R && V.y0 < MOON[1] + MOON_R) {
-        g.fillStyle = '#9e9e9e'; g.beginPath(); g.arc(MOON[0], MOON[1], MOON_R, 0, 7); g.fill();
-        const r = mulberry(7); for (let i = 0; i < 60; i++) { const a = r() * 6.28, d = Math.sqrt(r()) * MOON_R * .92, s = .2 + r() * 1.4; g.fillStyle = 'rgba(70,70,70,.35)'; g.beginPath(); g.arc(MOON[0] + Math.cos(a) * d, MOON[1] + Math.sin(a) * d, s, 0, 7); g.fill(); g.fillStyle = 'rgba(230,230,230,.25)'; g.beginPath(); g.arc(MOON[0] + Math.cos(a) * d - s * .2, MOON[1] + Math.sin(a) * d - s * .2, s * .7, 0, 7); g.fill(); }
-      }
-      g.textAlign = 'center'; g.textBaseline = 'middle';
-      const lab = (s, x, y, px, col) => { g.font = `900 ${px * pw}px ${UI_FONT}`; g.fillStyle = col; g.fillText(s, x, y); };
-      if (pw > 2) {
-        for (const a of [0.9, 2.6, 4.4, 5.9]) { const [x, y] = orb(8600, a); lab('ASTEROID BELT', x, y - 16 * pw, 18, 'rgba(255,230,180,.75)'); lab('between Mars and Jupiter', x, y + 8 * pw, 13, 'rgba(255,230,180,.6)'); }
-        for (const a of [1.5, 4.8]) { const [x, y] = orb(27200, a); lab('KUIPER BELT (icy far-out zone)', x, y, 16, 'rgba(190,220,255,.6)'); }
-        for (const a of [.6, 3.7]) { const [x, y] = orb(36000, a); lab('OORT CLOUD (comets come from here)', x, y, 16, 'rgba(200,220,255,.5)'); }
-      }
-    },
-  });
-})();
-
-/* ---------- WORLD 5: THE GLOBE — a to-scale replica of the Earth (Natural Earth, baked into data/globe.js) ----------
+/* ---------- WORLD 4: THE GLOBE — a to-scale replica of the Earth (Natural Earth, baked into data/globe.js) ----------
    The map is true to scale: continents, countries, lakes, rivers (the Nile is named) and the major highways, all in
    their real shapes and places (equirectangular, wrapping east-west and over the poles). The hole is not: you start
    about the size of a small house on a Vancouver street with traffic, and the growth ladder and speeds are
@@ -1867,7 +1669,7 @@ const CH = [null];
     LMS.push({ capital: 1, n, x: (lo + 18000) * Q, y: (9000 - la) * Q, pop });
   }
   CH.push({
-    n: 5, key: 'globe', mus: 'ch5.mp3', name: 'The Globe', short: 'Globe', c1: '#ff9800', c2: '#b34700', bgc: OCEAN, rim: '#ffd23f',
+    n: 4, key: 'globe', mus: 'ch5.mp3', name: 'The Globe', short: 'Globe', c1: '#ff9800', c2: '#b34700', bgc: OCEAN, rim: '#ffd23f',
     W, H, wrap: 1, spd: 3, upSpd: 2, runSpd: 5, eduMin: 25, start: P(-123.160, 49.262), cost: 3, need: 160, needP: 1.5, xpk: 2.5, pv: 2, view: 13, fill: .25,
     sizes: SIZES,
     real: SIZES.map(s => s * 278),                                     // one map unit is 278 metres
@@ -1985,7 +1787,7 @@ const CH = [null];
     rings: (() => { const B = (a, b, c, d) => [(a + 180) * D, (90 - d) * D, (c + 180) * D, (90 - b) * D];
       const r1 = B(-123.30, 49.20, -122.98, 49.36), r2 = B(-124.6, 47.0, -121.4, 49.9), r3 = B(-126, 31, -104, 50.5), r4 = B(-128, 22, -60, 56);
       return [r1, r1, r1, r1, r2, r3, r3, r4, null, null, null, null]; })(),
-    finish(first) { setTimeout(() => { SFX.fanfare(); if (first) { G.st.w += 5000; } S.journey = 1; persist(); UI.credits(); }, 1200); },
+    finish() { setTimeout(() => { SFX.fanfare(); UI.complete(); }, 1200); },
     ispy: ['#eiffel', '#colosseum', '#greatwall', '#taj', '#pyramids|the Egyptian pyramids', '#liberty', '#bigben', '#opera', '#christ', '#chichen', '#fuji', '#marina', '#petra',
       '#machu', '#basil', '#tokyotower', '#skytree', '#shard', '#towerbridge', '#louvre', '#cntower', '#niagara', 'car', 'hat', 'sailboat', 'cargo', 'cruise', 'whale', 'orca', 'shark'],
     eduSubj: 'geography',
@@ -2085,7 +1887,7 @@ const CH = [null];
         const GR = Wd / 2, GSZ = Math.round(Wd), cx = X + GR, cy = Y + GR;
         if (!tpx) {
           const t = document.createElement('canvas'); t.width = 360; t.height = 180; const x = t.getContext('2d');
-          CH[5].miniPaint(x, 360 / W); tpx = x.getImageData(0, 0, 360, 180).data;
+          CH[4].miniPaint(x, 360 / W); tpx = x.getImageData(0, 0, 360, 180).data;
           globe = document.createElement('canvas'); globe.width = globe.height = GSZ;
         }
         const st = G.st, seen = st.seen || '', [lon0, lat0] = ll(wrapX(G.x), wrapY(G.y)), key = Math.round(lon0 * 2) + ',' + Math.round(lat0 * 2) + seen;
@@ -2145,6 +1947,205 @@ const CH = [null];
   });
 })();
 
+/* ---------- WORLD 5: SPACE — from a footprint on the Moon to the Sun (play-scale sizes and distances, real order) ----------
+   You start beside the Apollo landing site on the Moon, small enough to eat moon dust. The Moon is the gateway: eat it
+   and Earth, its space junk and the ISS open up, then the planets (all eight orbit the Sun once the Moon is gone), their
+   moons (Jupiter has dozens, with aliens), the asteroid belt, the dwarf planets, the Kuiper belt, the Oort cloud and
+   Planet Nine (if it's real). The Sun is the last thing you eat. */
+(() => {
+  const W = 80000, H = 80000, SX = 40000, SY = 40000;
+  const orb = (r, a) => [SX + Math.cos(a) * r, SY + Math.sin(a) * r];
+  const circ = (cx, cy, r, n = 64, a0 = 0) => { const p = []; for (let i = 0; i <= n; i++) { const a = a0 + i / n * 6.2832; p.push(cx + Math.cos(a) * r, cy + Math.sin(a) * r); } return p; };
+  // id, orbit radius, start angle, label line 2, fact, orbit speed (units/s along the orbit)
+  const PLANETS = [
+    ['mercury', 2500, 0.6, 'Planet 1 — closest to the Sun', 'Mercury is the smallest planet.', 26],
+    ['venus', 3600, 2.2, 'Planet 2', 'Venus is the hottest planet.', 20],
+    ['earth', 4800, 4.0, 'Planet 3 — our home!', 'Earth is the only planet we know with life.', 16],
+    ['mars', 6200, 5.0, 'Planet 4 — the red planet', 'Mars has the tallest volcano in the solar system.', 13],
+    ['jupiter', 12500, 1.2, 'Planet 5 — the biggest', 'Jupiter is so big that all the other planets could fit inside it.', 9],
+    ['saturn', 16000, 3.0, 'Planet 6', 'Saturn\'s rings are made of ice and rock.', 7],
+    ['uranus', 19500, 4.6, 'Planet 7', 'Uranus spins on its side!', 6],
+    ['neptune', 23000, 0.2, 'Planet 8 — the farthest planet', 'Neptune has the fastest winds in the solar system.', 5],
+  ];
+  const BELT = [7600, 9600], KUIPER = [24500, 30000], OORT = [33000, 39500];
+  const EARTH = orb(4800, 4.0), MOON = [EARTH[0] + 380, EARTH[1] - 260], MOON_R = 30;   // the Moon's surface is a zoomed-in stage (the Moon you swallow is 15 across)
+  const RINGS = [260, 900];
+  let planetObj = {}, moonGone = () => false;
+  // where things are right now (the planets move): Saturn's rings and Jupiter's alien zone travel with them
+  const at0 = id => planetObj[id] || null;
+  function zoneAt(x, y) {
+    if (x < 0 || y < 0 || x > W || y > H) return null;
+    if (!moonGone() && Math.hypot(x - MOON[0], y - MOON[1]) < MOON_R) return 'moon';
+    const r = Math.hypot(x - SX, y - SY);
+    if (r < 1500) return null;
+    if (Math.hypot(x - EARTH[0], y - EARTH[1]) < 1300) return 'earthorbit';
+    if (r > BELT[0] && r < BELT[1]) return 'belt';
+    if (r > KUIPER[0] && r < KUIPER[1]) return 'kuiper';
+    if (r > OORT[0] && r < OORT[1]) return 'oort';
+    return 'space';
+  }
+  const PW = { pluto: 14, eris: 14, haumea: 11, makemake: 11, gonggong: 9, quaoar: 9, sedna: 8, ceres: 8, europa: 17, io: 18, moon: 15, callisto: 23, titan: 24, ganymede: 25,
+    mercury: 30, mars: 40, venus: 56, earth: 60, planet9: 90, neptune: 110, uranus: 118, saturn: 175, jupiter: 210, sun: 330 };   // fit widths in play units, compressed real order
+  const sized = (n, k, o) => [n, 1, Object.assign({ planet: 1, m: [PW[k], PW[k]] }, o || {})];
+  const E6 = ['', '', '', '', '', ''];                                // no space junk at moon-dust sizes
+  CH.push({
+    n: 5, key: 'space', mus: 'ch4.mp3', name: 'Space', short: 'Space', c1: '#3949ab', c2: '#0d1240', bgc: '#03030c', rim: '#a98bff', space: 1,
+    W, H, start: [MOON[0] - 1.2, MOON[1] + 5.2], cost: 3.6, need: 60, needP: 1.6, xpk: 2, spd: 1.4, pv: 1.2, view: 13,
+    sizes: [0, .25, .5, 1, 2, 4, 8, 16, 26, 42, 66, 100, 150, 230, 350, 520],
+    // "How big am I?": moon-walk sizes in metres, then the gateway jump to moon-sized and up
+    real: [0, .3, .8, 2, 4, 10, 1500, 3.5e6, 5e6, 7e6, 1e7, 1.4e7, 3e7, 6e7, 1.4e8, 1.4e9],
+    tagN: { asteroid: 'asteroid' },
+    types: {
+      // the Moon (Apollo landing site)
+      moondust: ['moon dust', 1, { pl: 'moon dust' }], pebble: ['moon pebble', 1], moonrock: ['moon rock', 2], boot: ['boot print', 1, { m: [.3, .02] }], camera: ['moon camera', 3],
+      flag: ['flag', 3], seismo: ['moonquake detector', 4], astronaut: ['astronaut', 4, { mv: 'w' }], lunarrover: ['the moon buggy', 1, { m: [3, 1.2] }], lander: ['the Apollo lander', 1, { m: [5.5, 6] }],
+      crater: ['small crater', 5], moonhill: ['moon hill', 1, { m: [4.5, 1.6] }], bigcrater: ['big crater', 1, { m: [6.5, .5] }], apolloflag: ['the Apollo flag', 1, { m: [.6, 1.4] }],
+      // space
+      rock: ['space rock', 7, { s: .6 }], ice: ['ice rock', 7], bolt: ['space bolt', 7], glove: ['lost glove', 7], stardust: ['stardust', 7, { pl: 'stardust' }], junk: ['space junk', 7, { pl: 'space junk' }],
+      satellite: ['satellite', 8], meteor: ['meteor', 8, { s: .7, mv: 'fly' }], asteroid: ['asteroid', 8, { tags: 'asteroid' }], probe: ['space probe', 8], telescope: ['space telescope', 8],
+      comet: ['comet', 9, { s: 1.2, mv: 'fly' }], ufo: ['UFO', 9, { mv: 'fly' }], rocket: ['rocket', 9, { mv: 'w' }], alien: ['alien', 9, { mv: 'w' }],
+      bigast: ['big asteroid', 9, { tags: 'asteroid', s: 1.1 }], iss: ['International Space Station', 1, { m: [14, 6] }],
+      station: ['space station', 10, {}], outpost: ['alien outpost', 10, {}], minimoon: ['small moon', 8], giantcomet: ['giant comet', 11, { s: 1.4, mv: 'fly' }], mothership: ['alien mothership', 11, { s: 1.3, mv: 'w' }],
+      moon: ['the Moon', 1, { planet: 1, m: [PW.moon, .15] }], pluto: sized('Pluto', 'pluto'), io: sized('Io', 'io'), europa: sized('Europa', 'europa'), ganymede: sized('Ganymede', 'ganymede'),
+      callisto: sized('Callisto', 'callisto'), titan: sized('Titan', 'titan'), ceres: sized('Ceres', 'ceres'), eris: sized('Eris', 'eris'), haumea: sized('Haumea', 'haumea'),
+      makemake: sized('Makemake', 'makemake'), gonggong: sized('Gonggong', 'gonggong'), quaoar: sized('Quaoar', 'quaoar'), sedna: sized('Sedna', 'sedna'), planet9: sized('Planet Nine', 'planet9'),
+      mercury: sized('Mercury', 'mercury'), venus: sized('Venus', 'venus'), earth: sized('Earth', 'earth'), mars: sized('Mars', 'mars'),
+      jupiter: sized('Jupiter', 'jupiter'), saturn: sized('Saturn', 'saturn'), uranus: sized('Uranus', 'uranus'), neptune: sized('Neptune', 'neptune'),
+      sun: ['the Sun', 1, { c1: '#ffcc33', m: [PW.sun, PW.sun] }],
+      rover: ['Mars rover', 1, { m: [9, 6] }], ringice: ['ring ice', 8, { s: .7 }], ringrock: ['ring rock', 8, { s: .8 }], hat: ['top hat', 7],
+    },
+    /* v5.1 Part 14 (spec v5.15 addendum 13, corrected): the ambient scatter between the clusters is cut by half (0.30 -> 0.15 of v3).
+       The Apollo site, Earth orbit, the planetary clusters and the placed discoveries keep their density; nothing else is rebalanced. */
+    zones: {
+      moon: { d: 1.6, coin: .2, t: ['moondust:5,pebble:3,boot:2', 'pebble:2,moonrock:4', 'moonrock:2,camera,flag:.3', 'seismo:.5,astronaut:.6,moonrock', 'crater:.8'] },
+      space: { d: .55 * SPACE_CUT, t: [...E6, 'rock:3,ice,bolt,glove,stardust:2', 'satellite,meteor:2,probe', 'comet:2,ufo,rocket', 'station:.2,outpost:.3', 'giantcomet'] },
+      earthorbit: { d: 1.1, coin: .3, t: [...E6, 'junk:4,bolt:3,glove:2,rock', 'satellite:4,telescope', 'rocket:2', 'station'] },
+      belt: { d: 1.3 * SPACE_CUT, t: [...E6, 'rock:4,stardust', 'asteroid:8', 'bigast:5,comet', 'outpost', 'mothership:.3'] },
+      kuiper: { d: .8 * SPACE_CUT, t: [...E6, 'ice:5,rock', 'meteor,minimoon', 'comet:3', '', 'giantcomet:2'] },
+      oort: { d: .35 * SPACE_CUT, t: [...E6, 'ice:6', 'meteor', 'comet:4', '', 'giantcomet:3'] },
+      xspace: { d: .2 * SPACE_CUT, deco: 1, t: [...E6, 'rock:3,ice:2', 'meteor,satellite', 'comet:2', '', 'giantcomet'] },
+    },
+    zoneAt, outside: () => 'xspace',
+    build(add, rng) {
+      const K = (k, x, y, o) => add(k, x, y, Object.assign({ keep: 1 }, o));
+      // the Moon: a grey disc you start on; the Apollo landing site with its lander, buggy, flag and boot prints
+      const moon = K('moon', MOON[0], MOON[1], { id: 'moon', label: 'The Moon', sub: 'Earth\'s moon', under: 1, nosolid: 1, flatMoon: 1, fact: 'Twelve astronauts have walked on the Moon.' }) || { dead: 1 };
+      moonGone = () => !!moon.dead;
+      K('apolloflag', MOON[0] + 1.8, MOON[1] + 4.6, { id: 'apolloflag', label: 'the Apollo flag', fact: 'Astronauts planted flags on the Moon. There is no wind, so a rod holds them out.' });
+      K('lunarrover', MOON[0] + 6, MOON[1] - 1.5, { id: 'lunarrover', label: 'the moon buggy', yaw: .6, fact: 'Astronauts drove an electric car on the Moon!' });
+      K('lander', MOON[0] - 4.2, MOON[1] - 3.4, { id: 'lander', label: 'the Apollo lander', fact: 'The lander carried two astronauts down to the Moon and back up again.' });
+      // hills and big craters to grow on before you can swallow the Moon itself
+      for (let i = 0; i < 14; i++) { const a = rng() * 6.28, d = 9 + rng() * 18; add(i % 3 ? 'moonhill' : 'bigcrater', MOON[0] + Math.cos(a) * d, MOON[1] + Math.sin(a) * d, { quiet: 1, s: .7 + rng() * .6 }); }
+      for (let i = 0; i < 16; i++) add('boot', MOON[0] - 1 + i * .25, MOON[1] + 2 + Math.sin(i) * .2, { yaw: .3 });
+      for (let i = 0; i < 2; i++) add('astronaut', MOON[0] + 1.2 + i * 1.5, MOON[1] + .8, { label: i ? '' : 'Astronaut', quiet: 1 });
+      // the planets, on their orbits (Earth holds still until the Moon is eaten, so your start can't drift away)
+      for (const [id, r, a, sub, fact, sp] of PLANETS) {
+        const [x, y] = orb(r, a), o = { id, label: tname(G.C, id), sub, fact };
+        Object.assign(o, id !== 'earth' ? { path: circ(SX, SY, r, 96, a), spd: sp, loop: 1, ph: 0 } : { path: [x, y, x + 1, y], spd: 0, orbit: 1 });
+        planetObj[id] = K(id, x, y, o) || { x, y, dead: 1 };          // (an eaten planet still anchors its moons' orbits)
+        if (planetObj[id].pb === undefined && id === 'earth') planetObj[id].pb = [0, 0, W, H];
+      }
+      // moons and followers: anything that orbits a planet rides along with it
+      const fol = [];
+      // a follower is a mover with no path of its own (orbit: 1): tick() places it around its planet, and it is always gathered
+      const follow = (k, par, R, a0, w, o) => { const p = planetObj[par], x = p.x + Math.cos(a0) * R, y = p.y + Math.sin(a0) * R, ob = add(k, x, y, Object.assign({ quiet: 1, path: [x, y, x + 1, y], spd: 0, orbit: 1 }, o)); if (ob) { ob.pb = [0, 0, W, H]; fol.push([ob, p, R, a0, w]); } return ob; };
+      const MO = {
+        mars: ['Phobos', 'Deimos'], jupiter: ['Io', 'Europa', 'Ganymede', 'Callisto', 'Amalthea', 'Himalia', 'Thebe', 'Elara', 'Pasiphae', 'Metis', 'Carme', 'Sinope', 'Lysithea', 'Ananke', 'Leda', 'Adrastea',
+          'Callirrhoe', 'Themisto', 'Megaclite', 'Taygete', 'Chaldene', 'Harpalyke', 'Kalyke', 'Iocaste', 'Erinome', 'Isonoe', 'Praxidike', 'Autonoe', 'Thyone', 'Hermippe', 'Aitne', 'Eurydome'],
+        saturn: ['Titan', 'Rhea', 'Iapetus', 'Dione', 'Tethys', 'Enceladus', 'Mimas', 'Hyperion', 'Phoebe'], uranus: ['Titania', 'Oberon', 'Umbriel', 'Ariel', 'Miranda'], neptune: ['Triton', 'Nereid', 'Proteus'],
+      };
+      const BIG = { Io: 'io', Europa: 'europa', Ganymede: 'ganymede', Callisto: 'callisto', Titan: 'titan' };
+      const FACT = { Io: 'Io has hundreds of volcanoes.', Europa: 'Europa has an ocean under its ice.', Ganymede: 'Ganymede is the biggest moon in the solar system.', Callisto: 'Callisto is covered in craters.',
+        Titan: 'Titan has lakes — but they are not water!', Phobos: 'Phobos is slowly falling toward Mars.', Triton: 'Triton orbits Neptune backwards!', Enceladus: 'Enceladus shoots water into space.' };
+      for (const [par, list] of Object.entries(MO)) list.forEach((nm, i) => {
+        const big = BIG[nm], R = (PW[par] * .7) + 60 + i * (par === 'jupiter' ? 34 : 70), id = big || nm.toLowerCase();
+        follow(big || 'minimoon', par, R, i * 2.39, (big ? .05 : .03) + rng() * .03, { keep: 1, id, label: nm, sub: 'a moon of ' + tname(G.C, par), fact: FACT[nm], quiet: big ? 0 : 1 });
+      });
+      // Jupiter's aliens, Saturn's rings (ice and rock riding around it), the rover on Mars
+      for (let i = 0; i < 10; i++) follow('alien', 'jupiter', 300 + rng() * 900, rng() * 6.28, .04 + rng() * .05, { label: i ? '' : 'Aliens near Jupiter' });
+      for (let i = 0; i < 4; i++) follow('ufo', 'jupiter', 500 + rng() * 800, rng() * 6.28, .06, {});
+      follow('mothership', 'jupiter', 1500, 1, .02, { keep: 1, id: 'mothership', label: 'the alien mothership' });
+      for (let i = 0; i < 70; i++) follow(i % 3 ? 'ringice' : 'ringrock', 'saturn', RINGS[0] + rng() * (RINGS[1] - RINGS[0]), rng() * 6.28, .05, {});
+      follow('rover', 'mars', 30, .8, 0, { keep: 1, id: 'rover', label: 'Mars rover', sub: 'exploring Mars', fact: 'Rovers are robots that drive on Mars and study its rocks.' });
+      // Earth: space junk, the ISS and a telescope (they ride with Earth once it starts to orbit)
+      follow('iss', 'earth', 300, .45, .06, { keep: 1, id: 'iss', label: 'International Space Station', sub: 'orbiting Earth', fact: 'Astronauts live and work on the ISS, high above the Earth.', quiet: 0 });
+      follow('telescope', 'earth', 360, 2.4, .02, { keep: 1, id: 'telescope', label: 'Space telescope' });
+      for (let i = 0; i < 40; i++) follow(i % 4 ? 'junk' : 'satellite', 'earth', 90 + rng() * 500, rng() * 6.28, .02 + rng() * .06, {});
+      // the dwarf planets (8), sparse discoveries far out, Voyager, Planet Nine
+      const DW = [['ceres', 8600, 1.9, 'a dwarf planet in the asteroid belt', 'Ceres is the biggest thing in the asteroid belt.'], ['pluto', 26500, 2.6, 'a dwarf planet', 'Pluto is a dwarf planet, far out past Neptune.'],
+        ['haumea', 27500, 4.1, 'a dwarf planet', 'Haumea spins so fast it is shaped like an egg.'], ['makemake', 28500, 5.4, 'a dwarf planet', 'Makemake was found just after Easter.'],
+        ['quaoar', 27000, .9, 'a dwarf planet', 'Quaoar has its own ring!'], ['gonggong', 29200, 3.4, 'a dwarf planet', 'Gonggong is reddish, like Mars.'],
+        ['eris', 31500, 5.9, 'a dwarf planet', 'Eris is almost the same size as Pluto.'], ['sedna', 35500, 1.6, 'a dwarf planet', 'Sedna takes about 11,000 years to go round the Sun.']];
+      for (const [id, r, a, sub, fact] of DW) K(id, ...orb(r, a), { id, label: tname(G.C, id), sub, fact });
+      K('planet9', ...orb(37500, 3.9), { id: 'planet9', label: 'Planet Nine?', sub: 'scientists think it might be out here', fact: 'Nobody has seen Planet Nine yet. Something far away seems to tug on the icy worlds.' });
+      K('probe', ...orb(31000, .4), { id: 'voyager', label: 'Voyager 1', sub: 'the farthest spacecraft', fact: 'Voyager 1 has been flying since 1977.' });
+      for (const [r, a] of [[11000, 3.3], [18000, 5.5], [21000, 1.9]]) add('station', ...orb(r, a), { quiet: 1 });
+      add('sun', SX, SY, { keep: 1, id: 'sun', label: 'The Sun', sub: 'our star', fact: 'The Sun is a star. All the planets go around it.' });
+      // followers move every frame; Earth (and its riders) start orbiting once the Moon is eaten
+      const E = planetObj.earth, er = 4800; let ea = 4.0;
+      if (moon && moon.dead === undefined) moon.dead = 0;
+      this.tick = dt => {
+        if (moon.dead) { ea += dt * 16 / er; E.x = SX + Math.cos(ea) * er; E.y = SY + Math.sin(ea) * er; }
+        const t = G.t;
+        for (const [o, p, R, a0, w] of fol) if (!o.dead && !o.fall) { const a = a0 + t * w; o.x = p.x + Math.cos(a) * R; o.y = p.y + Math.sin(a) * R; }
+      };
+    },
+    hint: w => w === 'asteroid' ? orb(8600, Math.atan2(G.y - SY, G.x - SX)) : null,
+    finish(first) { setTimeout(() => { SFX.fanfare(); if (first) { G.st.w += 5000; } S.journey = 1; persist(); UI.credits(); }, 1200); },   // v5.1: Space is the last world, so it holds the finale
+    // the objective ladder: the Apollo site → the Moon (the gateway) → Earth → the giants → the Sun
+    beats: ['apolloflag', 'lunarrover', 'lander', 'moon', 'earth', 'neptune', 'saturn', 'jupiter', 'sun'],
+    rings: (() => { const m = [MOON[0] - MOON_R, MOON[1] - MOON_R, MOON[0] + MOON_R, MOON[1] + MOON_R], e = [EARTH[0] - 1400, EARTH[1] - 1400, EARTH[0] + 1400, EARTH[1] + 1400];
+      return [m, m, m, m, null, null, null, null, null]; })(),
+    ispy: ['#mercury', '#venus', '#earth', '#mars', '#jupiter', '#saturn', '#uranus', '#neptune', '#moon', '#pluto', '#iss', '#rover', '#io', '#europa', '#ganymede',
+      '#callisto', '#titan', '#voyager', '#lander', '#lunarrover', '#ceres', '#eris', '#planet9', '#mothership', 'satellite', 'astronaut', 'comet', 'ufo', 'alien', 'hat'],
+    eduSubj: 'science',
+    edu: [
+      { n: 'On the Moon', s: ['i:#apolloflag|Find the Apollo flag', 'i:#lunarrover|Find the moon buggy', 'i:#lander|Find the Apollo lander'] },
+      { n: 'Our corner of space', s: ['i:#iss|Find the International Space Station', 'i:#moon|Absorb the Moon', 'i:#earth|Absorb planet Earth'] },
+      { n: 'Mission to Mars', s: ['i:#rover|Find the Mars rover', 'i:#mercury|Absorb Mercury, closest to the Sun', 'i:#mars|Absorb Mars, the red planet'] },
+      { n: 'Moons first', s: ['i:#io|Find Io, a moon of Jupiter', 'i:#europa|Find Europa, the icy moon', 'i:#titan|Find Titan, a moon of Saturn'] },
+      { n: 'The giants', s: ['f:ringice,ringrock', 'i:#saturn|Absorb Saturn', 'i:#jupiter|Absorb Jupiter, the biggest planet'] },
+      { n: 'Dwarf planets', s: ['i:#ceres|Find Ceres in the asteroid belt', 'i:#pluto|Find Pluto', 'i:#eris|Find Eris'] },
+      { n: 'Far out', s: ['i:#neptune|Absorb Neptune', 'i:#voyager|Find Voyager 1', 'i:#planet9|Look for Planet Nine'] },
+      { n: 'Countdown maths', s: ['m:add', 'm:sub', 'm:mul'] },
+    ],
+    doneTxt: 'From moon dust to the Sun: the whole solar system is in your belly!',
+    words: ['MOON', 'STAR', 'SUN', 'MARS', 'COMET', 'ORBIT', 'PLANET', 'ROCKET', 'EARTH', 'SPACE'],
+    check: ['b:uranus|c|Eat Uranus, the planet that spins on its side', 'c:asteroid:10|c|Eat 10 asteroids from the belt', 'b:planet9|c|Find Planet Nine'],
+    quests: [
+      'c:moonrock:5|c', 't:30', 'c:satellite:3|c', 'x:5', 'c:comet:2|c', 'c:junk:5', 'a:alien:15', 'c:astronaut:2|c', 'b:iss|c|Eat the International Space Station', 'c:ufo:2',
+      'b:pluto|c|Eat Pluto, the dwarf planet', 'c:ice:5|c', 'c:asteroid:5|c', 'x:8', 'c:alien:3', 'c:minimoon:3', 'b:mars|c|Eat Mars, the red planet', 't:300',
+      'f:add', 'f:sub', 'f:mul', 'f:miss', 'f:mul', 'f:add', 'f:sub', 'q:10,9,8,7,6,5,4,3,2,1|m|Countdown: eat 10 to 1. Blast off!',
+      'q:MOON', 'q:STAR', 'l:S', 'l:M', 'f:word', 'q:SUN',
+      'p:rocket,ufo,rocket,ufo', 'p:comet,satellite,comet,satellite', 'p:ice,rock,ice,rock', 'p:alien,astronaut,alien,astronaut',
+      'r:4', 's:4000', 'r:8', 's:15000',
+    ],
+    bg(g, V) {
+      const pw = 1 / V.z;
+      const gl = g.createRadialGradient(SX, SY, 300, SX, SY, 4000); gl.addColorStop(0, 'rgba(255,200,80,.35)'); gl.addColorStop(1, 'rgba(255,200,80,0)');
+      g.fillStyle = gl; g.fillRect(SX - 4000, SY - 4000, 8000, 8000);
+      g.fillStyle = 'rgba(160,140,120,.18)'; g.beginPath(); g.arc(SX, SY, BELT[1], 0, 7); g.arc(SX, SY, BELT[0], 0, 7, true); g.fill();
+      g.fillStyle = 'rgba(140,180,220,.08)'; g.beginPath(); g.arc(SX, SY, KUIPER[1], 0, 7); g.arc(SX, SY, KUIPER[0], 0, 7, true); g.fill();
+      g.fillStyle = 'rgba(200,220,255,.045)'; g.beginPath(); g.arc(SX, SY, OORT[1], 0, 7); g.arc(SX, SY, OORT[0], 0, 7, true); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = Math.max(6, 1.5 * pw);
+      for (const p of PLANETS) { g.beginPath(); g.arc(SX, SY, p[1], 0, 7); g.stroke(); }
+      // the Moon's surface (until you eat it): grey regolith with craters
+      if (!moonGone() && V.x1 > MOON[0] - MOON_R && V.x0 < MOON[0] + MOON_R && V.y1 > MOON[1] - MOON_R && V.y0 < MOON[1] + MOON_R) {
+        g.fillStyle = '#9e9e9e'; g.beginPath(); g.arc(MOON[0], MOON[1], MOON_R, 0, 7); g.fill();
+        const r = mulberry(7); for (let i = 0; i < 60; i++) { const a = r() * 6.28, d = Math.sqrt(r()) * MOON_R * .92, s = .2 + r() * 1.4; g.fillStyle = 'rgba(70,70,70,.35)'; g.beginPath(); g.arc(MOON[0] + Math.cos(a) * d, MOON[1] + Math.sin(a) * d, s, 0, 7); g.fill(); g.fillStyle = 'rgba(230,230,230,.25)'; g.beginPath(); g.arc(MOON[0] + Math.cos(a) * d - s * .2, MOON[1] + Math.sin(a) * d - s * .2, s * .7, 0, 7); g.fill(); }
+      }
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      const lab = (s, x, y, px, col) => { g.font = `900 ${px * pw}px ${UI_FONT}`; g.fillStyle = col; g.fillText(s, x, y); };
+      if (pw > 2) {
+        for (const a of [0.9, 2.6, 4.4, 5.9]) { const [x, y] = orb(8600, a); lab('ASTEROID BELT', x, y - 16 * pw, 18, 'rgba(255,230,180,.75)'); lab('between Mars and Jupiter', x, y + 8 * pw, 13, 'rgba(255,230,180,.6)'); }
+        for (const a of [1.5, 4.8]) { const [x, y] = orb(27200, a); lab('KUIPER BELT (icy far-out zone)', x, y, 16, 'rgba(190,220,255,.6)'); }
+        for (const a of [.6, 3.7]) { const [x, y] = orb(36000, a); lab('OORT CLOUD (comets come from here)', x, y, 16, 'rgba(200,220,255,.5)'); }
+      }
+    },
+  });
+})();
+
+
 
 /* =====================================================================
    3. ENGINE
@@ -2159,7 +2160,7 @@ function freshCh(n) {
 function freshSave() {
   const ch = {}; for (let n = 1; n <= NW; n++) ch[n] = freshCh(n);
   return { v: 1, settings: { sound: 1, music: 1, learn: 'full', grade: 2 }, last: 1, journey: 0, ch,
-    learn: { math: 0, spelling: 0, science: 0, geography: 0 }, passport: {}, ispy: {}, edu: {}, retired: {}, w5: 1 };
+    learn: { math: 0, spelling: 0, science: 0, geography: 0 }, passport: {}, ispy: {}, edu: {}, retired: {}, w5: 1, w51: 1 };
 }
 /* v5: the roster became five worlds. A save from v4 or earlier (seven chapters) is moved once: Home <- old 1,
    Vancouver <- old 3, Stanley Park is new, Space <- old 6, Globe <- old 5. Retired Backyard (old 2), Wilderness (old 4)
@@ -2188,11 +2189,24 @@ function migrate5(d) {
   o.w5 = 1;
   return o;
 }
+/* v5.1 (owner request): the worlds go up in size, so the Globe is World 4 and Space is World 5. A v5 save is moved
+   once: its World 4 (Space) and World 5 (Globe) swap places with their wallets, upgrades, boards, eaten landmarks, I Spy
+   decks and lesson progress. Nothing is lost and nothing already open is locked: the Globe now follows Stanley Park,
+   so finishing Stanley Park opens it. The save key never changes. */
+function migrate51(d) {
+  if (!d || typeof d !== 'object' || !d.w5 || d.w51 || !d.ch || typeof d.ch !== 'object') return d;
+  const o = Object.assign({}, d), sw = m => { if (!m || typeof m !== 'object') return m; const r = Object.assign({}, m), a = m[4], b = m[5]; delete r[4]; delete r[5]; if (b !== undefined) r[4] = b; if (a !== undefined) r[5] = a; return r; };
+  o.ch = sw(d.ch); o.ispy = sw(d.ispy); o.edu = sw(d.edu);
+  if (o.ch[3] && o.ch[3].c && o.ch[4] && typeof o.ch[4] === 'object') o.ch[4] = Object.assign({}, o.ch[4], { u: 1 });
+  o.last = d.last === 4 ? 5 : d.last === 5 ? 4 : d.last;
+  o.w51 = 1;
+  return o;
+}
 /* fill any missing fields (additive) and coerce types; idempotent */
 function normalize(d) {
   const f = freshSave();
   if (!d || typeof d !== 'object') return f;
-  d = migrate5(d);
+  d = migrate51(migrate5(d));
   const o = Object.assign({}, f, d);
   o.settings = Object.assign({}, f.settings, d.settings || {}); delete o.settings.voice;   // v4.1: the voice is gone
   o.learn = Object.assign({}, f.learn, d.learn || {});
@@ -2216,7 +2230,7 @@ function normalize(d) {
     c.lvl = Math.max(1, c.lvl); c.w = Math.max(0, Math.floor(c.w));
     o.ch[n] = c;
   }
-  o.ch[1].u = 1; o.w5 = 1;
+  o.ch[1].u = 1; o.w5 = 1; o.w51 = 1;
   if (!(o.last >= 1 && o.last <= NW)) o.last = 1;
   return o;
 }
@@ -2729,7 +2743,7 @@ function eat(o) {
   // things far smaller than the hole are worth less, so late-game sweeping can't flood the wallet
   addPoints(Math.max(1, Math.round(PTS[o.t] * C.pv * MULT[UPL('points')] * clamp((o.t - Math.min(G.lvl, C.topT) + 3) / 3, 0.15, 1))));
   if (Math.random() < UPF.lucky(UPL('lucky'))) { addCoins(Math.max(1, Math.round(PTS[o.t] * C.cost / 4))); SFX.coin(); }
-  if (o.cc && C.n === 5 && story && !S.passport[o.cc]) { S.passport[o.cc] = 1; toast('Passport stamp: ' + C.regionName(o.cc) + '!', '#ffd96a'); SFX.ding(); }
+  if (o.cc && C.key === 'globe' && story && !S.passport[o.cc]) { S.passport[o.cc] = 1; toast('Passport stamp: ' + C.regionName(o.cc) + '!', '#ffd96a'); SFX.ding(); }
   if (S.settings.learn !== 'off' || o.label) {
     const nm = o.label || o.T.n;
     G.flash = { t0: G.now, a: nm[0].toUpperCase() + nm.slice(1), b: o.sub || '', c: S.settings.learn !== 'off' ? (o.fact || '') : '' };
@@ -4040,7 +4054,7 @@ const MODEL = (() => {
     waterpark: p => [bx(1, .03, .8, 0, .015, 0, '#4fc3f7'), cy(.12, .3, .12, -.25, .15, -.1, '#ff7043'), sp(.2, .12, .2, -.25, .32, -.1, '#ffca28'), cy(.08, .25, .08, .2, .12, .15, '#ab47bc'), bx(.3, .02, .1, .15, .2, -.2, '#29b6f6', { rx: -.4 }), sp(.06, .2, .06, .3, .3, .2, '#bfe6ff')],
     beaverlodge: p => [sp(1, .5, 1, 0, 0, 0, '#6d4c41', { hemi: 1 }), ...[0, 1, 2, 3, 4].map(i => cy(.05, .9, .05, Math.cos(i * 1.3) * .3, .25, Math.sin(i * 1.3) * .3, '#8d6e63', { rz: 1.2, ry: i }))],
     rosebed: p => [bx(1, .15, .6, 0, .075, 0, '#5d4037'), ...[0, 1, 2, 3, 4, 5, 6, 7].map(i => sp(.18, .18, .18, -.4 + (i % 4) * .27, .25, i < 4 ? -.15 : .15, ['#e91e63', '#f44336', '#ff80ab', '#fff176'][i % 4]))],
-    // World 4: the Moon
+    // World 5 (Space): the Moon
     moonflat: p => [cy(1, .006, 1, 0, .003, 0, '#a7a7a7', { seg: 24 })],
     lander: p => [bx(.7, .45, .7, 0, .55, 0, '#d4af37'), ...[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([a, b]) => bx(.06, .7, .06, a * .42, .3, b * .42, '#bdbdbd', { rx: b * .35, rz: -a * .35 })),
       ...[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([a, b]) => cy(.16, .03, .16, a * .55, .02, b * .55, '#bdbdbd')), bx(.55, .4, .55, 0, 1, 0, '#e0e0e0'), cy(.18, .12, .18, 0, 1.25, 0, '#9e9e9e'), bx(.12, .12, .02, 0, 1, .28, '#263238')],
@@ -5668,8 +5682,8 @@ const UI = {
   credits() {
     UI.show('credits'); G.mode = 'menu';
     $('credits-roll').innerHTML = `<div style="font-size:64px;font-weight:900;color:#ffd23f">YOU ARE THE BLACK HOLE</div><br>
-      <div>HUNGRY HOLE</div><br><div>From one Lego brick…</div><div>…to the whole world.</div><br>
-      <div>The Home · Metro Vancouver · Stanley Park</div><div>Space · The Globe</div><br>
+      <div>HUNGRY HOLE</div><br><div>From one Lego brick…</div><div>…to the whole world…</div><div>…to the Sun itself.</div><br>
+      <div>The Home · Metro Vancouver · Stanley Park</div><div>The Globe · Space</div><br>
       <div>Thanks for playing!</div><br><div>+5,000 coins added to World 5</div><br><div>Journey COMPLETE</div>
       <div style="font-size:22px;opacity:.85">Every world stays open forever. Go back and finish your Quest Boards!</div><br>
       <button class="btn" id="cr-done">MAIN MENU</button>`;
@@ -5697,7 +5711,7 @@ function bankerTransfer(from, to, amt) {
   if (from === to || amt <= 0 || !S.ch[from].u || !S.ch[to].u || S.ch[from].w < amt) return false;
   S.ch[from].w -= amt; S.ch[to].w += bankerArrive(amt); persist(); return true;
 }
-function resetChapter(n) { const u = S.ch[n].u; S.ch[n] = freshCh(n); S.ch[n].u = u || n === 1 ? 1 : 0; if (n === 5) S.passport = {}; persist(); }
+function resetChapter(n) { const u = S.ch[n].u; S.ch[n] = freshCh(n); S.ch[n].u = u || n === 1 ? 1 : 0; if (CH[n].key === 'globe') S.passport = {}; persist(); }
 function startChapter(n, kind) {
   audioInit(); kind = kind || 'story';
   if (!S.ch[n].u && kind !== 'edu' && kind !== 'explore') return;  // Educational + Exploration: every world is always open

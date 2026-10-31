@@ -255,11 +255,31 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
   const play = await p.evaluate(() => { const { G, S } = HH, out = {}; for (const n of [1, 2, 3, 4, 5]) { S.ch[n].u = 1; HH.startChapter(n); for (let i = 0; i < 10; i++) { G.now += 33; G.t += 1 / 30; HH.update(1 / 30); } out[n] = G.C.n === n && G.vis.length > 0; } HH.G.mode = 'menu'; HH.persist(); return out; });
   await p.reload(); await p.waitForTimeout(400);
   const m2 = await chk();
-  const keep = m1.worlds === '1,2,3,4,5' && m1.w.join() === '111,333,0,666,555' && m1.up.join() === '1100000001,3100000000,6100000000,5100000002' && m1.board.join() === [1, 3, 6, 5].map(n => Array(40).fill(0).filter((_, i) => !((i + n) % 4)).length).join()
+  const keep = m1.worlds === '1,2,3,4,5' && m1.w.join() === '111,333,0,555,666' && m1.up.join() === '1100000001,3100000000,5100000002,6100000000' && m1.board.join() === [1, 3, 5, 6].map(n => Array(40).fill(0).filter((_, i) => !((i + n) % 4)).length).join()
     && m1.done.join() === '1,1,1,1' && m1.u3 === 1 && m1.eaten2 === 'canadaplace,scienceworld' && m1.ispy2 && m1.ispy2.wins === 6 && m1.ispy2.pos === 2 && m1.edu2 && m1.edu2.set === 2 && !m1.wins4
     && m1.retired === '2,4,7' && m1.r4 === JSON.stringify(v4save.ch[4]) && m1.r7 === JSON.stringify(v4save.ch[7]) && m1.passport === 'FR,JP' && m1.learn.math === 7 && m1.music === 0 && m1.last === 1 && m1.other === 'keep-me';
   const stable = JSON.stringify(Object.assign({}, m1, { u3: 0, last: 0 })) === JSON.stringify(Object.assign({}, m2, { u3: 0, last: 0 }))   // (playing moved 'last world played');
   results.push(['v4 save with RETIRED-world data (Wilderness, Chaos) migrates: retired data set aside verbatim, kept worlds intact, survives reload', keep && stable && Object.values(play).every(Boolean), { m1: keep ? 'ok' : m1, play, stableAfterReload: stable, changed: Object.keys(m1).filter(k => JSON.stringify(m1[k]) !== JSON.stringify(m2[k])).map(k => [k, m1[k], m2[k]]) }]);
+
+  // v5.1 owner request: the worlds go up in size (4 = the Globe, 5 = Space). A v5 save moves its Space (old 4) and Globe
+  // (old 5) progress across once, with wallets, upgrades, boards, eaten landmarks, I Spy decks and lessons; then it is stable.
+  await p.goto(URL.replace(/index\.html.*$/, 'README.md'));
+  await p.evaluate(() => {
+    const ch = {}; for (let n = 1; n <= 5; n++) ch[n] = { u: n <= 4 ? 1 : 0, c: n <= 3 ? 1 : 0, x: 10 * n, y: 10 * n, lvl: n, xp: 0, pts: 100 * n, pc: 0, w: 1000 + n, cf: 0, check: [n, 0, 0],
+      board: Array(40).fill(0).map((_, i) => i < n ? 1 : 0), act: [], qi: 0, up: [n, 0, 0, 0, 0, 0, 0, 0, 0, 0], eaten: { ['e' + n]: 1 }, bm: 0, exitOk: 0, beat: n, mv: 5 };
+    ch[5].seen = 'globe-trail';
+    localStorage.setItem('hungry-hole-data-v1', JSON.stringify({ v: 1, w5: 1, settings: { sound: 1, music: 1, learn: 'full', grade: 2 }, last: 4, journey: 0, ch, passport: { FR: 1 }, learn: {},
+      ispy: { 4: { deck: [1, 2, 3], pos: 1, wins: 4 }, 5: { deck: [7], pos: 0, wins: 5 } }, edu: { 4: { set: 1, done: 2 }, 5: { set: 3, done: 4 } }, retired: {} }));
+  });
+  await p.goto(URL); await p.waitForTimeout(400);
+  const sw = () => p.evaluate(() => { const { S } = HH, c = S.ch; return { w: [4, 5].map(n => c[n].w), up: [4, 5].map(n => c[n].up[0]), eaten: [4, 5].map(n => Object.keys(c[n].eaten).join()), beat: [4, 5].map(n => c[n].beat),
+    u: [4, 5].map(n => c[n].u), seen4: c[4].seen, wins: [4, 5].map(n => S.ispy[n] && S.ispy[n].wins), edu: [4, 5].map(n => S.edu[n] && S.edu[n].set), last: S.last, w51: S.w51, names: [4, 5].map(n => HH.CH[n].key), passport: S.passport.FR }; });
+  const s1 = await sw();
+  await p.evaluate(() => HH.persist()); await p.reload(); await p.waitForTimeout(400);
+  const s2 = await sw();
+  const swapOk = s1.names.join() === 'globe,space' && s1.w.join() === '1005,1004' && s1.up.join() === '5,4' && s1.eaten.join() === 'e5,e4' && s1.beat.join() === '5,4' && s1.seen4 === 'globe-trail'
+    && s1.wins.join() === '5,4' && s1.edu.join() === '3,1' && s1.last === 5 && s1.u.join() === '1,1' && s1.w51 === 1 && s1.passport === 1 && JSON.stringify(s1) === JSON.stringify(s2);
+  results.push(['v5 save -> v5.1 world order (4 = Globe, 5 = Space): each world keeps its own progress, moved once, stable after reload', swapOk, swapOk ? s1 : { s1, s2 }]);
 
   // Reset Everything (two-tap) keeps other keys
   await p.evaluate(() => HH.UI.settings('main')); await p.waitForTimeout(200);

@@ -20,8 +20,8 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html', OUT = proc
     ['13-w2-vancouver-story-start', 2, 'story', null, null, 0, 0], ['14-w2-downtown', 2, 'explore', 30, 'canadaplace', 0, 1.5], ['15-w2-street-corner-lamps', 2, 'explore', 3, [-123.1207, 49.2827, 100, -50], 0, 0],
     ['16-w2-whistler-snow', 2, 'explore', 300, 'whistler', 0, 1],
     ['17-w3-stanley-story-start', 3, 'story', null, null, 0, 0], ['18-w3-aquarium', 3, 'explore', 8, 'aquarium', 0, 1.5], ['19-w3-lighthouse', 3, 'explore', 6, 'brocktonlh', 1, 1], ['20-w3-park-overview', 3, 'explore', 160, 'mid', 0, 0],
-    ['21-w4-space-story-start', 4, 'story', null, null, 0, 0], ['22-w4-saturn', 4, 'explore', 'x1.4', 'saturn', 1.2, 0.4],
-    ['23-w5-globe-story-start', 5, 'story', null, null, 0, 0], ['24-w5-golden-gate', 5, 'explore', 'x1.5', 'goldengate', 1, 1], ['25-w5-europe', 5, 'explore', 220, 'eiffel', 0, 0], ['26-w5-the-world', 5, 'explore', 1300, 'everest', 0, 0],
+    ['21-w4-globe-story-start', 4, 'story', null, null, 0, 0], ['22-w4-golden-gate', 4, 'explore', 'x1.5', 'goldengate', 1, 1], ['23-w4-europe', 4, 'explore', 220, 'eiffel', 0, 0], ['24-w4-the-world', 4, 'explore', 1300, 'everest', 0, 0],
+    ['25-w5-space-story-start', 5, 'story', null, null, 0, 0], ['26-w5-saturn', 5, 'explore', 'x1.4', 'saturn', 1.2, 0.4],
   ];
   for (const [file, n, mode, d, id, ox, oy] of scenes) {
     await p.evaluate(([n, mode, d, id, ox, oy]) => { const { G } = HH; HH.UI.closeModal && HH.UI.closeModal(); HH.startChapter(n, mode);
@@ -34,9 +34,9 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html', OUT = proc
     await p.waitForTimeout(1800); await shot(p, file);
   }
   // the big map (tap the minimap), the Globe's to-scale world at 100%
-  await p.evaluate(() => { HH.G.bigmap = { zi: 0 }; }); await p.waitForTimeout(500); await shot(p, '27-w5-big-map');
+  await p.evaluate(() => { HH.startChapter(4, 'explore'); HH.G.bigmap = { zi: 0 }; }); await p.waitForTimeout(900); await shot(p, '27-w4-big-map');
   await p.evaluate(() => { HH.startChapter(3, 'story'); HH.G.bigmap = { zi: 0 }; }); await p.waitForTimeout(900); await shot(p, '28-w3-big-map');
-  // the finale: the Globe's last objective rolls the credits
+  // the finale: Space (World 5, the last world since v5.1) rolls the credits after its last objective, the Sun
   await p.evaluate(() => { HH.G.bigmap = null; HH.startChapter(5); HH.G.C.finish(false); }); await p.waitForTimeout(4500); await shot(p, '29-finale-credits');
   // modes
   await p.evaluate(() => { HH.G.cine = null; HH.UI.main(); }); await p.waitForTimeout(200); await shot(p, '30-menu-four-modes');
@@ -45,8 +45,8 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html', OUT = proc
   await p.waitForTimeout(1500); await shot(p, '32-ispy-run-w2');
   await p.evaluate(() => { const { G } = HH; G.run.tg.forEach(t => t.o && HH.eat(t.o)); }); await p.waitForTimeout(1300); await shot(p, '33-ispy-win');
   await p.evaluate(() => { HH.UI.closeModal(); HH.UI.chapters('edu'); }); await p.waitForTimeout(300); await shot(p, '34-edu-picker');
-  await p.evaluate(() => { const { G, S } = HH; S.edu[5] = { set: 0, done: 0 }; HH.startChapter(5, 'edu'); G.helpOn = HH.MODES.edu.target(); });
-  await p.waitForTimeout(1500); await shot(p, '35-edu-w5-help-arrow');
+  await p.evaluate(() => { const { G, S } = HH; S.edu[4] = { set: 0, done: 0 }; HH.startChapter(4, 'edu'); G.helpOn = HH.MODES.edu.target(); });
+  await p.waitForTimeout(1500); await shot(p, '35-edu-w4-help-arrow');
   await p.evaluate(() => { const { G, S } = HH; const mi = HH.CH[1].edu.findIndex(E => E.s.some(x => x[0] === 'm')); S.edu[1] = { set: mi, done: 0 }; HH.startChapter(1, 'edu'); G.lvl = 4; });
   await p.waitForTimeout(3600); await shot(p, '36-edu-w1-local-sums');
   await p.evaluate(() => { const { G, S } = HH; S.edu[3] = { set: 0, done: 0 }; HH.startChapter(3, 'edu'); G.helpOn = HH.MODES.edu.target(); });
