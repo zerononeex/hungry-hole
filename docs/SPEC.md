@@ -758,3 +758,5 @@ The world-redo sequence so far: World 1 The Home (floorplan), Metro Vancouver (s
 **v5.7 addendum 5 (owner): the TOTEM POLES at Brockton Point are IN** (scenery landmarks — the standing rule holds: totem poles are never eatable) **and DEADMAN'S ISLAND is IN** — a visible island in Coal Harbour off the park's edge (scenery across the water; likely what the retracted "pineapple island" was reaching for).
 
 **v5.7 addendum 6 (owner): Lost Lagoon reconfirmed, plus the PITCH & PUTT is IN and the TENNIS COURTS next to it are IN** (the Lagoon Drive cluster, Stanley Park world).
+
+**v5.7 addendum 7 (owner — STANLEY PARK DRESSING, world definition COMPLETE):** benches along all the walkways; lamps everywhere; trees in density ("a shit ton"); sidewalks and bicycle paths woven through for liveliness; and the park's real wildlife — the animals that actually live in that area (squirrels, raccoons, ducks, geese, swans, herons, turtles, beavers, plus the seals and orcas in the water). The owner calls this map complete as specified.
