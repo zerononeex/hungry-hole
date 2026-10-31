@@ -633,3 +633,151 @@ What is ready: the partner dot on the minimap and the mini-globe (`G.mate`) and 
 | W5 The Globe | 9.6 | 0.37 0.97 1.15 1.33 2.33 4.87 6.05 7.81 8.70 9.04 9.40 9.62 | ~78, ~67 |
 
 All five worlds finish inside the 8–15 minute window. The game itself uses `Math.random`, so the same seed varies by about a minute between runs (one Home run at an interim tuning came in at 7.5, which is why Home was nudged to `needP` 1.13). Vancouver, Stanley Park and Space sit near the bottom of the window. A real child explores more than the bot, so they should land mid-window; tune `need` up per world if Kakashi finds them quick.
+
+---
+
+# v5.1 — two-iPad co-op, Parts 2–14, owner requests (branch `claude/hungry-hole-v51-coop`)
+
+## Co-op (all four modes) — SHIPPED, verified in tests, NOT yet verified on real iPads
+- **How two iPads find each other:** the host taps *Play together → Host* and gets a 6-letter room code (no I/O/0/1 look-alikes). The guest types it in. Signalling goes through the public PeerJS broker (`peerjs@1.5.4` from jsDelivr, room id `hungryhole-v51-<CODE>`); after that the iPads talk directly over WebRTC. No server of ours.
+- **PeerJS is loaded only when a co-op button is tapped** (`NET.load`, 9 s timeout). A blocked or offline CDN never touches solo play: the game boots and plays with zero console errors, and only the co-op buttons say "Can't connect right now…" (test: *PeerJS blocked*).
+- **Host-authoritative.** The host runs the world: the eaten set, the objective ladder, the size cap, I Spy hands, lesson steps and placed targets. The guest predicts its own hole and asks; the host confirms or refuses. Every wire message is checked (`W8`) before use; junk is dropped.
+- **Messages:**
+  - Setup: `hello`, `ready`, `start`.
+  - Movement and state: `pos`, `st`, `cap`, `sz`, `ups`.
+  - Eating: `re` (request), `add`, `learn`, `win`, `done`.
+  - Repair: `snap` (full resync), `need`, `full`.
+  - Session: `pause`, `hb` (heartbeat), `bye`, `nope` (refused, e.g. version mismatch).
+- **Saves:**
+  - Each iPad keeps its own save under the unchanged key `hungry-hole-data-v1`.
+  - The guest's coins are banked into the guest's wallet exactly once.
+  - The guest's own world progress is never changed by playing in someone else's room.
+  - Exploration saves nothing for either iPad.
+- **Disconnects:**
+  - A `bye`, or 6 s without hearing anything (heartbeats go every second), drops the partner.
+  - The host carries on solo with the guest's coins banked.
+  - The guest returns to the menu with its coins kept.
+- **Evidence:** `tests/coop.js` passes 19/19. It runs two browser contexts with separate saves over a BroadcastChannel transport (`?nettest=bc`). It covers:
+  - host, join and `hello`
+  - position sync
+  - both holes advancing the ladder
+  - the size cap
+  - snapshot repair
+  - coins banked once
+  - shared pause
+  - disconnect
+  - I Spy together, with the shared hand and the bonus to both wallets
+  - Educational, Exploration, Globe and Space together
+  - a `hello` version mismatch
+  - junk wire messages
+  - heartbeat timeout
+  - blocked PeerJS
+- **Not verified, said plainly:**
+  - The live PeerJS cloud broker could not be reached from this container.
+  - Two real iPads could not be exercised.
+  - iOS Safari's mDNS-hidden local addresses can stop a direct WebRTC link on some home routers. That would need a TURN relay, which is a server, and none is configured.
+  - Kakashi: please try it once on two iPads on the home Wi-Fi before merging. If the link never forms, the fix is a TURN entry in the `new Peer({...})` config, not a code rewrite.
+- **Uptime:** the broker is third-party, so we don't control its uptime. When it is down, co-op says it can't connect and solo play is untouched.
+
+## Part 2 — music
+A pause overlay never changes or restarts the music (Upgrades, Quest Board). `tests/audio.js` proves both the track and its playback position (9/9). The audio files and the manifest are untouched.
+
+## Part 3 — minimap
+The minimap moved to the top-left, with the objective/quest stack below it. The bottom-left is free for the joystick.
+
+## Parts 4–5 — Vancouver ground
+- Residential and school land is lawn green (`#a8cf86`).
+- North of about 49.9° (Whistler), the ground is snow (`#f2f5f8`), the green areas are drawn as snow, and peaks use snow colours.
+- The mountain land-use cells between the city and Whistler are forest green, not grey alpine.
+
+## Part 6 — rectangle boundary
+- Metro Vancouver's playable area is now the whole map rectangle. The irregular play polygon was removed, and reachability checks every cell in the rectangle.
+- **Judgment call:** the owner's older rules (SPEC #15: Langley is out, nothing south of the border) are kept for *named places*. Those places' labels and landmarks aren't placed, though the ground there is playable. Otherwise the open rectangle would start labelling Langley and Washington State.
+
+## Part 7 — YVR
+- Buildings and ground:
+  - the International and South terminals
+  - the control tower
+  - three parkades and a car lot
+  - hangars, checked against the water mask
+  - a fuel farm
+- Planes:
+  - 3 planes taxi.
+  - Take-off and landing circuits run on both runways (3 + 2 planes). They climb and descend along the path (`alts`), and a plane in the air can't be eaten.
+  - 3 high flyovers.
+
+## Part 8 — Science World
+- Science World is a geodesic sphere (icosphere detail 2) with a strut along every edge, on columns, with a plaza and an entrance wing, at real scale.
+- Its exact coordinates fell in the water mask, so it is placed at the nearest dry spot, at the east end of False Creek (lon −123.1026, lat 49.2741).
+
+## Part 9 — Home
+- "GO UPSTAIRS" and "GO DOWNSTAIRS" signs with arrows are painted at both ends of the stairs.
+- There is **no garage**. The two cars sit in a carport under the porch, and a storage room behind it holds the toolbench, the shelf and the recycling.
+- The garden beds moved clear of the deck stairs.
+- **Judgment call:** the old garden-bed layout also passed a plain smallest-size flood test, so reachability now also checks that the stair foot is clear.
+- **Judgment call (found by the pace bot):** the storage room behind the carport is only 1.6 m deep. With the 1.4 m doorway first drawn there, a big hole could never get at the toolbench, the shelf or the recycling, and the Home bot stalled at size 9 short of the family car (20.4 and 20.9 minutes). The storage room now opens to the carport across 6.4 m, like an open back bay under the porch. The bot then finishes in 10.1 and 12.2 minutes (seeds 0 and 3), and reachability is still 100%.
+
+## Part 10 — Exploration sandbox
+Upgrades are free 0–10 steppers in Exploration. They last for the session only and are never saved.
+
+## Part 11 — no perpetual teeter
+Nothing rocks forever. A thing that doesn't qualify sits still against the hole. A qualifying bump topples a thing in once. Behaviour tests cover both.
+
+## Part 12 — never show the void
+- Past every edge and corner, the world visibly continues as scenery you can't eat:
+  - **Vancouver:** sea to the west, snowy peaks to the north, valley forest to the east, towns to the south.
+  - **Stanley Park:** sea to the west and north, city streets to the south and east.
+- Screenshots 50–56 show every world at max size at a map corner.
+
+## Part 13 — the Globe over the poles
+- **How it works:**
+  - The Globe no longer wraps top to bottom.
+  - Driving past a pole puts you at the same point on the sphere: longitude +180°, latitude mirrored. Your velocity carries on (you are now heading away from the pole), and the camera turns half a circle round the hole in the same frame.
+  - Just past the pole, the far side of the Earth is drawn turned round the hole's meridian, both the ground and the things on it. That is exactly what the turned camera shows after the crossing, so **nothing on screen moves at the crossing**. Before/after screenshots at both poles match, apart from twinkling glints and clouds that drift with time.
+  - Things past the pole are drawn only. You can eat them once you are over.
+- **Evidence:** `tests/behaviour.js` runs two tests, one from northern Canada (−100°, 80°) over the North Pole and one from Antarctica (30°, −80°) over the South Pole. With the stick held straight, each drive:
+  - lands at longitude +180 (80° E, in Russia; −150° for the south run)
+  - takes the same distance per frame on the sphere across the crossing
+  - shows no kink on screen in the hole or in four tracked points on both sides of the pole (0 px)
+- **Judgment call:**
+  - The camera stays turned (south-up) while the finger stays down, so a held drive stays straight.
+  - When the finger lifts, the camera swings smoothly back to north-up over about two seconds.
+  - This relaxes the v5 rule that "the camera never turns", for the Globe only.
+  - The minimap and the mini-globe stay north-up.
+- **Also:**
+  - A country's edge along the pole itself is no longer stroked as a border.
+  - The Antarctic plateau is painted solid to the pole, so there is no seam line.
+  - Drifting clouds and storms that drift over a pole are folded too.
+  - In co-op, a partner who crosses a pole is snapped, not slid round the world.
+
+## Part 14 — Space
+Space's ambient scatter was cut by half (spec addendum 13). The longer run was accepted by the owner, and the bot time is in the table below.
+
+## Owner requests during the build
+- **Main menu art:** the owner's HUNGRY HOLE logo and the four button images, plus the settings icon, cut from the owner's menu image. The moving background is kept.
+- **World order:** World 4 is now **the Globe** and World 5 is **Space** (size order).
+  - Existing saves are moved once (`migrate51`, marked `w51`): each world keeps its own wallet, upgrades, eaten set, beat, I Spy and Educational progress.
+  - If World 3 was finished, World 4 (the Globe) is unlocked.
+  - **Judgment call:** the finale (+5000 coins, the journey flag, credits) moved with the last world, so it now plays after **Space**, and the credits read "…to the whole world… to the Sun itself".
+  - The music stays with its world: the Globe keeps `ch5.mp3`, Space keeps `ch4.mp3`. No audio files changed.
+
+## v5.1 results (tests at hand-off)
+| Suite | Result |
+| --- | --- |
+| `tests/data.js` | PASS ×5, no errors |
+| `tests/behaviour.js` | 29/29, including the v5 → v5.1 world-order move and both pole drives |
+| `tests/coop.js` | 19/19 |
+| `tests/audio.js` | 9/9 (Globe `ch5.mp3`, Space `ch4.mp3`; a pause overlay keeps the track and position) |
+| `tests/ui-flow.js` | clean, 0 console errors |
+| `tests/reachability.js` | 100% in all five worlds; Vancouver's whole rectangle; Home deck → backyard at the smallest size, stair foot clear |
+| `tests/screens.js` | refreshed, 0 console errors. New: 50–56 (each world at max size at a map corner), 57–62 (stairs, carport, YVR, Science World, north forest), 63 (play-together picker), 64–65 (the Globe at the North Pole and the South Pole) |
+| `tests/perf.js` | GPU-less headless: Vancouver 18.6, Stanley Park 22.8, Globe 14.6–16.2 fps. The pre-Part-13 build measures the Globe at 15.6 on the same machine, so the pole work costs nothing measurable. The 50 fps target still needs a real iPad. |
+
+### Pace bot, v5.1 (`node tests/balance-bot.js 1,2,3,4,5 40`, sim-minutes; window 8–15, Space relaxed)
+| World | Finish | Objectives eaten at (min) |
+| --- | --- | --- |
+| W1 The Home | 10.1 / 12.2 (seeds 0 / 3), after the storage fix | 2.12 3.63 4.33 6.03 7.21 7.84 9.52 10.08 |
+| W2 Metro Vancouver | 8.1 | 2.41 3.04 3.89 4.02 5.25 6.15 7.14 8.04 8.12 8.15 |
+| W3 Stanley Park | 8.5 | 0.13 0.24 0.62 3.99 6.07 7.17 7.97 8.41 8.48 8.54 |
+| W4 The Globe | 10.0 | 0.37 1.08 1.29 1.57 2.52 5.03 6.18 7.85 8.84 9.24 9.7 10 |
+| W5 Space | 8.0 | 0.11 0.35 0.39 0.48 0.85 4 6.7 7.43 8.01 |

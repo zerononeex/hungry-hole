@@ -64,7 +64,8 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html', OUT = proc
   }
   for (const [file, n, js] of [['57-w1-stairs-go-upstairs', 1, 'HH.setHoleD(.3); G.fl = 0; G.x = 2.8; G.y = 29.7'], ['58-w1-deck-stairs-go-downstairs', 1, 'HH.setHoleD(.4); G.fl = 1; G.x = 9.15; G.y = 16'],
     ['59-w1-cars-under-the-porch', 1, 'HH.setHoleD(1.2); G.fl = 0; G.x = 5; G.y = 18.5'], ['60-w2-yvr', 2, 'HH.setHoleD(120); [G.x, G.y] = G.C.P(-123.185, 49.1935)'],
-    ['61-w2-science-world', 2, "HH.setHoleD(30); const o = G.auth.find(o => o.id === 'scienceworld'); G.x = o.x; G.y = o.y + 70"], ['62-w2-north-mountain-forest', 2, 'HH.setHoleD(250); [G.x, G.y] = G.C.P(-122.62, 49.6)']]) {
+    ['61-w2-science-world', 2, "HH.setHoleD(30); const o = G.auth.find(o => o.id === 'scienceworld'); G.x = o.x; G.y = o.y + 70"], ['62-w2-north-mountain-forest', 2, 'HH.setHoleD(250); [G.x, G.y] = G.C.P(-122.62, 49.6)'],
+    ['64-w4-globe-at-the-north-pole', 4, 'HH.setHoleD(G.C.sizes[11]); [G.x, G.y] = G.C.P(-40, 89.4)'], ['65-w4-globe-at-the-south-pole', 4, 'HH.setHoleD(G.C.sizes[10]); [G.x, G.y] = G.C.P(60, -89.7)']]) {
     await p.evaluate(([n, js]) => { const { G } = HH; HH.UI.closeModal && HH.UI.closeModal(); HH.startChapter(n, 'explore'); new Function('G', js)(G); G.cam.x = G.x; G.cam.y = G.y; }, [n, js]);
     await p.waitForTimeout(2200); await shot(p, file);
   }
