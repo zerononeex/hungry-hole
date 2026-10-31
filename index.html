@@ -2229,7 +2229,7 @@ function freshCh(n) {
 }
 function freshSave() {
   const ch = {}; for (let n = 1; n <= NW; n++) ch[n] = freshCh(n);
-  return { v: 1, settings: { sound: 1, music: 1, learn: 'full', grade: 2 }, last: 1, journey: 0, ch,
+  return { v: 1, settings: { sound: 1, music: 1, learn: 'full', grade: 2, mini: 0.25 }, last: 1, journey: 0, ch,
     learn: { math: 0, spelling: 0, science: 0, geography: 0 }, passport: {}, ispy: {}, edu: {}, retired: {}, w5: 1, w51: 1, w52: 1 };
 }
 /* v5: the roster became five worlds. A save from v4 or earlier (seven chapters) is moved once: Home <- old 1,
@@ -2294,6 +2294,7 @@ function normalize(d) {
   d = migrate52(migrate51(migrate5(d)));
   const o = Object.assign({}, f, d);
   o.settings = Object.assign({}, f.settings, d.settings || {}); delete o.settings.voice;   // v4.1: the voice is gone
+  if (![0.25, 0.5, 1].includes(o.settings.mini)) o.settings.mini = 0.25;   // v5.2: the corner map's zoom (a UI choice, kept in the one save)
   o.learn = Object.assign({}, f.learn, d.learn || {});
   o.passport = Object.assign({}, d.passport || {});
   o.retired = d.retired && typeof d.retired === 'object' ? d.retired : {};
@@ -5101,9 +5102,11 @@ function miniImg(C) {
   else { x.setTransform(k, 0, 0, k, 0, 0); try { C.bg(x, { z: k, cx: C.W / 2, cy: C.H / 2, x0: 0, y0: 0, x1: C.W, y1: C.H, px: 1 / k, mini: 1 }); } catch (e) { /* a painter that can't draw the whole map */ } }
   return (C._mini = c);
 }
+const miniZoom = () => (S.settings && [0.25, 0.5, 1].includes(S.settings.mini) ? S.settings.mini : 0.25);
 function miniRect() {
   const C = G.C;
   if (C.wrap) return [14, 14, 180, 180];
+  if (miniZoom() < 1) return [14, 14, 190, 150];     // v5.2 Part 6: a 25% / 50% window that follows the hole
   const k = Math.min(200 / C.W, 170 / C.H), w = C.W * k, h = C.H * k;
   return [14, 14, w, h];                             // v5.1: TOP-left (bottom-left is the joystick's thumb zone)
 }
@@ -5133,8 +5136,14 @@ function drawMiniMap() {
   const C = G.C, [X, Y, W, H] = miniRect();
   if (C.miniGlobe) return C.miniGlobe(X, Y, W, H);
   const img = miniImg(C);
+  const f = miniZoom();
   if (C.wrap) drawMapLayer(X, Y, W, H, G.x - C.W / 2, 0, C.W, C.H, img, 1);
-  else drawMapLayer(X, Y, W, H, 0, 0, C.W, C.H, img, 0);
+  else if (f >= 1) drawMapLayer(X, Y, W, H, 0, 0, C.W, C.H, img, 0);
+  else {                                             // the same share of the map the big map shows at that zoom, centred on the hole
+    let vw = C.W, vh = vw * H / W; if (vh < C.H) { vh = C.H; vw = vh * W / H; }
+    vw *= f; vh *= f; drawMapLayer(X, Y, W, H, G.x - vw / 2, G.y - vh / 2, vw, vh, img, 0);
+    txt(Math.round(f * 100) + '%', X + W - 6, Y + H - 11, 12, '#fff', 'right');
+  }
   g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 3; g.beginPath();
   if (C.wrap) g.arc(X + W / 2, Y + H / 2, W / 2, 0, 7); else rr(g, X, Y, W, H, 10);
   g.stroke();
@@ -5152,6 +5161,10 @@ function drawBigMap() {
   else vy0 = clamp(vy0, 0, Math.max(0, C.H - vh));
   g.fillStyle = 'rgba(0,0,0,.55)'; rr(g, X - 10, Y - 40, W + 20, H + 50, 18); g.fill();
   txt(`MAP · ${Math.round(f * 100)}%   (tap the map to zoom)`, X + 6, Y - 20, 17, '#ffd96a');
+  // v5.2 Part 6: what the corner map shows (25% default), a small segmented control on the big map's bar
+  txt('CORNER MAP', X + W - 330, Y - 20, 13, '#cfe');
+  for (const [i, v] of [[0, 0.25], [1, 0.5], [2, 1]]) { const bx = X + W - 240 + i * 66, on = miniZoom() === v;
+    g.fillStyle = on ? '#ffd23f' : 'rgba(255,255,255,.18)'; rr(g, bx, Y - 34, 62, 28, 8); g.fill(); txt(Math.round(v * 100) + '%', bx + 31, Y - 20, 15, on ? '#3a1d00' : '#fff', 'center', 900); }
   drawMapLayer(X, Y, W, H, vx0, vy0, vw, vh, miniImg(C), 0);
   g.strokeStyle = '#fff'; g.lineWidth = 3; rr(g, X, Y, W, H, 10); g.stroke();
   g.fillStyle = '#e03b3b'; g.beginPath(); g.arc(X + W - 4, Y - 24, 18, 0, 7); g.fill(); txt('X', X + W - 4, Y - 23, 20, '#fff', 'center', 900);
@@ -5163,6 +5176,7 @@ function mapTap(x, y) {
   if (!G.bigmap) return false;
   const [X, Y, W, H] = bigRect();
   if (Math.hypot(x - (X + W - 4), y - (Y - 24)) < 28) { G.bigmap = null; return true; }
+  for (const [i, v] of [[0, 0.25], [1, 0.5], [2, 1]]) { const bx = X + W - 240 + i * 66; if (x >= bx && x <= bx + 62 && y >= Y - 36 && y <= Y - 4) { S.settings.mini = v; persist(); return true; } }
   if (x >= X && x <= X + W && y >= Y - 40 && y <= Y + H) { G.bigmap.zi = (G.bigmap.zi + 1) % 3; return true; }
   return false;
 }
@@ -5998,7 +6012,7 @@ requestAnimationFrame(frame);
 /* test hook for automated checks (harmless in play) */
 window.HH = { get S() { return S; }, G, CH, UI, prep, loadChapter, startChapter, eat, holeD, need, addXP, bankerTransfer, bankerArrive, buyUpgrade, upCost,
   setHoleD, ringNow, goals, capD, miniRect, syncBeat, solidPush, solidBoxes,
-  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole, labelOn, poseOf, sandSet, NET, W8, asMate, objByNid, setHash, get net() { return G.net; }, MODES, genCell, tierOf, mkObj, toScreen, camPlace, dx, dy, debugAudio, syncMusic };
+  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole, labelOn, poseOf, sandSet, NET, W8, asMate, objByNid, setHash, get net() { return G.net; }, MODES, genCell, tierOf, mkObj, toScreen, camPlace, dx, dy, mapTap, bigRect, debugAudio, syncMusic };
 </script>
 </body>
 </html>

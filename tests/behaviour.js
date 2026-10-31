@@ -214,6 +214,16 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     let got = 0; for (const t of R.tg) { if (!t.done) HH.eat(t.o); if (t.done) got++; } out.ispyEaten = got; if (got !== 5) ok = false;
     return { ok, info: out };`));
 
+  await T('corner minimap zoom (v5.2 Part 6): 25% by default and following the hole; 25/50/100 chosen on the big map, remembered in the save', new Function(STEP + `
+    const { G, S } = HH; S.ch[3].u = 1; HH.startChapter(3); step(2);
+    const def = S.settings.mini, r0 = HH.miniRect(); G.bigmap = { zi: 0 }; const [X, Y, W] = HH.bigRect();
+    const steer0 = G.joy; HH.mapTap(X + W - 240 + 66 + 31, Y - 20); const after50 = S.settings.mini, saved = JSON.parse(localStorage.getItem('hungry-hole-data-v1')).settings.mini;
+    HH.mapTap(X + W - 240 + 132 + 31, Y - 20); const full = S.settings.mini, r1 = HH.miniRect();
+    HH.mapTap(X + W - 240 + 31, Y - 20); G.bigmap = null; const back = S.settings.mini;
+    const tapMini = HH.mapTap(r0[0] + 20, r0[1] + 20), opened = !!G.bigmap; G.bigmap = null;
+    const ok = def === 0.25 && r0[2] === 190 && after50 === 0.5 && saved === 0.5 && full === 1 && r1[2] !== 190 && back === 0.25 && tapMini && opened && G.joy === steer0;
+    return { ok, info: { def, after50, saved, full, back, miniFrame: r0.slice(2), fullFrame: r1.slice(2).map(Math.round), tapOpensMap: opened } };`));
+
   await T('upgrade buy spends the chapter wallet only', new Function(`
     const { S } = HH; S.ch[1].w = 100; S.ch[2].w = 77; S.ch[1].up[0] = 0;
     const c = HH.upCost(1, 1), ok = HH.buyUpgrade(1, 0);
