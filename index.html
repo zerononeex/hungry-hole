@@ -2270,7 +2270,9 @@ function musicOut() {
   }
   return MUSIC.gain;
 }
-function musicFor() { return G.mode === 'play' && G.C ? G.C.mus : 'menu.mp3'; }
+/* v5.1: a pause overlay never changes the music. While a run is open (playing, paused, or under the Upgrades / Quest Board /
+   pause overlays) the world's track plays straight through; only leaving the run for the menus switches to menu.mp3. */
+function musicFor() { return G.C && (G.mode === 'play' || G.inRun) ? G.C.mus : 'menu.mp3'; }
 function syncMusic() {
   if (!AU.ctx || !G.gestured) return;
   const g = musicOut(); g.gain.value = S.settings.music ? 0.55 : 0;      // the MUSIC toggle drives the gain
@@ -2281,7 +2283,7 @@ function syncMusic() {
   MUSIC.name = want;
   if (!want || !MUSIC.buf[want]) return;
   for (const k in MUSIC.buf) if (k !== want && k !== 'menu.mp3' && !k.startsWith('sfx-')) delete MUSIC.buf[k];   // keep memory to two tracks
-  const s = AU.ctx.createBufferSource(); s.buffer = MUSIC.buf[want]; s.loop = true; s.connect(g); s.start(); MUSIC.src = s;
+  const s = AU.ctx.createBufferSource(); s.buffer = MUSIC.buf[want]; s.loop = true; s.connect(g); s.start(); MUSIC.src = s; MUSIC.t0 = AU.ctx.currentTime; MUSIC.starts = (MUSIC.starts || 0) + 1;
 }
 /* test hook: is the music really playing? (track, a live looping source, context running, gain, output level) */
 function debugAudio() {
@@ -2289,6 +2291,7 @@ function debugAudio() {
   if (MUSIC.an) { const a = new Float32Array(MUSIC.an.fftSize); MUSIC.an.getFloatTimeDomainData(a); for (const v of a) level = Math.max(level, Math.abs(v)); }
   return { track: MUSIC.src ? MUSIC.name : null, playing: !!MUSIC.src && !!AU.ctx && AU.ctx.state === 'running', ctxState: AU.ctx ? AU.ctx.state : 'none',
     gainValue: MUSIC.gain ? MUSIC.gain.gain.value : 0, level: +level.toFixed(4), time: AU.ctx ? +AU.ctx.currentTime.toFixed(2) : 0,
+    pos: MUSIC.src && AU.ctx ? +(AU.ctx.currentTime - MUSIC.t0).toFixed(3) : 0, starts: MUSIC.starts || 0,   // seconds since this track started (no restart = keeps rising)
     sfx: Object.keys(MUSIC.buf).filter(f => f.startsWith('sfx-')).length, sfxListed: [...AUDIO_FILES].filter(f => f.startsWith('sfx-')).length, bad: Object.keys(MUSIC.bad) };
 }
 /* a named SFX file if the owner added it (decoded buffer, same context), else the synth fallback */
@@ -2450,7 +2453,7 @@ function loadChapter(n, kind) {
     for (const a of st.act) instSetup(a);
     rollQuests(true);
   } else MODES[kind].setup();
-  G.mode = 'play'; G.paused = false;
+  G.mode = 'play'; G.paused = false; G.inRun = true;
 }
 function gridAdd(o) {
   const C = G.C, cx = Math.floor(o.x / C.ags), cy = Math.floor(o.y / C.ags), k = akey(cx, cy);
@@ -4796,6 +4799,7 @@ const UI = {
     $('hudbtns').classList.toggle('mode', name === 'game' && G.run.kind === 'edu');
     $('sizebtns').classList.toggle('on', name === 'game' && G.run.kind === 'explore');
     if (name !== 'game') { G.mode = 'menu'; G.joy = null; }
+    if (name === 'main' || name === 'chapters' || name === 'settings' || name === 'credits') G.inRun = false;   // left the run (overlays keep it)
   },
   main() {
     const n = S.last, C = CH[n];
