@@ -314,7 +314,7 @@ const MT = {
   townhouse: [30, 10], lowrise: [30, 14], midrise: [35, 30], highrise: [30, 110], office: [40, 120], glass: [35, 150], hotel: [40, 80], shop: [15, 6], supermarket: [70, 9],
   gas: [25, 6], church: [25, 20], warehouse: [80, 12], factory: [70, 15], tank: [20, 15], containers: [12, 8], farmhouse: [14, 9], barn: [25, 12], greenhouse: [60, 5], silo: [6, 20],
   cabin: [9, 6], campusbld: [60, 20], school: [70, 12], highschool: [100, 14], commcentre: [60, 10], casino: [90, 25], hospital: [80, 30],
-  scienceworld: [50, 47], aquarium: [100, 12], bcplace: [230, 60], arena: [130, 40], canadaplace: [300, 30], harbourctr: [30, 147], steamclock: [1.5, 5], chinagate: [10, 12],
+  scienceworld: [64, 56], aquarium: [100, 12], bcplace: [230, 60], arena: [130, 40], canadaplace: [300, 30], harbourctr: [30, 147], steamclock: [1.5, 5], chinagate: [10, 12],
   mermaid: [2, 3], library: [90, 30], cauldron: [12, 10], inukshuk: [4, 6], market: [100, 10], ikea: [180, 15], nightmarket: [150, 5], mall: [250, 20], campus: [400, 30],
   parkade: [110, 16], hangar: [70, 22], ctower: [18, 62], terminal: [400, 25], whiterock: [4, 3], peacearch: [20, 20], pier: [470, 4], lighthouse: [8, 18], coaster: [150, 25], chalet: [40, 15], lodge: [60, 18], rings: [12, 6],
   cannery: [80, 15], quay: [100, 12], borderpost: [30, 8], obstower: [40, 15], bridge: [1000, 70], peak: [5000, 1500],
@@ -1029,7 +1029,12 @@ const CH = [null];
       // every school, high school, community centre and casino at its real location (names show only while targeted)
       for (const [k, x, y, nm] of D3.poi) if (inPlay(x, y)) add(k, x, y, { label: nm, quiet: 1, nm, yaw: rng() * 6.28 });
       // the famous places, with their own shapes
-      A('scienceworld', -123.1036, 49.2734, { label: 'Science World', id: 'scienceworld', fact: 'A science centre inside a giant geodesic dome, built for Expo 86.' });
+      // v5.1 Part 8: Science World stands on land at the east end of False Creek: the coarse water mask covers its real spot,
+      // so it takes the nearest spot whose whole footprint is dry (searched outward from the real coordinates)
+      { const [x0, y0] = P(-123.1036, 49.2734); let best = [x0, y0];
+        const dry = (x, y) => !isWater(x, y) && [0, 1, 2, 3, 4, 5, 6, 7].every(i => !isWater(x + Math.cos(i * .785) * 30, y + Math.sin(i * .785) * 30));
+        out: for (let r = 0; r <= 400; r += 10) for (let i = 0; i < Math.max(1, r / 5); i++) { const a = i / Math.max(1, r / 5) * 6.2832, x = x0 + Math.cos(a) * r, y = y0 + Math.sin(a) * r; if (dry(x, y)) { best = [x, y]; break out; } }
+        add('scienceworld', best[0], best[1], { quiet: 1, keep: 1, label: 'Science World', id: 'scienceworld', fact: 'A science centre inside a giant geodesic dome, built for Expo 86.' }); }
       A('aquarium', -123.1308, 49.3006, { label: 'the Vancouver Aquarium', id: 'aquarium', sub: 'Stanley Park' });
       A('bcplace', -123.1119, 49.2768, { label: 'BC Place', id: 'bcplace' }); A('arena', -123.109, 49.2779, { label: 'Rogers Arena', id: 'arena' });
       A('canadaplace', -123.1111, 49.2888, { label: 'Canada Place', id: 'canadaplace', yaw: 0.35, fact: 'Its white roof looks like the sails of a ship.' });
@@ -4152,6 +4157,21 @@ const MODEL = (() => {
     iflag: p => [cy(.08, 2, .08, -.45, 1, 0, '#cfd8dc'), sp(.18, .18, .18, -.45, 2.05, 0, GOLD), bx(.9, .6, .06, 0, 1.6, 0, '#e53935'), bx(.9, .12, .065, 0, 1.6, 0, '#fafafa')],
     /* ---- v5 Globe landmark looks (our own art: generic shapes, no logos) ---- */
     pool: p => [bx(1, .08, 2.4, 0, .04, 0, '#ececec'), bx(.84, .09, 2.2, 0, .05, 0, '#3fb6e8'), ...[-.25, 0, .25].map(x => bx(.02, .095, 2.1, x, .05, 0, '#e3f6ff'))],
+    // v5.1 Part 8: Science World as it is: a geodesic sphere (a faceted icosphere with its lattice of struts) up on columns,
+    // over a low entrance wing. Struts are thin boxes laid along every edge of the icosphere.
+    geosw: p => {
+      const R = .5, cy0 = .74, out = [sp(1, 1, 1, 0, cy0, 0, '#e4eaf0', { det: 2 })];
+      const g = new THREE.IcosahedronGeometry(R * 1.008, 2), a = g.attributes.position.array, seen = new Set(), up = new THREE.Vector3(0, 1, 0), v = new THREE.Vector3(), q = new THREE.Quaternion();
+      const key = (i) => Math.round(a[i] * 1e4) + ',' + Math.round(a[i + 1] * 1e4) + ',' + Math.round(a[i + 2] * 1e4);
+      for (let f = 0; f < a.length; f += 9) for (const [i, j] of [[f, f + 3], [f + 3, f + 6], [f + 6, f]]) {
+        const ki = key(i), kj = key(j), k = ki < kj ? ki + '|' + kj : kj + '|' + ki; if (seen.has(k)) continue; seen.add(k);
+        v.set(a[j] - a[i], a[j + 1] - a[i + 1], a[j + 2] - a[i + 2]); const L = v.length(); q.setFromUnitVectors(up, v.normalize());
+        out.push(bx(.014, L, .014, (a[i] + a[j]) / 2, cy0 + (a[i + 1] + a[j + 1]) / 2, (a[i + 2] + a[j + 2]) / 2, '#6f7b88', { q: q.toArray() }));
+      }
+      for (let i = 0; i < 10; i++) out.push(cy(.045, .3, .045, Math.cos(i * .628) * .3, .15, Math.sin(i * .628) * .3, '#b4bcc6', { seg: 6 }));
+      out.push(bx(1.36, .04, 1.36, 0, .02, 0, '#c7cdd3'), bx(.95, .16, .32, 0, .08, .62, '#d3dae1'), bx(.96, .05, .02, 0, .1, .785, WIN), bx(1.36, .02, .1, 0, .03, -.62, '#3a6ea5'));
+      return out;
+    },
     geodome: p => [cy(.12, .5, .12, 0, .25, 0, '#9aa6b5'), sp(1, 1, 1, 0, 1, 0, '#d9e1ea', { ico: 1 }), cy(1.3, .06, 1.3, 0, .03, 0, '#7f8c99')],
     sails: p => [bx(1.2, .35, 2, 0, .17, 0, '#d8d4cc'), ...[-.7, -.35, 0, .35, .7].map((z, i) => co(.42, .9 - Math.abs(i - 2) * .1, .3, (i % 2 ? .2 : -.2), .75, z, '#fafafa', { seg: 3 }))],
     gbridge: p => [bx(.3, .06, 4, 0, .5, 0, '#c9452f'), ...[-1, 1].flatMap(s => [bx(.08, 1.3, .08, -.13, .65, s * 1, '#c9452f'), bx(.08, 1.3, .08, .13, .65, s * 1, '#c9452f'), bx(.3, .06, .1, 0, 1.25, s * 1, '#c9452f')]),
@@ -4246,7 +4266,7 @@ const MODEL = (() => {
     supermarket: ['bld', { a: '#eceae4', h: .14, d: 1.3, fl: 1, b: '#43a047' }], gas: ['gas', {}], warehouse: ['bld', { a: '#b0a89a', h: .15, d: 1.6, fl: 1, w: '#8a8478' }], tank: ['tank', {}],
     containers: ['boxes', {}], farmhouse: ['house', { a: '#fafafa', b: '#455a64' }], greenhouse: ['greenhouse', {}], silo: ['silo', {}], campusbld: ['bld', { a: '#c9b8a0', h: .35, d: 1.5, fl: 3 }],
     highschool: ['school', { a: '#a8584a' }], commcentre: ['bld', { a: '#e0c9a6', h: .17, d: 1.4, fl: 1, roof: .12, b: '#2e7d32' }], casino: ['casino', {}],
-    scienceworld: ['dome', {}], aquarium: ['bld', { a: '#e8e2d4', h: .12, d: 1.6, fl: 1, b: '#1e88e5' }], bcplace: ['stadium', { a: '#fafafa', b: '#eceff1' }], arena: ['stadium', { a: '#455a64', b: '#c62828' }],
+    scienceworld: ['geosw', {}], aquarium: ['bld', { a: '#e8e2d4', h: .12, d: 1.6, fl: 1, b: '#1e88e5' }], bcplace: ['stadium', { a: '#fafafa', b: '#eceff1' }], arena: ['stadium', { a: '#455a64', b: '#c62828' }],
     canadaplace: ['sails', {}], harbourctr: ['htower', {}], steamclock: ['clock', {}], chinagate: ['gate', {}], mermaid: ['statue', {}], library: ['colos', {}], cauldron: ['cauldron', {}],
     inukshuk: ['inukshuk', {}], market: ['market', {}], ikea: ['bluebox', {}], nightmarket: ['stalls', {}], campus: ['campus', {}], peacearch: ['arch', {}], pier: ['pier', {}],
     lighthouse: ['lighthouse', {}], coaster: ['coaster', {}], chalet: ['cabin', {}], rings: ['rings', {}], cannery: ['cannery', {}], bridge: ['bridge', {}], borderpost: ['border', {}],
@@ -4381,7 +4401,7 @@ const MODEL = (() => {
     if (kind === 'box') g = new THREE.BoxGeometry(1, 1, 1);
     else if (kind === 'cyl') g = new THREE.CylinderGeometry(.5 * ((o && o.top) ?? 1), .5, 1, s || 9, 1, false, 0, (o && o.half) ? Math.PI : Math.PI * 2);
     else if (kind === 'cone') g = new THREE.ConeGeometry(.5, 1, s || 9);
-    else if (kind === 'sph') g = (o && o.hemi) ? new THREE.SphereGeometry(.5, 10, 4, 0, Math.PI * 2, 0, Math.PI / 2) : (o && o.ico === 0) ? new THREE.OctahedronGeometry(.5, 0) : new THREE.IcosahedronGeometry(.5, (o && o.smooth) ? 1 : 0);
+    else if (kind === 'sph') g = (o && o.hemi) ? new THREE.SphereGeometry(.5, 10, 4, 0, Math.PI * 2, 0, Math.PI / 2) : (o && o.ico === 0) ? new THREE.OctahedronGeometry(.5, 0) : new THREE.IcosahedronGeometry(.5, (o && o.det) || 0);
     else if (kind === 'rock') g = new THREE.DodecahedronGeometry(.5, 0);
     else if (kind === 'tor') g = new THREE.TorusGeometry(.5 - ((o && o.tube) || .08), (o && o.tube) || .08, 5, s || 14, (o && o.arc) || Math.PI * 2);
     else { // triangular prism, ridge along z
@@ -4400,8 +4420,8 @@ const MODEL = (() => {
   function merge(parts) {
     const pos = [], cols = [], glowP = [], glowC = [];
     for (const [k, sx, sy, sz, x, y, z, c, o] of parts) {
-      const src = shape(k, o && { seg: o.seg, top: o.top, hemi: o.hemi, ico: o.ico, tube: o.tube, arc: o.arc, half: o.half }).attributes.position.array;
-      eul.set((o && o.rx) || 0, (o && o.ry) || 0, (o && o.rz) || 0); qq.setFromEuler(eul);
+      const src = shape(k, o && { seg: o.seg, top: o.top, hemi: o.hemi, ico: o.ico, tube: o.tube, arc: o.arc, half: o.half, det: o.det }).attributes.position.array;
+      if (o && o.q) qq.fromArray(o.q); else { eul.set((o && o.rx) || 0, (o && o.ry) || 0, (o && o.rz) || 0); qq.setFromEuler(eul); }
       mtx.compose(vP.set(x, y, z), qq, vS.set(sx, sy, sz));
       col.set(c);
       const P = o && o.glow ? glowP : pos, Cc = o && o.glow ? glowC : cols;
