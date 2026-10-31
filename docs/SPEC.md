@@ -750,3 +750,5 @@ The world-redo sequence so far: World 1 The Home (floorplan), Metro Vancouver (s
 **v5.7 addendum (owner, landmark corrections for Stanley Park):** "the pineapple island" is RETRACTED (he was mixing something up — builder, ignore it). Two landmarks are explicitly IN: the **SS Empress of Japan figurehead replica** in its real spot in the park, and the **Girl in a Wetsuit** statue (already in the POI layer as the mermaid statue — it belongs to this world too).
 
 **v5.7 addendum 2 (owner): Prospect Point Lighthouse is IN** (under Lions Gate at Prospect Point, Stanley Park world).
+
+**v5.7 addendum 3 (owner): Beaver Lake is IN** (read as Beaver Lake — Kakashi to confirm the dictation) **and ALL of Stanley Park's parking lots are in**, at their real locations.
