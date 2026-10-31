@@ -48,10 +48,11 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     return { ok: R.length === 2358 && ccs.length === 195 && Math.min(...sizes) >= 10 && Math.max(...sizes) <= 20 && !missing.length && !noShape.length && !ip.length && !sameAsAn.length,
       info: { places: R.length, countries: ccs.length, min: Math.min(...sizes), max: Math.max(...sizes), points: C.LMS.filter(l => /^lm2_/.test(l.id)).length, areas: C.AREAS.length, missing: missing.slice(0, 8), noShape, ip, sameAsAn } };`));
 
+  // (the Story objective ladder is hand-placed and exempt: Lions Gate and the Golden Gate span water, Everest sits on the Nepal-China border)
   await T('landmarks in the world: every built landmark stands inside its own country; every land area is centred inside its country (reefs, lakes and islands may sit in its sea)', new Function(STEP + `
     const { G, S } = HH; S.ch[4].u = 1; HH.startChapter(4, 'explore'); const C = G.C;
     const objs = [...G.agrid.values()].flat().filter(o => o.keep && (/^lm2_/.test(o.id) || (C.LMS.find(l => l.id === o.id) || {}).src));
-    const out = objs.filter(o => !/^lm_(reef|island|ship|felucca|yacht|glacier)$/.test(o.mk || o.k || '') && !/reef|island|ship|felucca|yacht|glacier/.test(o.type || '') && !C.inCountry(o.cc, o.x, o.y)).map(o => o.cc + ':' + o.label);
+    const out = objs.filter(o => !C.beats.includes(o.id)).filter(o => !/^lm_(reef|island|ship|felucca|yacht|glacier)$/.test(o.mk || o.k || '') && !/reef|island|ship|felucca|yacht|glacier/.test(o.type || '') && !C.inCountry(o.cc, o.x, o.y)).map(o => o.cc + ':' + o.label);
     const WET = { reef: 1, water: 1, islands: 1, island: 1, falls: 1, beach: 1 };
     const aOut = C.AREAS.filter(a => !WET[a.type] && !C.inCountry(a.cc, a.x, a.y)).map(a => a.cc + ':' + a.label);
     HH.startChapter(1); step(1);

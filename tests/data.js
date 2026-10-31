@@ -59,6 +59,13 @@ const { chromium } = require('playwright');
         else if (k === 'f') a.split(',').forEach(w => specOk(w, 'edu ' + E.n));
         else fails.push('edu unknown step ' + st);
       }
+      // v5.2: every Story objective stands inside the zone ring of its own beat (the hole is held in that ring; an objective
+      // outside it is a soft-lock: Part 17's border step once moved Lions Gate 4 km north, out of the Globe's Vancouver ring)
+      if (C.beats && C.rings) C.beats.forEach((id, i) => {
+        const rg = C.rings[Math.min(i, C.rings.length - 1)], o = auth.find(o => o.id === id);
+        if (!rg || !o) return;
+        if (!C.wrap && !(o.x >= rg[0] && o.x <= rg[2]) || !(o.y >= rg[1] && o.y <= rg[3])) fails.push(`objective ${i + 1} (${id}) stands outside its zone ring`);
+      });
       if (C.key === 'van') {
         const ids = ['scienceworld', 'aquarium', 'mermaid', 'steamclock', 'canadaplace', 'bcplace', 'ubc', 'sfu', 'nightmarket', 'ikea', 'grouse', 'cypress', 'peacearch', 'whiterock', 'whistler', 'yvr'];
         for (const id of ids) if (!auth.some(o => o.id === id)) fails.push('Ch3 POI missing: ' + id);

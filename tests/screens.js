@@ -1,4 +1,4 @@
-// Screenshots for review (v5, v5.1): menus, scenes in each of the five worlds, the big map, the finale, and each mode. node tests/screens.js <outdir>
+// Screenshots for review (v5, v5.1, v5.2): menus, scenes in each of the five worlds, the big map, the finale, and each mode. node tests/screens.js <outdir>
 const { chromium } = require('playwright');
 const URL = process.env.HH_URL || 'http://localhost:8765/index.html', OUT = process.argv[2] || 'docs/screenshots';
 (async () => {
@@ -68,6 +68,17 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html', OUT = proc
     ['64-w4-globe-at-the-north-pole', 4, 'HH.setHoleD(G.C.sizes[11]); [G.x, G.y] = G.C.P(-40, 89.4)'], ['65-w4-globe-at-the-south-pole', 4, 'HH.setHoleD(G.C.sizes[10]); [G.x, G.y] = G.C.P(60, -89.7)']]) {
     await p.evaluate(([n, js]) => { const { G } = HH; HH.UI.closeModal && HH.UI.closeModal(); HH.startChapter(n, 'explore'); new Function('G', js)(G); G.cam.x = G.x; G.cam.y = G.y; }, [n, js]);
     await p.waitForTimeout(2200); await shot(p, file);
+  }
+  // v5.2: real height, the front yard, Second Beach Pool, Canada Place and the SeaBus, the Globe as a school
+  for (const [file, n, js, kind] of [['66-w1-stairs-mid-climb', 1, 'HH.setHoleD(.25); G.fl = 0; G.x = 3.0; G.y = 29.7'], ['67-w1-front-yard', 1, 'HH.setHoleD(.6); G.fl = 0; G.x = 5.5; G.y = 39.5'],
+    ['68-w2-second-beach-pool', 2, "HH.setHoleD(6); const o = G.auth.find(o => o.id === 'sealslide'); G.x = o.x + 8; G.y = o.y + 6"], ['69-w2-hill-real-height', 2, 'HH.setHoleD(30); G.x = 2960; G.y = 4800'],
+    ['70-w3-north-shore-mountains', 3, 'HH.setHoleD(300); [G.x, G.y] = G.C.P(-123.10, 49.37)'], ['71-w3-story-start-canada-place', 3, '', 'story'],
+    ['72-w3-seabus', 3, "HH.setHoleD(12); const o = G.auth.find(o => o.k === 'seabus'); G.x = o.x + 12; G.y = o.y + 8"],
+    ['73-w4-europe-borders-names', 4, 'HH.setHoleD(G.C.sizes[9]); [G.x, G.y] = G.C.P(10, 50)'], ['74-w4-capitals-mid-size', 4, 'HH.setHoleD(G.C.sizes[7]); [G.x, G.y] = G.C.P(2.35, 48.86)'],
+    ['75-w4-areas-east-africa', 4, 'HH.setHoleD(G.C.sizes[9]); [G.x, G.y] = G.C.P(36, -2.5)'], ['76-w4-animals-australia', 4, 'HH.setHoleD(G.C.sizes[5]); [G.x, G.y] = G.C.P(134, -24)'],
+    ['77-w4-japan-landmarks', 4, 'HH.setHoleD(G.C.sizes[7]); [G.x, G.y] = G.C.P(139.4, 35.6)']]) {
+    await p.evaluate(([n, js, kind]) => { const { G } = HH; HH.UI.closeModal && HH.UI.closeModal(); HH.startChapter(n, kind || 'explore'); new Function('G', js)(G); G.cam.x = G.x; G.cam.y = G.y; }, [n, js, kind]);
+    await p.waitForTimeout(2600); await shot(p, file);
   }
   await p.evaluate(() => { HH.UI.closeModal(); HH.UI.chapters('story'); }); await p.waitForTimeout(300); await shot(p, '63-play-together-picker');
   const ph = await page(844, 390); await shot(ph, '40-phone-main');
