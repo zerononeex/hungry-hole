@@ -281,6 +281,45 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     && s1.wins.join() === '5,4' && s1.edu.join() === '3,1' && s1.last === 5 && s1.u.join() === '1,1' && s1.w51 === 1 && s1.passport === 1 && JSON.stringify(s1) === JSON.stringify(s2);
   results.push(['v5 save -> v5.1 world order (4 = Globe, 5 = Space): each world keeps its own progress, moved once, stable after reload', swapOk, swapOk ? s1 : { s1, s2 }]);
 
+  // v5.1 Part 13: the Globe has no top or bottom edge. Hold the stick straight up from northern Canada: the hole goes
+  // over the North Pole and comes down the far side at Russian longitudes, with no jump on the sphere or on screen.
+  for (const [pole, lon0, lat0] of [['N', -100, 80], ['S', 30, -80]]) {
+    const r = await p.evaluate(new Function('a', 'const [pole, lon0, lat0] = a; ' + STEP + `
+      const { G, S } = HH; S.ch[4].u = 1; HH.startChapter(4, 'explore'); const C = G.C; G.paused = true;
+      HH.setHoleD(C.sizes[6]); const D = HH.holeD(); [G.x, G.y] = C.P(lon0, lat0); G.cam.x = G.x; G.cam.y = G.y; step(5);
+      const up = pole === 'N' ? -120 : 120; G.joy = { x0: 600, y0: 500, x: 600, y: 500 + up };
+      const sph = (x, y) => { const [lo, la] = C.ll(((x % C.W) + C.W) % C.W, y); const f = la * Math.PI / 180, l = lo * Math.PI / 180; return [Math.cos(f) * Math.cos(l), Math.cos(f) * Math.sin(l), Math.sin(f)]; };
+      // fixed points on the sphere near the pole, on both sides; each is drawn where it really is, or (just past the pole) turned round the hole's meridian
+      const s0 = pole === 'N' ? 1 : -1, ey = v => pole === 'N' ? v : C.H - v;
+      const probes = [[G.x + D, ey(2 * D)], [G.x - 2 * D, ey(4 * D)], [G.x + C.W / 2 + D, ey(3 * D)], [G.x + C.W / 2 - D, ey(1.5 * D)]];
+      const scr = (px, py) => { HH.camPlace(G.cam.z); const b = pole === 'N' ? 0 : 2 * C.H, m = 2 * G.x + C.W / 2;
+        const ra = [HH.dx(px, G.cam.x), py - G.cam.y], im = [HH.dx(m - px, G.cam.x), b - py - G.cam.y];
+        const q = Math.hypot(...ra) < Math.hypot(...im) ? ra : im, o = [0, 0]; HH.toScreen(q[0], q[1], 0, o); return o; };
+      const on = s => s[0] > 0 && s[0] < 1280 && s[1] > 0 && s[1] < 720;
+      let prev = null, foldAt = -1; const steps = [], tr = probes.map(() => []), hole = [], lats = [];
+      for (let i = 0; i < 6000; i++) {
+        step(1); if (G.poleN && foldAt < 0) foldAt = i;
+        const v = sph(G.x, G.y); if (prev) steps.push(Math.acos(Math.min(1, v[0] * prev[0] + v[1] * prev[1] + v[2] * prev[2])) * 6371); prev = v;
+        probes.forEach((q, k) => tr[k].push(scr(q[0], q[1])));
+        const h = [0, 0]; HH.camPlace(G.cam.z); HH.toScreen(HH.dx(G.x, G.cam.x), G.y - G.cam.y, 0, h); hole.push(h);
+        lats.push(C.ll(G.x, G.y)[1]);
+        if (foldAt >= 0 && Math.abs(lats[lats.length - 1]) < Math.abs(lat0)) break;
+      }
+      const end = C.ll(G.x, G.y), around = a => a.slice(Math.max(0, foldAt - 4), foldAt + 4);
+      // on the sphere: the step over the pole is no longer than the steps either side of it
+      const sF = around(steps), stepOk = Math.max(...sF) <= Math.max(sF[0], sF[sF.length - 1]) * 1.05 + 1e-9;
+      // on screen: no kink. Each tracked point's frame-to-frame change of velocity at the fold is small next to its speed
+      let kink = 0, seen = 0; const check = t => { for (let i = Math.max(1, foldAt - 3); i <= foldAt + 3 && i + 1 < t.length; i++) { const [a, b, c] = [t[i - 1], t[i], t[i + 1]];
+        if (![a, b, c].every(on)) continue; seen++; const sp = Math.hypot(c[0] - b[0], c[1] - b[1]), acc = Math.hypot(c[0] - 2 * b[0] + a[0], c[1] - 2 * b[1] + a[1]); kink = Math.max(kink, acc - 0.25 * sp); } };
+      tr.forEach(check); const pSeen = seen; check(hole);
+      const peak = pole === 'N' ? Math.max(...lats) : Math.min(...lats);
+      const yawHeld = G.camYaw; G.joy = null; G.vx = G.vy = 0; step(150); const yawAfter = G.camYaw;
+      const lonOk = Math.abs(((end[0] - (lon0 + 180)) % 360 + 540) % 360 - 180) < 0.2;
+      const ok = G.poleN === 1 && stepOk && Math.abs(peak) > 89.9 && lonOk && Math.abs(end[1] - lat0) < 0.5 && pSeen > 0 && kink < 3 && Math.abs(Math.abs(yawHeld) - Math.PI) < 1e-6 && yawAfter === 0;
+      return { ok, info: { pole, from: [lon0, lat0], end: end.map(v => +v.toFixed(3)), peakLat: +peak.toFixed(4), stepsKmAtFold: sF.map(v => +v.toFixed(3)), screenKinkPx: +kink.toFixed(2), probeFramesOnScreen: pSeen, yawHeld: +yawHeld.toFixed(3), yawAfterLift: yawAfter } };`), [pole, lon0, lat0]).catch(e => ({ ok: false, info: e.message }));
+    results.push([`the Globe over the ${pole === 'N' ? 'North' : 'South'} Pole (v5.1 Part 13): a straight drive comes down the far side (longitude +180), no jump on the sphere or on screen`, r.ok, r.info]);
+  }
+
   // Reset Everything (two-tap) keeps other keys
   await p.evaluate(() => HH.UI.settings('main')); await p.waitForTimeout(200);
   const resetBtn = await p.$('#b-rall'); let resetOk = 'no button';

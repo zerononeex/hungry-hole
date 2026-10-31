@@ -1734,7 +1734,7 @@ const CH = [null];
   }
   CH.push({
     n: 4, key: 'globe', mus: 'ch5.mp3', name: 'The Globe', short: 'Globe', c1: '#ff9800', c2: '#b34700', bgc: OCEAN, rim: '#ffd23f',
-    W, H, wrap: 1, spd: 3, upSpd: 2, runSpd: 5, eduMin: 25, start: P(-123.160, 49.262), cost: 3, need: 160, needP: 1.5, xpk: 2.5, pv: 2, view: 13, fill: .25,
+    W, H, wrap: 1, poleFold: 1, spd: 3, upSpd: 2, runSpd: 5, eduMin: 25, start: P(-123.160, 49.262), cost: 3, need: 160, needP: 1.5, xpk: 2.5, pv: 2, view: 13, fill: .25,
     sizes: SIZES,
     real: SIZES.map(s => s * 278),                                     // one map unit is 278 metres
     tagN: { wonder: 'World Wonder', landmark: 'landmark', themepark: 'theme park', tree: 'tree' },
@@ -1880,7 +1880,7 @@ const CH = [null];
       const pw = 1 / V.z, mini = V.mini, lw = px => Math.max(px * pw, 0);
       g.fillStyle = OCEAN; g.fillRect(V.x0, V.y0, V.x1 - V.x0, V.y1 - V.y0);
       const offs = [];
-      for (const ox of [-W, 0, W]) for (const oy of [-H, 0, H]) if (V.x1 > ox && V.x0 < ox + W && V.y1 > oy && V.y0 < oy + H) offs.push([ox, oy]);
+      for (const ox of [-W, 0, W]) for (const oy of [0]) if (V.x1 > ox && V.x0 < ox + W && V.y1 > oy && V.y0 < oy + H) offs.push([ox, oy]);   // (v5.1: no top/bottom wrap: past a pole is painted by the caller)
       const vis = (b, ox, oy, m) => b[2] + ox >= V.x0 - m && b[0] + ox <= V.x1 + m && b[3] + oy >= V.y0 - m && b[1] + oy <= V.y1 + m;
       const path = (q, ox, oy) => { for (const r of q.rs) { g.moveTo(r[0] + ox, r[1] + oy); for (let i = 2; i < r.length; i += 2) g.lineTo(r[i] + ox, r[i + 1] + oy); g.closePath(); } };
       const line = (p, ox, oy) => { g.moveTo(p[0] + ox, p[1] + oy); for (let i = 2; i < p.length; i += 2) g.lineTo(p[i] + ox, p[i + 1] + oy); };
@@ -1914,12 +1914,15 @@ const CH = [null];
         }
       }
       g.restore();
+      if (V.y1 > 175 * D) { g.fillStyle = '#eef3f6'; g.fillRect(V.x0, 175 * D, V.x1 - V.x0, V.y1 - 175 * D + D); }   // the polar plateau is solid ice to the pole and a hair past it (no seam)
       g.beginPath(); for (const [ox, oy] of offs) for (const q of LAKES) if (vis(q.b, ox, oy, 0)) path(q, ox, oy);
       g.fillStyle = OCEAN; g.fill('evenodd');
       // borders, rivers, highways: lines, never filled shapes
       g.lineJoin = 'round'; g.lineCap = 'round';
+      const bw = Math.max(lw(mini ? .6 : 1.3), .05);
+      g.save(); g.beginPath(); g.rect(V.x0, 2 * bw, V.x1 - V.x0, H - 4 * bw); g.clip();       // a country's edge along the pole itself is not a border (v5.1: you can drive over it)
       g.beginPath(); for (const [ox, oy] of offs) for (const c of CLIST) for (const q of c.polys) if (vis(q.b, ox, oy, 0)) path(q, ox, oy);
-      g.strokeStyle = 'rgba(90,70,40,.45)'; g.lineWidth = Math.max(lw(mini ? .6 : 1.3), .05); g.stroke();
+      g.strokeStyle = 'rgba(90,70,40,.45)'; g.lineWidth = bw; g.stroke(); g.restore();
       g.beginPath(); for (const [ox, oy] of offs) for (const r of RIV) if (vis(r.b, ox, oy, 0)) line(r.p, ox, oy);
       g.strokeStyle = '#4a8fd6'; g.lineWidth = Math.max(lw(mini ? .8 : 1.8), 1.2); g.stroke();
       if (!mini) {
@@ -2513,7 +2516,24 @@ function mkObj(C, k, x, y, o) {
 }
 const wrapD = (d, W) => d - W * Math.round(d / W);
 function dx(a, b) { return G.C.wrap ? wrapD(a - b, G.C.W) : a - b; }
-function dy(a, b) { return G.C.wrap ? wrapD(a - b, G.C.H) : a - b; }
+function dy(a, b) { return G.C.wrap && !G.C.poleFold ? wrapD(a - b, G.C.H) : a - b; }
+/* v5.1 Part 13: the Globe has no top or bottom edge. Driving past a pole carries you on down the far side (longitude
+   +180°, latitude mirrored), and the camera turns half a circle with you so nothing on screen jumps. */
+function wrapXY(C, o, k) {
+  const x = k ? k + 'x' : 'x', y = k ? k + 'y' : 'y';
+  if (!C.wrap) return;
+  if (C.poleFold) { if (o[y] < 0 || o[y] > C.H) { const s = o[y] < 0 ? 0 : C.H; o[y] = clamp(2 * s - o[y], 0, C.H); o[x] += C.W / 2; } }
+  else o[y] = (o[y] % C.H + C.H) % C.H;
+  o[x] = (o[x] % C.W + C.W) % C.W;
+}
+function overPole(C) {                               // over the pole: same spot on the sphere, seen from the far side
+  if (G.y >= 0 && G.y <= C.H) return;
+  const s2 = G.y < 0 ? 0 : 2 * C.H;
+  G.y = s2 - G.y; G.x += C.W / 2; G.vy = -G.vy; G.vx = -G.vx;
+  G.cam.y = s2 - G.cam.y; G.cam.x = 2 * G.x - C.W / 2 - G.cam.x;    // camera offset turns half a circle round the hole
+  G.camYaw = angD((G.camYaw || 0) + Math.PI); G.poleN = (G.poleN || 0) + 1;
+}
+const angD = a => a - 2 * Math.PI * Math.round(a / (2 * Math.PI));
 const akey = (cx, cy) => cx * 100003 + cy;
 
 /* kind: 'story' (the saved journey), 'ispy' or 'edu' (fresh runs that never move the story's position or size) */
@@ -2556,7 +2576,7 @@ function loadChapter(n, kind) {
     G.x = st.x; G.y = st.y; G.lvl = clamp(st.lvl, 1, C.N); G.xp = st.xp;
   } else { G.x = C.start[0]; G.y = C.start[1]; [G.lvl, G.xp] = startSize(st); }
   G.goal = null; G.capT = 0; G.bigmap = null; G.ring0 = null; syncBeat();
-  G.vx = G.vy = 0; G.cam.x = G.x; G.cam.y = G.y; G.cam.z = targetZoom();
+  G.vx = G.vy = 0; G.camYaw = 0; G.poleN = 0; G.cam.x = G.x; G.cam.y = G.y; G.cam.z = targetZoom();
   if (guest) G.net.applyStart();   // the host's ladder, I Spy hand / lesson steps, eaten set and placed targets
   else if (story) {   // checklist sequences (tiles / ordered objects) and tiny quests: the optional bonus layer
     st.act = st.act.filter(a => C.Q[a.i] && !(st.board[a.i] && !boardDone()));
@@ -2585,7 +2605,9 @@ function restartRun(fresh) {
 /* Loose filler for one cell of one size layer. v4: scatter is cut to FILL_K of v3, and a zone may place what it
    rolls logically (Z.at snaps a car into a lane, a person onto the sidewalk, a tree onto the verge, or rejects it).
    Past the playable border, C.outside() names scenery zones: the world visibly goes on, but nothing there is food. */
-function zoneOf(C, x, y) { return C.wrap || (x >= 0 && y >= 0 && x <= C.W && y <= C.H) ? C.zoneAt(x, y) : C.outside ? C.outside(x, y) : null; }
+function zoneOf(C, x, y) {
+  if (C.poleFold && (y < 0 || y > C.H)) { const s = y < 0 ? 0 : 2 * C.H; return C.zoneAt(((2 * G.x + C.W / 2 - x) % C.W + C.W) % C.W, s - y); }
+  return C.wrap || (x >= 0 && y >= 0 && x <= C.W && y <= C.H) ? C.zoneAt(x, y) : C.outside ? C.outside(x, y) : null; }
 function genCell(t, cx, cy) {
   const C = G.C, cs = C.LC[t];
   let gx = cx, gy = cy;
@@ -2626,7 +2648,7 @@ function gather(x0, y0, x1, y1, z) {
   for (let cy = Math.floor((y0 - P) / A); cy <= Math.floor((y1 + P) / A); cy++)
     for (let cx = Math.floor((x0 - P) / A); cx <= Math.floor((x1 + P) / A); cx++) {
       let kx = cx, ky = cy;
-      if (C.wrap) { const nx = Math.ceil(C.W / A), ny = Math.ceil(C.H / A); kx = ((cx % nx) + nx) % nx; ky = ((cy % ny) + ny) % ny; }
+      if (C.wrap) { const nx = Math.ceil(C.W / A), ny = Math.ceil(C.H / A); kx = ((cx % nx) + nx) % nx; ky = ((cy % ny) + ny) % ny; if (C.poleFold && ky !== cy) continue; }
       const a = G.agrid.get(akey(kx, ky)); if (a) for (const o of a) if (!o.dead && (!C.layered || seenOnFloor(o))) out.push(o);
     }
   for (const o of G.movers) {
@@ -2640,7 +2662,7 @@ function gather(x0, y0, x1, y1, z) {
     for (let cy = Math.floor((y0 - hp) / cs); cy <= Math.floor((y1 + hp) / cs); cy++)
       for (let cx = Math.floor((x0 - hp) / cs); cx <= Math.floor((x1 + hp) / cs); cx++) {
         let key = (C.layered ? G.fl + ':' : '') + t + ',' + cx + ',' + cy;
-        if (C.wrap) { const nx = Math.round(C.W / cs), ny = Math.round(C.H / cs); key = t + ',' + (((cx % nx) + nx) % nx) + ',' + (((cy % ny) + ny) % ny); }
+        if (C.wrap) { const nx = Math.round(C.W / cs), ny = Math.round(C.H / cs); if (C.poleFold && (cy < 0 || cy >= ny)) continue; key = t + ',' + (((cx % nx) + nx) % nx) + ',' + (((cy % ny) + ny) % ny); }
         let a = G.cells.get(key);
         if (!a) { a = genCell(t, cx, cy); G.cells.set(key, a); if (G.net) G.net.cellMade(key, a); }
         for (const o of a) {
@@ -2917,7 +2939,7 @@ function placeTile(tl, j) {
   for (let i = 0; i < 40; i++) {
     const ang = Math.random() * 6.283, d = D * (2 + Math.random() * 3.5);
     let x = G.x + Math.cos(ang) * d, y = G.y + Math.sin(ang) * d;
-    if (C.wrap) { x = (x + C.W) % C.W; y = (y + C.H) % C.H; }
+    if (C.wrap) { if (C.poleFold && (y < 0 || y > C.H)) continue; x = (x + C.W) % C.W; y = (y + C.H) % C.H; }
     else if (x < D || y < D || x > C.W - D || y > C.H - D) continue;
     const z = C.zoneAt(x, y); if (!z || (C.Z[z] && C.Z[z].deco)) continue;
     if (C.sameArea && !C.sameArea(x, y, G.x, G.y)) continue;
@@ -3300,8 +3322,9 @@ function asMate(fn) {
 /* host, every frame: follow the guest's streamed position and run its hole over the things around it */
 function mateStep(dt) {
   const M = G.mate, C = G.C, k = Math.min(1, dt * 12);
+  if (C.poleFold && Math.abs(dx(M.tx, M.x)) > C.W / 4) { M.x = M.tx; M.y = M.ty; }    // the partner went over a pole: no slide round the world
   M.x += dx(M.tx, M.x) * k; M.y += dy(M.ty, M.y) * k; M.vx = M.tvx; M.vy = M.tvy; M.fl = M.tfl;
-  if (C.wrap) { M.x = (M.x % C.W + C.W) % C.W; M.y = (M.y % C.H + C.H) % C.H; }
+  wrapXY(C, M);
   asMate(() => {
     const D = holeD(), pad = D * Math.max(1, UPF.magnet(UPL('magnet'))) + D;
     holeLoop(gather(G.x - pad, G.y - pad, G.x + pad, G.y + pad, targetZoom()), dt, 1);
@@ -3448,7 +3471,7 @@ function netSession(role, opts) {
     const paused = G.mode !== 'play' || !!G.paused;
     if (paused !== N.pauseSent) { N.pauseSent = paused; N.send({ t: 'pause', on: paused ? 1 : 0 }); }
     const M = G.mate;
-    if (role === 'guest' && M && !M.gone) { const k = Math.min(1, dt * 12); M.x += dx(M.tx, M.x) * k; M.y += dy(M.ty, M.y) * k; M.fl = M.tfl; if (G.C.wrap) { M.x = (M.x % G.C.W + G.C.W) % G.C.W; M.y = (M.y % G.C.H + G.C.H) % G.C.H; } }
+    if (role === 'guest' && M && !M.gone) { const k = Math.min(1, dt * 12); if (G.C.poleFold && Math.abs(dx(M.tx, M.x)) > G.C.W / 4) { M.x = M.tx; M.y = M.ty; } M.x += dx(M.tx, M.x) * k; M.y += dy(M.ty, M.y) * k; M.fl = M.tfl; wrapXY(G.C, M); }
     if (t - N.stT < 100) return;
     N.stT = t;
     if (role === 'guest') { N.send({ t: 'pos', x: G.x, y: G.y, vx: G.vx, vy: G.vy, fl: G.fl || 0 }); return; }
@@ -3503,7 +3526,7 @@ const HOSTRX = {
     const M = G.mate, C = G.C; if (!M || M.gone || !N.on || !W8.num(m.x, -1e9, 1e9) || !W8.num(m.y, -1e9, 1e9)) return;
     let x = m.x, y = m.y;
     if (!C.wrap) { x = clamp(x, 0, C.W); y = clamp(y, 0, C.H); }
-    else { x = (x % C.W + C.W) % C.W; y = (y % C.H + C.H) % C.H; }
+    else { const q = { x, y }; wrapXY(C, q); x = q.x; y = q.y; }
     const rg = ringNow(); if (rg) { if (!C.wrap) x = clamp(x, rg[0], rg[2]); y = clamp(y, rg[1], rg[3]); }
     M.tx = x; M.ty = y; M.tvx = W8.num(m.vx, -1e9, 1e9) ? m.vx : 0; M.tvy = W8.num(m.vy, -1e9, 1e9) ? m.vy : 0;
     M.tfl = C.layered && (m.fl === 0 || m.fl === 1) ? m.fl : 0;
@@ -3621,12 +3644,18 @@ function update(dt) {
   const j = G.joy;
   if (j) {
     const jx = j.x - j.x0, jy = j.y - j.y0, l = Math.hypot(jx, jy);
-    if (l > JOY_DEAD) { const m = Math.min(1, l / JOY_R) * sp / l; tvx = jx * m; tvy = jy * m / Math.sin(CAM_TILT); }
+    if (l > JOY_DEAD) {
+      const m = Math.min(1, l / JOY_R) * sp / l, a = jx * m, b = jy * m / Math.sin(CAM_TILT), ps = G.camYaw || 0;
+      tvx = a * Math.cos(ps) + b * Math.sin(ps); tvy = -a * Math.sin(ps) + b * Math.cos(ps);    // screen-right / screen-down in the (turned) camera's frame
+    }
+  } else if (G.camYaw) {                               // finger up: the camera swings back to north-up (a held drive stays straight)
+    G.camYaw = angD(G.camYaw); G.camYaw -= G.camYaw * Math.min(1, dt * 1.6); if (Math.abs(G.camYaw) < 1e-3) G.camYaw = 0;
   }
   const k = Math.min(1, dt * 4.5);
   G.vx += (tvx - G.vx) * k; G.vy += (tvy - G.vy) * k;
   G.x += G.vx * dt; G.y += G.vy * dt;
-  if (C.wrap) { G.x = (G.x % C.W + C.W) % C.W; G.y = (G.y % C.H + C.H) % C.H; }
+  if (C.poleFold) overPole(C);
+  if (C.wrap) { G.x = (G.x % C.W + C.W) % C.W; if (!C.poleFold) G.y = (G.y % C.H + C.H) % C.H; }
   else { const em = C.edge != null ? Math.min(r * 0.4, C.edge) : r * 0.4; G.x = clamp(G.x, em, C.W - em); G.y = clamp(G.y, em, C.H - em); }
   const rg = ringNow();
   if (rg) {                                          // the current zone's border (story ladder / I Spy rung)
@@ -3639,12 +3668,13 @@ function update(dt) {
   }
   if (C.collide) C.collide(r * 0.45);
   solidPush(r);
+  if (C.poleFold) { overPole(C); G.x = (G.x % C.W + C.W) % C.W; }   // (a push can carry you over too)
   // camera
   const tz = targetZoom();
   G.cam.z += (tz - G.cam.z) * Math.min(1, dt * 2.5);
   if (G.cam.z > tz * 3 || G.cam.z < tz / 3) G.cam.z = tz;          // a jump in size (a world or mode switch, a big +/-) snaps instead of crawling through extreme zooms
   G.cam.x += dx(G.x, G.cam.x) * Math.min(1, dt * 6); G.cam.y += dy(G.y, G.cam.y) * Math.min(1, dt * 6);
-  if (C.wrap) { G.cam.x = (G.cam.x % C.W + C.W) % C.W; G.cam.y = (G.cam.y % C.H + C.H) % C.H; }
+  if (C.wrap) { G.cam.x = (G.cam.x % C.W + C.W) % C.W; if (!C.poleFold) G.cam.y = (G.cam.y % C.H + C.H) % C.H; }
   // objects near the camera (the tilted view sees further north; keep a southern margin for tall things)
   const z = G.cam.z, vr = viewRect(z), mg = D + (vr[2] - vr[0]) * 0.06;
   G.vr = vr;
@@ -3679,7 +3709,7 @@ function holeLoop(list, dt, role) {
     if (role && o.dead) continue;
     if (o.fall) { if (G.now - o.fall.t0 >= o.fall.dur) { if (role === 2 || o.fall.net) netFallDone(o); else if (o.fall.m) mateEat(o); else eat(o); } continue; }
     if (o.path) moveOnPath(o, T);
-    else if (o.T.mv) { const A = o.r * (o.T.mv === 'fly' ? 4 : 1.4), w = o.T.mv === 'fly' ? 0.5 : 0.35; o.x = o.bx + Math.sin(T * w + o.ph) * A; o.y = o.by + Math.cos(T * w * 0.77 + o.ph * 1.3) * A; }
+    else if (o.T.mv) { const A = o.r * (o.T.mv === 'fly' ? 4 : 1.4), w = o.T.mv === 'fly' ? 0.5 : 0.35; o.x = o.bx + Math.sin(T * w + o.ph) * A; o.y = o.by + Math.cos(T * w * 0.77 + o.ph * 1.3) * A; if (C.poleFold) wrapXY(C, o); }
     if (role === 1 && (o.helper || o.pool || (o.tile && !(o.owner && o.owner.edu)))) continue;   // the host's own quest pieces and local traffic are not shared
     if (o.tile && role !== 1) { o.r = r * 0.42; o.fw = o.r * 2; o.fr = o.r * 1.1; o.hh = o.r * 0.84; o.on = o.ok !== undefined ? o.ok : o.j === o.get(); o.look = o.ok === undefined && o.on; }
     if (C.layered && !onMyFloor(o)) continue;
@@ -4555,7 +4585,8 @@ const LAMBERT = { m: null }, BASIC = { m: null };
 function camDist(z) { return (STAGE_W / z) / (2 * Math.tan(CAM_FOV * Math.PI / 360) * STAGE_W / STAGE_H); }
 function camPlace(z) {
   const c = V3.cam, d = camDist(z);
-  c.position.set(0, d * Math.sin(CAM_TILT), d * Math.cos(CAM_TILT)); c.lookAt(0, 0, 0);
+  const ps = G.camYaw || 0, hz = d * Math.cos(CAM_TILT);       // (v5.1: the Globe's camera turns round the hole after a pole)
+  c.position.set(hz * Math.sin(ps), d * Math.sin(CAM_TILT), hz * Math.cos(ps)); c.lookAt(0, 0, 0);
   c.near = d * 0.02; c.far = d * 12; c.updateProjectionMatrix(); c.updateMatrixWorld();
   return d;
 }
@@ -4762,16 +4793,27 @@ function paintGround(rect) {
     }
   }
   ctx.setTransform(sx, 0, 0, sy, -rect[0] * sx, -rect[1] * sy);
-  C.bg(ctx, { z: G.cam.z, cx: (rect[0] + rect[2]) / 2, cy: (rect[1] + rect[3]) / 2, x0: rect[0], y0: rect[1], x1: rect[2], y1: rect[3], px: 1 / G.cam.z });
+  const fm = G.x;                                    // the Globe past a pole: the far side, turned half a circle round the hole's meridian
+  if (C.poleFold && (rect[1] < 0 || rect[3] > C.H)) {
+    const band = (y0, y1, a, b, f) => { if (y1 <= y0) return; ctx.save(); ctx.beginPath(); const e = a ? (rect[3] - rect[1]) * 0.002 : 0; ctx.rect(rect[0], y0 - e, rect[2] - rect[0], y1 - y0 + 2 * e); ctx.clip();   /* (the far side overlaps a hair: no seam line at the pole) */
+      if (a) ctx.transform(-1, 0, 0, -1, 2 * fm + C.W / 2, b);
+      const X0 = a ? 2 * fm + C.W / 2 - rect[2] : rect[0], X1 = a ? 2 * fm + C.W / 2 - rect[0] : rect[2], Y0 = a ? b - y1 : y0, Y1 = a ? b - y0 : y1;
+      C.bg(ctx, { z: G.cam.z, cx: (X0 + X1) / 2, cy: (Y0 + Y1) / 2, x0: X0, y0: Y0, x1: X1, y1: Y1, px: 1 / G.cam.z, past: f }); ctx.restore(); };
+    band(Math.max(rect[1], 0), Math.min(rect[3], C.H), 0, 0, 0);
+    band(rect[1], Math.min(rect[3], 0), 1, 0, 1);
+    band(Math.max(rect[1], C.H), rect[3], 1, 2 * C.H, 1);
+  } else C.bg(ctx, { z: G.cam.z, cx: (rect[0] + rect[2]) / 2, cy: (rect[1] + rect[3]) / 2, x0: rect[0], y0: rect[1], x1: rect[2], y1: rect[3], px: 1 / G.cam.z });
   if (!C.space) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = ctx.createPattern(grain(), 'repeat'); ctx.fillRect(0, 0, REG_W, REG_H); }
   V3.tex.needsUpdate = true;
-  V3.reg = { x0: rect[0], y0: rect[1], w, h, z: G.cam.z, n: C.n };
+  V3.reg = { x0: rect[0], y0: rect[1], w, h, z: G.cam.z, n: C.n, fm, pole: C.poleFold && (rect[1] < 0 || rect[3] > C.H) };
 }
 function ensureGround(vr) {
   const C = G.C, cx = G.cam.x, cy = G.cam.y, R0 = V3.reg;
   const vx0 = cx + vr[0], vy0 = cy + vr[1], vx1 = cx + vr[2], vy1 = cy + vr[3];
   const ok = R0 && R0.n === C.n && Math.abs(Math.log(R0.z / G.cam.z)) < 0.28 &&
-    dx(vx0, R0.x0) >= 0 && dx(R0.x0 + R0.w, vx1) >= 0 && dy(vy0, R0.y0) >= 0 && dy(R0.y0 + R0.h, vy1) >= 0;
+    dx(vx0, R0.x0) >= 0 && dx(R0.x0 + R0.w, vx1) >= 0 && dy(vy0, R0.y0) >= 0 && dy(R0.y0 + R0.h, vy1) >= 0 &&
+    !(R0.pole && Math.abs(dx(G.x, R0.fm)) > (vr[2] - vr[0]) * 0.004);    // past a pole, the far side is painted round the hole's meridian: keep it in step
+  if (R0 && R0.pole && Math.abs(dx(G.x, R0.fm)) > (vr[2] - vr[0]) * 0.004 && G.C.poleFold) V3.poleRepaints = (V3.poleRepaints || 0) + 1;
   if (ok) return;
   const vw = vr[2] - vr[0], w = vw * 1.7, h = w * REG_H / REG_W, mx = cx + (vr[0] + vr[2]) / 2, my = cy + (vr[1] + vr[3]) / 2;
   paintGround([mx - w / 2, my - h / 2, mx + w / 2, my + h / 2]);
@@ -4894,9 +4936,34 @@ function drawWorld3D() {
     if (o.helper) { _qy.identity(); _m4.compose(_p3.set(_p3.x, 0.5, _p3.z), _qy, _s3.set(fw * 2.2, 1, fw * 2.2)); pushMerge(V3.mH, V3.quad); }
     if (labelOn(o) && fw * z > 18 && !o.fall) LABELS.push(o);
   }
+  if (C.poleFold && !G.cine) poleImages(vr, z, hx, hz, R);
   flushAll();
   for (const [o, m] of V3.tiles) if (!usedTiles.has(o)) { m.visible = false; if (o.dead || !G.tiles.includes(o)) { V3.scene.remove(m); V3.tiles.delete(o); } }
   V3.ren.render(V3.scene, V3.cam);
+}
+/* v5.1 Part 13: what lies just past a pole is the far side of the Earth, turned half a circle round the hole's meridian
+   (the same turn the camera makes when you cross, so crossing changes nothing on screen). Drawn only: you can eat it
+   once you are over. */
+function poleImages(vr, z, hx, hz, R) {
+  const C = G.C, X0 = G.cam.x + vr[0], X1 = G.cam.x + vr[2], Y0 = G.cam.y + vr[1], Y1 = G.cam.y + vr[3], m = 2 * G.x + C.W / 2, seen = new Set(G.vis);
+  for (const [s, a, b] of [[0, Y0, Math.min(Y1, 0)], [2 * C.H, Math.max(Y0, C.H), Y1 + (Y1 - Y0) * 0.35]]) {
+    if (b <= a) continue;
+    const v0 = Math.max(0, s - b), v1 = Math.min(C.H, s - a); if (v1 <= v0) continue;
+    for (const o of gather(m - X1, v0, m - X0, v1, z)) {
+      if (o.dead || o.fall || o.tile || o.helper || seen.has(o) || o.fw * z < 2 || o.y < v0 - o.fw || o.y > v1 + o.fw) continue;
+      const md = modelOf(o); if (!md) continue;
+      if (o.T && o.T.mv && !o.path) { const A = o.r * (o.T.mv === 'fly' ? 4 : 1.4), w = o.T.mv === 'fly' ? 0.5 : 0.35; o.x = o.bx + Math.sin(G.t * w + o.ph) * A; o.y = o.by + Math.cos(G.t * w * 0.77 + o.ph * 1.3) * A; wrapXY(C, o); }   // drifters keep drifting (over the pole too)
+      const ox = o.x, oy = o.y, oyaw = o.yaw;
+      o.x = ((m - ox) % C.W + C.W) % C.W; o.y = s - oy; o.yaw = (oyaw || 0) + Math.PI;
+      const ok = poseOf(o, md, hx, hz, R);
+      o.x = ox; o.y = oy; o.yaw = oyaw;
+      if (!ok) continue;
+      _m4.compose(_p3, _q, _s3);
+      if (md.geo) pushMerge(V3.mO, o.fw * z < LOD_PX ? lodOf(md) : md.geo);
+      if (md.glow) pushMerge(V3.mG, md.glow);
+      V3.poleImg = (V3.poleImg || 0) + 1;
+    }
+  }
 }
 /* co-op: where the partner's hole is drawn ([camera-relative x, z, radius]), fading out after a disconnect; null when alone */
 function mateHole() {
@@ -4933,7 +5000,8 @@ const TAN_TILT = Math.tan(CAM_TILT);
 function hidesHole(o, md, hx, hz, R) {
   if (o.under) return false;                         // a rug / blanket you sit on never ghosts
   const fw = o.fw * (o.vs || 1), hr = 0.5 * fw * Math.max(md.w, md.d), H = md.h * fw * (o.sv || 1);
-  const ox = _p3.x - hx, oz = _p3.z - hz;
+  const ps = G.camYaw || 0, ox0 = _p3.x - hx, oz0 = _p3.z - hz;
+  const ox = ps ? ox0 * Math.cos(ps) - oz0 * Math.sin(ps) : ox0, oz = ps ? ox0 * Math.sin(ps) + oz0 * Math.cos(ps) : oz0;
   if (Math.abs(ox) > hr + R * 0.9 || oz < -hr - R * 0.3) return false;
   return H > R * 0.6 && H * TAN_TILT > oz - hr - R * 0.5;
 }
@@ -5350,7 +5418,8 @@ function compassArrow(o, col, label) {
   if (G.C.layered && G.C.routeTo && o.fl !== undefined && o.fl !== G.fl) o = G.C.routeTo(o);
   const p = [0, 0], X = dx(o.x, G.cam.x), Y = dy(o.y, G.cam.y);
   if (toScreen(X, Y, 0, p) && p[0] > 40 && p[0] < STAGE_W - 40 && p[1] > 40 && p[1] < STAGE_H - 40) return;
-  const a = Math.atan2(Y - dy(G.y, G.cam.y), X - dx(G.x, G.cam.x));   // map direction (the camera never turns)
+  const ps = G.camYaw || 0, X1 = X - dx(G.x, G.cam.x), Y1 = Y - dy(G.y, G.cam.y);
+  const a = Math.atan2(X1 * Math.sin(ps) + Y1 * Math.cos(ps), X1 * Math.cos(ps) - Y1 * Math.sin(ps));   // map direction, in the camera's frame (it turns only after a pole)
   let ex = clamp(STAGE_W / 2 + Math.cos(a) * 900, 420, STAGE_W - 40), ey = clamp(STAGE_H / 2 + Math.sin(a) * 900, 120, STAGE_H - 110);
   if (ex > STAGE_W - 270 && ey < 200) ey = 200;
   g.save(); g.translate(ex, ey); g.rotate(a);
@@ -5884,7 +5953,7 @@ requestAnimationFrame(frame);
 /* test hook for automated checks (harmless in play) */
 window.HH = { get S() { return S; }, G, CH, UI, prep, loadChapter, startChapter, eat, holeD, need, addXP, bankerTransfer, bankerArrive, buyUpgrade, upCost,
   setHoleD, ringNow, goals, capD, miniRect, syncBeat, solidPush, solidBoxes,
-  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole, labelOn, poseOf, sandSet, NET, W8, asMate, objByNid, setHash, get net() { return G.net; }, MODES, genCell, tierOf, mkObj, debugAudio, syncMusic };
+  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole, labelOn, poseOf, sandSet, NET, W8, asMate, objByNid, setHash, get net() { return G.net; }, MODES, genCell, tierOf, mkObj, toScreen, camPlace, dx, dy, debugAudio, syncMusic };
 </script>
 </body>
 </html>
