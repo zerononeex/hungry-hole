@@ -69,6 +69,9 @@ const { chromium } = require('playwright');
           playable++; if (F.seen[F.id(i, j, f)] || covered(x, y, f)) reached++; else if (miss.length < 6) miss.push([+x.toFixed(1), +y.toFixed(1), f, C.zoneAt(x, y)]);
         }
       }
+      // v5.1 Part 6: a flat world whose boundary is its map rectangle has no dead ground inside it: every cell is a zone
+      if (C.rectPlay) { let dead = 0; const ex = []; for (let j = 0; j < F.ny; j++) for (let i = 0; i < F.nx; i++) { const x = Math.min((i + .5) * cs, C.W), y = Math.min((j + .5) * cs, C.H); if (!C.zoneAt(x, y)) { dead++; if (ex.length < 4) ex.push([Math.round(x), Math.round(y)]); } }
+        out.rect = { cells: F.nx * F.ny, dead }; if (dead) out.fails.push(`${dead} cells inside the map rectangle are not playable, e.g. ${JSON.stringify(ex)}`); }
       out.max = { holeD: +Dmax.toFixed(3), cell: +cs.toFixed(2), playable, reached, pct: +(100 * reached / Math.max(1, playable)).toFixed(2), miss };
       if (reached < playable) out.fails.push(`only ${out.max.pct}% of the map reachable at max size; e.g. ${JSON.stringify(miss)}`);
       if (C.rooms) for (const rm of C.rooms) {           // every named room / yard, on its own floor
@@ -80,7 +83,7 @@ const { chromium } = require('playwright');
       return out;
     }, n);
     ok = ok && !r.fails.length;
-    console.log(`W${r.n} ${r.name}: max hole ${r.max.holeD} cell ${r.max.cell} reachable ${r.max.reached}/${r.max.playable} (${r.max.pct}%) ${r.fails.length ? 'FAIL\n   ' + r.fails.join('\n   ') : 'PASS'}`);
+    console.log(`W${r.n} ${r.name}: max hole ${r.max.holeD} cell ${r.max.cell} reachable ${r.max.reached}/${r.max.playable} (${r.max.pct}%)${r.rect ? ` rectangle ${r.rect.cells - r.rect.dead}/${r.rect.cells} playable` : ''} ${r.fails.length ? 'FAIL\n   ' + r.fails.join('\n   ') : 'PASS'}`);
   }
   console.log('errors:', JSON.stringify(errs.slice(0, 5))); await b.close();
   process.exit(ok && !errs.length ? 0 : 1);
