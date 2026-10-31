@@ -81,6 +81,8 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
 #b-quest-hud,#b-up-hud{display:none}
 #hudbtns.mode #b-quest-hud{display:flex}
 #hudbtns.on #b-up-hud{display:flex}
+#b-up-hud{width:auto;height:56px;padding:0 22px;border-radius:28px;background:#ff8c1a;border:3px solid #fff;color:#fff;font:900 20px/1 system-ui,sans-serif;letter-spacing:1px;box-shadow:0 4px 0 #b85a00,0 6px 14px rgba(0,0,0,.35)}
+#b-up-hud:active{transform:translateY(2px);box-shadow:0 2px 0 #b85a00}
 .ucard img.uic{width:72px;height:72px;display:block;margin:0 auto 4px}
 .tgts{position:absolute;left:12px;top:12px;display:flex;flex-direction:column;gap:6px}
 .qitem.done .tk{background:#2eb84a;border-color:#2eb84a}
@@ -162,7 +164,7 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
 
   <div id="hudbtns">
     <button class="round" id="b-quest-hud" aria-label="Quests"></button>
-    <button class="round" id="b-up-hud" aria-label="Upgrades"></button>
+    <button class="round" id="b-up-hud">UPGRADES</button>
     <button class="round" id="b-sound-hud" aria-label="Sound"></button>
     <button class="round" id="b-pause" aria-label="Pause"></button>
   </div>
@@ -179,7 +181,7 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
      1. DATA: common tables (tiers, upgrades, icons)
      2. DATA: the 7 chapters (types, zones, authored places, checklists,
         40 Tiny Quests each)
-     3. ENGINE: save, audio/speech, world (grid + procedural layers),
+     3. ENGINE: save, audio, world (grid + procedural layers),
         hole, eating, quests, economy
      4. RENDER: backgrounds, objects, hole, HUD
      5. UI: menu screens (DOM), modals
@@ -228,7 +230,6 @@ const ICON = {
   check:'<path d="m5 12.5 4.5 4.5L19 7"/>',
   play:'<path d="M7 4v16l13-8z"/>',
   board:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
-  up:'<path d="M12 20V5M5 11l7-7 7 7"/>',
   help:'<circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 1 1 3.8 2.6c-.8.3-1.1.9-1.1 1.7v.6M12 17.2v.3"/>',
 };
 const svg = (k, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24">${ICON[k]}</svg>`;
@@ -1514,7 +1515,7 @@ const CH = [null];
       if (st.seen[i] !== '1') st.seen = st.seen.slice(0, i) + '1' + st.seen.slice(i + 1);
     },
     hud: miniMap,
-    finish() { G.cine = { k: 'moon', t0: G.now, objs: [] }; G.joy = null; speak('Here comes the Moon!'); },
+    finish() { G.cine = { k: 'moon', t0: G.now, objs: [] }; G.joy = null; },
     /* the Moon reuses the topple system with scripted parameters: it rolls to the rim, leans and
        wobbles over the gap, then takes the same tip-in fall as everything else (slow, many spins) */
     cineUpdate() {
@@ -1670,7 +1671,7 @@ const CH = [null];
       add('probe', ...orb(27200, 5.6), { keep: 1, id: 'voyager', label: 'Voyager 1', sub: 'the farthest spacecraft' });
     },
     hint: w => w === 'asteroid' ? orb(8600, Math.atan2(G.y - SY, G.x - SX)) : null,
-    finish() { speak('You ate the Sun!'); setTimeout(() => { SFX.fanfare(); UI.complete(); }, 1200); },
+    finish() { setTimeout(() => { SFX.fanfare(); UI.complete(); }, 1200); },
     ispy: ['#mercury', '#venus', '#earth', '#mars', '#jupiter', '#saturn', '#uranus', '#neptune', '#moon', '#pluto', '#iss', '#rover', '#io', '#europa', '#ganymede',
       '#callisto', '#titan', '#voyager', 'satellite', 'astronaut', 'comet', 'ufo', 'rocket', 'alien', 'asteroid', '#telescope', 'meteor', 'glove', 'hat', 'ringice'],
     eduSubj: 'science',
@@ -1797,7 +1798,7 @@ const CH = [null];
       const e = (G.now - G.cine.t0) / 1000, cx = STAGE_W / 2, cy = STAGE_H / 2;
       if (e < 3.5) txt('The two giant stars are pulled in…', cx, 110, 36, '#ffd23f', 'center', 900);
       else if (e < 4.3) { g.fillStyle = `rgba(255,255,255,${1 - (e - 3.5) / 0.8})`; g.fillRect(0, 0, STAGE_W, STAGE_H); }
-      else if (e > 5) { txt('YOU ARE', cx, cy - 170, 54, '#fff', 'center', 900); txt('THE BLACK HOLE', cx, cy + 180, 78, '#ffd23f', 'center', 900); if (!G.cine.said) { G.cine.said = 1; speak('You are the black hole!'); } }
+      else if (e > 5) { txt('YOU ARE', cx, cy - 170, 54, '#fff', 'center', 900); txt('THE BLACK HOLE', cx, cy + 180, 78, '#ffd23f', 'center', 900); }
     },
     ispy: ['star', 'comet', 'ufo', 'alien', 'planet', 'icemoon', 'redplanet', 'giantplanet', 'giantmoon', 'yellowstar', 'redstar', 'bluestar', 'crystalmoon', 'ringstation', 'giantufo',
       'superplanet', 'giantstar', 'spacewhale', 'flycar', 'starfighter', 'serpent', '#wizard', 'panel', 'spacecow', 'spaceduck', 'bigteapot', 'satellite', 'hat', 'sparkle', 'station'],
@@ -1847,7 +1848,7 @@ function freshCh(n) {
 }
 function freshSave() {
   const ch = {}; for (let n = 1; n <= 7; n++) ch[n] = freshCh(n);
-  return { v: 1, settings: { sound: 1, music: 1, voice: 1, learn: 'full', grade: 2 }, last: 1, journey: 0, ch,
+  return { v: 1, settings: { sound: 1, music: 1, learn: 'full', grade: 2 }, last: 1, journey: 0, ch,
     learn: { math: 0, spelling: 0, science: 0, geography: 0 }, passport: {}, ispy: {}, edu: {} };
 }
 /* fill any missing fields (additive) and coerce types; idempotent */
@@ -1855,7 +1856,7 @@ function normalize(d) {
   const f = freshSave();
   if (!d || typeof d !== 'object') return f;
   const o = Object.assign({}, f, d);
-  o.settings = Object.assign({}, f.settings, d.settings || {});
+  o.settings = Object.assign({}, f.settings, d.settings || {}); delete o.settings.voice;   // v4.1: the voice is gone
   o.learn = Object.assign({}, f.learn, d.learn || {});
   o.passport = Object.assign({}, d.passport || {});
   o.ispy = {}; o.edu = {};                                    // v4 modes: I Spy decks + Educational set progress, per chapter
@@ -1900,12 +1901,13 @@ function parseImport(txt) {
   return validSave(d) ? normalize(d) : null;
 }
 
-/* ---------- audio + speech ---------- */
+/* ---------- audio (one WebAudio path for music, sound files and synth SFX) ---------- */
 const AU = { ctx: null, last: 0 };
 function audioInit() {
   G.gestured = true;
   if (!AU.ctx) { try { AU.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AU.ctx = null; } }
-  if (AU.ctx && AU.ctx.state === 'suspended') AU.ctx.resume();
+  if (AU.ctx && AU.ctx.state !== 'running') AU.ctx.resume();     // must happen inside the tap (iOS)
+  if (AU.ctx) { for (const f of AUDIO_FILES) if (f.startsWith('sfx-')) loadBuf(f); syncMusic(); }
 }
 function tone(f0, f1, dur, type = 'sine', vol = 0.18, delay = 0) {
   if (!S.settings.sound || !AU.ctx) return;
@@ -1927,23 +1929,52 @@ const SFX = {
    audio/manifest.js. Only listed files are ever requested, so a missing track costs nothing: the game runs
    silent-but-complete with zero errors (and zero 404s). MUSIC toggle = tracks; SOUND toggle = all SFX. */
 const AUDIO_FILES = new Set(Array.isArray(window.HH_AUDIO) ? window.HH_AUDIO : []);
-const MUSIC = { el: null, name: null, want: null };
+/* v4.1: music and sound files play through the same WebAudio context as the synth SFX. iOS only lets a
+   media element start inside a tap, and syncMusic runs from the frame loop, so the old new Audio() music never
+   started on an iPhone; a WebAudio context resumed once in the first tap can start buffers at any time after. */
+const MUSIC = { name: null, src: null, gain: null, an: null, buf: {}, busy: {}, bad: {} };
 const hasAudio = f => AUDIO_FILES.has(f);
+function loadBuf(f) {
+  if (!AU.ctx || MUSIC.buf[f] || MUSIC.busy[f] || MUSIC.bad[f] || !hasAudio(f)) return;
+  MUSIC.busy[f] = 1;
+  fetch('audio/' + f).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+    .then(ab => new Promise((res, rej) => AU.ctx.decodeAudioData(ab, res, rej)))     // callback form: older Safari
+    .then(b => { MUSIC.buf[f] = b; MUSIC.busy[f] = 0; syncMusic(); })
+    .catch(() => { MUSIC.busy[f] = 0; MUSIC.bad[f] = 1; });
+}
+function musicOut() {
+  if (!MUSIC.gain) {
+    const c = AU.ctx; MUSIC.gain = c.createGain(); MUSIC.an = c.createAnalyser(); MUSIC.an.fftSize = 512;
+    MUSIC.gain.connect(MUSIC.an); MUSIC.an.connect(c.destination);
+  }
+  return MUSIC.gain;
+}
 function musicFor() { return G.mode === 'play' && G.C ? 'ch' + G.C.n + '.mp3' : 'menu.mp3'; }
 function syncMusic() {
-  const want = S.settings.music && G.gestured && !document.hidden ? musicFor() : null;
-  if (want === MUSIC.name) return;
-  if (MUSIC.el) { MUSIC.el.pause(); MUSIC.el = null; }
+  if (!AU.ctx || !G.gestured) return;
+  const g = musicOut(); g.gain.value = S.settings.music ? 0.55 : 0;      // the MUSIC toggle drives the gain
+  const want = !document.hidden && hasAudio(musicFor()) ? musicFor() : null;
+  if (want === MUSIC.name && (MUSIC.src || !want)) return;
+  if (want && !MUSIC.buf[want]) { loadBuf(want); if (!MUSIC.busy[want]) return; }
+  if (MUSIC.src) { try { MUSIC.src.stop(); } catch (e) { /* already stopped */ } MUSIC.src.disconnect(); MUSIC.src = null; }
   MUSIC.name = want;
-  if (!want || !hasAudio(want)) return;
-  try { const a = new Audio('audio/' + want); a.loop = true; a.volume = 0.55; MUSIC.el = a; const pr = a.play(); if (pr && pr.catch) pr.catch(() => { MUSIC.name = null; }); }
-  catch (e) { MUSIC.el = null; }
+  if (!want || !MUSIC.buf[want]) return;
+  for (const k in MUSIC.buf) if (k !== want && k !== 'menu.mp3' && !k.startsWith('sfx-')) delete MUSIC.buf[k];   // keep memory to two tracks
+  const s = AU.ctx.createBufferSource(); s.buffer = MUSIC.buf[want]; s.loop = true; s.connect(g); s.start(); MUSIC.src = s;
 }
-/* a named SFX file if the owner added it, else the synth fallback */
+/* test hook: is the music really playing? (track, a live looping source, context running, gain, output level) */
+function debugAudio() {
+  let level = 0;
+  if (MUSIC.an) { const a = new Float32Array(MUSIC.an.fftSize); MUSIC.an.getFloatTimeDomainData(a); for (const v of a) level = Math.max(level, Math.abs(v)); }
+  return { track: MUSIC.src ? MUSIC.name : null, playing: !!MUSIC.src && !!AU.ctx && AU.ctx.state === 'running', ctxState: AU.ctx ? AU.ctx.state : 'none',
+    gainValue: MUSIC.gain ? MUSIC.gain.gain.value : 0, level: +level.toFixed(4), time: AU.ctx ? +AU.ctx.currentTime.toFixed(2) : 0,
+    sfx: Object.keys(MUSIC.buf).filter(f => f.startsWith('sfx-')).length, sfxListed: [...AUDIO_FILES].filter(f => f.startsWith('sfx-')).length, bad: Object.keys(MUSIC.bad) };
+}
+/* a named SFX file if the owner added it (decoded buffer, same context), else the synth fallback */
 function sfxFile(name, synth) {
   if (!S.settings.sound) return;
-  const f = 'sfx-' + name + '.mp3';
-  if (hasAudio(f) && G.gestured) { try { const a = new Audio('audio/' + f); a.volume = 0.8; const pr = a.play(); if (pr && pr.catch) pr.catch(() => synth()); return; } catch (e) { /* fall back */ } }
+  const b = MUSIC.buf['sfx-' + name + '.mp3'];
+  if (b && AU.ctx) { const s = AU.ctx.createBufferSource(), g = AU.ctx.createGain(); g.gain.value = 0.8; s.buffer = b; s.connect(g); g.connect(AU.ctx.destination); s.start(); return; }
   synth();
 }
 const SFX2 = {
@@ -1953,11 +1984,6 @@ const SFX2 = {
   ping() { sfxFile('help-ping', () => tone(660, 990, 0.25, 'sine', 0.12)); },
   sized() { sfxFile('size-reached', SFX.fanfare); },
 };
-function speak(text) {
-  if (!S.settings.voice || !G.gestured || !('speechSynthesis' in window)) { SFX.ding(); return; }
-  try { const u = new SpeechSynthesisUtterance(text); u.rate = 0.9; u.pitch = 1.15; speechSynthesis.cancel(); speechSynthesis.speak(u); }
-  catch (e) { SFX.ding(); }
-}
 
 /* ---------- game state ---------- */
 const G = {
@@ -2275,8 +2301,6 @@ function eat(o) {
     const nm = o.label || o.T.n;
     G.flash = { t0: G.now, a: nm[0].toUpperCase() + nm.slice(1), b: o.sub || '', c: S.settings.learn !== 'off' ? (o.fact || '') : '' };
   }
-  if (o.label) speak(o.label + (o.sub ? ', ' + o.sub : ''));
-  if (o.seq) speak(tname(C, o.id) + '!');
   if (story) questEvent('eat', o); else MODES[G.run.kind].eat(o);
   if (C.onEat) C.onEat(o);
 }
@@ -2288,7 +2312,6 @@ function bump(o, sup, D, speed) {
   if (isInactive(o)) {
     if (G.now - (o.said || 0) > 1300) {
       o.said = G.now;
-      speak(o.tile ? o.txt : o.label || tname(G.C, o.id));
       if (o.needs) toast('First: ' + o.needTxt + '!', '#ffd96a');
     }
     return;
@@ -2438,7 +2461,6 @@ function refreshHelpers() {
 function tileEaten(tl) {
   const C = G.C;
   G.big = { t0: G.now, txt: tl.txt };
-  speak(tl.txt);
   SFX.pop();
   const ow = tl.owner;
   if (ow.edu) return MODES.edu.tile(tl);
@@ -2552,11 +2574,10 @@ const MODES = {
       const C = G.C, rng = mulberry((Math.random() * 1e9) | 0), R = G.run;
       R.hand = MODES.ispy.deal(C.n); R.t0 = G.now; R.lastFind = G.now;
       R.tg = R.hand.map(i => { const spec = C.ispy[i].split('|')[0], o = findTarget(spec, rng); if (o) { o.tgt = 1; if (!o.label) o.label = tgtName(C, C.ispy[i], o); } return { spec: C.ispy[i], o, done: 0, name: tgtName(C, C.ispy[i], o) }; });
-      speak('I spy: ' + R.tg.map(t => t.name).join(', '));
     },
     eat(o) {
       const R = G.run, t = R.tg.find(t => t.o === o && !t.done); if (!t) return;
-      t.done = 1; R.lastFind = G.now; o.tgt = 0; SFX2.found(); speak('You found ' + t.name + '!'); toast('Found: ' + t.name + '!', '#ffd23f');
+      t.done = 1; R.lastFind = G.now; o.tgt = 0; SFX2.found(); toast('Found: ' + t.name + '!', '#ffd23f');
       if (R.tg.every(t => t.done)) {
         const bonus = Math.round(ISPY_BONUS * G.C.cost); addCoins(bonus, true); S.ispy[G.C.n].wins++; persist();
         setTimeout(() => { SFX2.win(); UI.ispyWin(bonus); }, 900);
@@ -2579,12 +2600,11 @@ const MODES = {
         spawnTiles(d.opts.map((v, j) => ({ txt: v, ok: v === d.a, j })), owner, null, null, areaKey(G.x, G.y));
         st.txt = d.q;
       } else for (const t of st.t) { t.o = findTarget(t.spec, rng, t.pal); if (t.o) { t.o.tgt = 1; if (t.spec[0] === '#' && t.o.label) t.name = t.o.label; else t.o.label = t.o.label || t.name; } }
-      speak(st.txt);
     },
     eat(o) {
       const R = G.run, st = R.steps && R.steps[R.si]; if (!st || st.k === 'm') return;
       const t = st.t.find(t => t.o === o && !t.done); if (!t) return;
-      t.done = 1; o.tgt = 0; if (G.helpOn === o) G.helpOn = null; SFX2.correct(); speak(t.name + '!');
+      t.done = 1; o.tgt = 0; if (G.helpOn === o) G.helpOn = null; SFX2.correct();
       if (st.t.every(t => t.done)) MODES.edu.next();
     },
     tile(tl) { if (tl.owner && tl.owner.edu) { if (G.helpOn) G.helpOn = null; SFX2.correct(); MODES.edu.next(); } },
@@ -4022,7 +4042,6 @@ const UI = {
     $('set-left').innerHTML = `
       <div class="set-row">Music ${seg('music', [[1, 'ON'], [0, 'OFF']])}</div>
       <div class="set-row">Sound ${seg('sound', [[1, 'ON'], [0, 'OFF']])}</div>
-      <div class="set-row">Voice ${seg('voice', [[1, 'ON'], [0, 'OFF']])}</div>
       <div class="set-row">Learning ${seg('learn', [['full', 'FULL'], ['some', 'SOMETIMES'], ['off', 'OFF']])}</div>
       <div class="set-row">Grade ${seg('grade', [[2, 'GRADE 2'], [3, 'GRADE 3']])}</div>
       <div style="font-size:24px;font-weight:900;margin:16px 0 6px">LEARNING REPORT</div>
@@ -4197,14 +4216,14 @@ cv.addEventListener('pointermove', e => { const j = G.joy; if (j && e.pointerId 
 for (const ev of ['pointerup', 'pointercancel']) cv.addEventListener(ev, e => { if (G.joy && e.pointerId === G.joy.id) G.joy = null; });
 document.addEventListener('touchmove', e => { if (e.target === cv) e.preventDefault(); }, { passive: false });
 document.addEventListener('gesturestart', e => e.preventDefault());
-document.addEventListener('visibilitychange', () => { if (document.hidden) { if (G.mode === 'play' && !G.paused) UI.pause(); persist(); } });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { if (G.mode === 'play' && !G.paused) UI.pause(); persist(); } else if (AU.ctx && G.gestured) AU.ctx.resume(); syncMusic(); });
 window.addEventListener('pagehide', persist);
 
 /* buttons */
 $('b-start').onclick = () => { audioInit(); startChapter(S.ch[S.last] && S.ch[S.last].u ? S.last : 1); };
 $('b-ispy').onclick = () => { audioInit(); UI.chapters('ispy'); };
 $('b-edu').onclick = () => { audioInit(); UI.chapters('edu'); };
-$('b-up-hud').innerHTML = svg('up'); $('b-quest-hud').innerHTML = svg('help');
+$('b-quest-hud').innerHTML = svg('help');
 $('b-up-hud').onclick = () => { if (G.mode !== 'play') return; G.paused = true; G.joy = null; persist(); UI.upgrades(G.C.n, true); };
 $('b-quest-hud').onclick = () => UI.quests();
 $('b-chapters').onclick = () => { audioInit(); UI.chapters(); };
@@ -4234,7 +4253,7 @@ requestAnimationFrame(frame);
 
 /* test hook for automated checks (harmless in play) */
 window.HH = { get S() { return S; }, G, CH, UI, prep, loadChapter, startChapter, eat, holeD, need, addXP, bankerTransfer, bankerArrive, buyUpgrade, upCost,
-  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole, labelOn, MODES, genCell, tierOf, mkObj };
+  exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole, labelOn, MODES, genCell, tierOf, mkObj, debugAudio, syncMusic };
 </script>
 </body>
 </html>

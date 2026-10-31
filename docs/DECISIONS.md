@@ -396,3 +396,17 @@ The v4 addendum in `docs/SPEC.md` is the authority. These are the calls the spec
   + local sums + identical tiles, v3 save migration.
 - `tests/balance-bot.js`: now reports time to target size per chapter.
 - `tests/screens.js`: 32 screenshots (menus, 16 chapter scenes, the Ch5 finale sky, each mode).
+
+# v4.1 fixes (owner rulings + audio addendum)
+
+## Music on iPhone
+- **Why it was silent:** music was a bare `new Audio()` element whose `play()` was called by `syncMusic()`, and `syncMusic()` runs from the frame loop, never inside a tap. iOS Safari refuses `play()` outside a user gesture; the rejection handler then set the current track to `null`, so the game never tried again. The SFX were audible because they were synthesised on the WebAudio context, which *is* resumed inside the tap. (The sound-effect files went through `new Audio()` too, so on iPhone they quietly fell back to the synth.)
+- **Fix:** one WebAudio path for everything. `audioInit()` (first tap) creates and resumes the context, then starts decoding. Each track is `fetch` + `decodeAudioData`, then looped as an `AudioBufferSourceNode` → music gain (0.55, or 0 when MUSIC is off) → analyser → speakers. Chapter/menu changes swap the source as before. Only the current track and `menu.mp3` stay decoded, to keep memory down. SFX files decode into buffers on the same context. File names and `audio/manifest.js` are unchanged. The media-element path is deleted.
+- **Hook:** `HH.debugAudio()` returns `{ track, playing, ctxState, gainValue, level, time, sfx, sfxListed, bad }`. `level` is the analyser's peak, so "playing" means samples are actually flowing, not just that a node exists.
+- **Test:** `tests/audio.js` launches Chromium with no autoplay flags (the browser blocks sound until a gesture), clicks STORY for real, and then checks that the right track is playing with the context `running` for the menu and every chapter. It also checks the MUSIC toggle and that every SFX file decodes.
+
+## Voice removed
+`speak()`, every `speechSynthesis` call and the Settings Voice row are deleted. Old saves lose `settings.voice` on load. The sequence-hunt next-tile glow and the visual toasts stay. `tests/audio.js` runs scripted Story, I Spy (Ch2, Ch4) and Educational (Ch1, Ch5, three sets each, sums included) and asserts zero `speechSynthesis` use: no `speak`, no `SpeechSynthesisUtterance`, not even a read of `window.speechSynthesis`.
+
+## HUD UPGRADES button
+The round up-arrow became an orange (#ff8c1a) pill that reads UPGRADES. Its behaviour is the same: pause, open Upgrades, and BACK resumes the exact run (the behaviour test checks the colour, the label, and that position and size are kept). Screenshot: `docs/screenshots/42-hud-upgrades-button.jpg`.

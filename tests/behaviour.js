@@ -97,11 +97,12 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     G.lvl = 6; G.xp = 0; const big = cross(6, HH.need(6) * 0.9);
     return { ok: tiny[0] <= C.gap && tiny[1] && !tiny[2] && mid[0] > C.gap && !mid[1] && !mid[2] && big[0] >= d.fw && big[2], info: { door: d.fw, gap: C.gap, tiny, mid, big } };`));
 
-  await T('HUD upgrades: pauses the run, BACK resumes it', new Function(STEP + `
-    const { G, S } = HH; HH.startChapter(1); G.paused = false; S.ch[1].w = 500; document.getElementById('b-up-hud').click();
+  await T('HUD UPGRADES button (orange, labelled): pauses the run, BACK resumes it', new Function(STEP + `
+    const { G, S } = HH; HH.startChapter(1); G.paused = false; S.ch[1].w = 500; const bt = document.getElementById('b-up-hud'), cs = getComputedStyle(bt);
+    const looks = bt.textContent.trim() === 'UPGRADES' && cs.backgroundColor === 'rgb(255, 140, 26)' && cs.display !== 'none'; const x0 = G.x, y0 = G.y, l0 = G.lvl; bt.click();
     const paused = G.paused, onUp = document.getElementById('s-upgrades').classList.contains('on') || getComputedStyle(document.getElementById('s-upgrades')).display !== 'none';
     document.querySelector('#s-upgrades [data-back]').click();
-    return new Promise(res => setTimeout(() => res({ ok: paused && onUp && !G.paused && G.mode === 'play', info: { paused, onUp, resumed: !G.paused, mode: G.mode } }), 300));`));
+    return new Promise(res => setTimeout(() => res({ ok: looks && paused && onUp && !G.paused && G.mode === 'play' && G.x === x0 && G.y === y0 && G.lvl === l0, info: { looks, paused, onUp, resumed: !G.paused, mode: G.mode, sameRun: G.x === x0 && G.lvl === l0 } }), 300));`));
 
   await T('I Spy: five placed targets, win pays the wallet, replay re-rolls new ones, story untouched', new Function(STEP + `
     const { G, S } = HH; HH.startChapter(2); const sx = S.ch[2].x, sl = S.ch[2].lvl; delete S.ispy[2];
@@ -189,8 +190,8 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
   await p.goto(URL); await p.waitForTimeout(400);
   const v3r = await p.evaluate(() => { const { G, S } = HH; HH.startChapter(3); const st = S.ch[3];
     return { w: [S.ch[1].w, S.ch[3].w], up: S.ch[1].up.join(''), board: S.ch[2].board.filter(Boolean).length, done: [S.ch[1].c, S.ch[2].c], unlocked3: S.ch[3].u, passport: S.passport.FR,
-      sciEatenStays: !G.auth.some(o => o.id === 'scienceworld'), atStart: Math.round(G.x) === Math.round(G.C.start[0]), mv: st.mv }; });
-  results.push(['v3 save migrates (wallets, upgrades, boards, eaten landmarks, completed chapters kept)', v3r.w[0] === 701 && v3r.w[1] === 703 && v3r.up === '3210000001' && v3r.board === 14 && v3r.done.join() === '1,1' && v3r.unlocked3 === 1 && v3r.passport === 1 && v3r.sciEatenStays && v3r.atStart && v3r.mv === 4, v3r]);
+      sciEatenStays: !G.auth.some(o => o.id === 'scienceworld'), atStart: Math.round(G.x) === Math.round(G.C.start[0]), mv: st.mv, voiceDropped: !('voice' in S.settings) }; });
+  results.push(['v3 save migrates (wallets, upgrades, boards, eaten landmarks, completed chapters kept)', v3r.w[0] === 701 && v3r.w[1] === 703 && v3r.up === '3210000001' && v3r.board === 14 && v3r.done.join() === '1,1' && v3r.unlocked3 === 1 && v3r.passport === 1 && v3r.sciEatenStays && v3r.atStart && v3r.mv === 4 && v3r.voiceDropped, v3r]);
 
   // Reset Everything (two-tap) keeps other keys
   await p.evaluate(() => HH.UI.settings('main')); await p.waitForTimeout(200);

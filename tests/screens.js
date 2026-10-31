@@ -44,6 +44,8 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html', OUT = proc
   await p.waitForTimeout(3600); await shot(p, '36-edu-ch1-local-sums');
   await p.evaluate(() => { const { G, S } = HH; S.edu[2] = { set: HH.CH[2].edu.findIndex(E => E.s.some(x => x[0] === 'c')), done: 0 }; HH.startChapter(2, 'edu'); G.helpOn = HH.MODES.edu.target(); });
   await p.waitForTimeout(1500); await shot(p, '37-edu-ch2-colour-fetch');
+  await p.evaluate(() => { HH.UI.closeModal(); const { G } = HH; HH.startChapter(2); G.lvl = 3; G.cam.x = G.x; G.cam.y = G.y; });
+  await p.waitForTimeout(1500); await shot(p, '42-hud-upgrades-button');
   const ph = await page(844, 390); await shot(ph, '40-phone-main');
   await ph.evaluate(() => HH.startChapter(3)); await ph.waitForTimeout(1200); await shot(ph, '41-phone-game');
   console.log('screens done; console errors:', errs.length, errs.slice(0, 3)); await b.close();
