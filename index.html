@@ -110,7 +110,7 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
 .mbtn.art:active,#b-settings:active{transform:translateY(3px) scale(.98);box-shadow:none}
 .art .lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 #main-sub{position:absolute;left:0;right:0;bottom:158px;text-align:center;font-size:19px;font-weight:800;color:#fff;text-shadow:0 2px 4px #000}
-#sizebtns{position:absolute;right:20px;top:250px;display:none;flex-direction:column;align-items:center;gap:8px;z-index:5;font-weight:900;font-size:15px;color:#fff;text-shadow:0 2px 3px #000}
+#sizebtns{position:absolute;right:20px;top:196px;display:none;flex-direction:column;align-items:center;gap:8px;z-index:5;font-weight:900;font-size:15px;color:#fff;text-shadow:0 2px 3px #000}
 #sizebtns.on{display:flex}
 .b-join{position:absolute;right:18px;top:18px;z-index:2}
 .ccard .coopb{position:absolute;left:12px;right:12px;bottom:58px;font-size:15px;padding:6px 6px}
@@ -123,6 +123,9 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
 .ucard .stp{width:40px;height:34px;border-radius:10px;background:#ffcf4a;color:#3a1d00;font:900 24px/1 system-ui,sans-serif;padding:0}
 .ucard .stp:active{transform:translateY(2px)}
 #sizebtns .round{font-size:40px;font-weight:900;background:rgba(224,69,155,.85)}
+#sizebtns .spd{background:rgba(38,140,220,.9);font-size:34px;width:58px;height:58px}
+#sizebtns .dial{font-size:15px;line-height:1.1;text-align:center}
+#sizebtns .dial small{display:block;font-size:13px;color:#9fdcff}
 </style>
 </head>
 <body>
@@ -192,7 +195,8 @@ textarea{width:100%;box-sizing:border-box;height:84px;font-size:13px;border-radi
     <button class="round" id="b-pause" aria-label="Pause"></button>
   </div>
 
-  <div id="sizebtns"><button class="round" id="b-bigger" aria-label="Bigger">+</button><div>SIZE</div><button class="round" id="b-smaller" aria-label="Smaller">&minus;</button></div>
+  <div id="sizebtns"><button class="round" id="b-bigger" aria-label="Bigger">+</button><div class="dial">SIZE</div><button class="round" id="b-smaller" aria-label="Smaller">&minus;</button>
+    <div style="height:10px"></div><button class="round spd" id="b-faster" aria-label="Faster">+</button><div class="dial">SPEED<small id="spdval">100%</small></div><button class="round spd" id="b-slower" aria-label="Slower">&minus;</button></div>
 
   <div class="modal" id="modal"><div class="mbox panel" id="mbox"></div></div>
   <div id="note"></div>
@@ -223,7 +227,7 @@ const SAVE_KEY = 'hungry-hole-data-v1';      // never rename; fields are additiv
 const STAGE_W = 1280, STAGE_H = 720;
 const FALL_MS = 340;                          // tip over the rim, sink, spin + shrink; then the eat pipeline runs
 const WOBBLE_MIN = 0.85, WOBBLE_STEP = 0.36;  // owner's wobble rule: from 85% of the needed size, bumps can tip a leaning thing in
-const NEED_K = 0.2, XP_K = 1.8, SPEED = 4.32, START_P = 0.3;   // growth need per level (x chapter need), XP per eat, speed in hole-widths/s, pre-grown start
+const NEED_K = 0.2, XP_K = 1.8, SPEED = 4.32, START_P = 0.3, BASE_X = 2;   // v5.2 Part 7: base speed x2 in every world (the Speed upgrade stacks on top, same curve)   // growth need per level (x chapter need), XP per eat, speed in hole-widths/s, pre-grown start
 const FILL_K = 0.3;
 const SPACE_CUT = 0.5;                        // v5.1: Space's ambient scatter (space, belt, Kuiper, Oort, the scenery beyond) at half density                           // v4 density cut: loose filler scatter at ~30% of v3 (placed/authored things carry the world)
 const PTS = [0, 5, 8, 12, 16, 22, 30, 40, 52, 66, 82, 100, 120, 145, 170, 200]; // points by tier (x chapter cost scale)
@@ -3198,9 +3202,13 @@ const MODES = {
   },
   /* v5.1 EXPLORATION: any world, the whole map, the player picks the size (+ / - buttons); no objectives, no growth */
   explore: {
-    setup() { toast('Exploration: use + and - to change size', '#8ef08e'); },
+    setup() { toast('Exploration: + and - change SIZE and SPEED', '#8ef08e'); },
     eat() {}, compass() { return null; }, heal() {},
     resize(k) { setHoleD(holeD() * k); if (G.net && G.net.role === 'guest') G.net.send({ t: 'sz', k }); },
+    /* v5.2 Part 14: ADJUST SPEED, a slow learning crawl up to full speed. Session-only (never saved, no other mode),
+       and it scales whatever the sandbox Speed level gives. */
+    STEPS: [0.1, 0.2, 0.35, 0.5, 0.7, 1],
+    speed(d) { const L = MODES.explore.STEPS, i = clamp(L.indexOf(exSpd()) + d, 0, L.length - 1); G.exSpd = L[i]; const el = $('spdval'); if (el) el.textContent = Math.round(G.exSpd * 100) + '%'; },
   },
 };
 /* v5.2 Part 4: a placed target that something removed (it is dead but was never eaten for the hunt) comes back where it
@@ -3210,6 +3218,7 @@ function healTgt(t, find, lab) {
   else if (!t.o) t.o = find();
   if (t.o) { t.o.tgt = 1; lab(t.o); }
 }
+const exSpd = () => (MODES.explore.STEPS.includes(G.exSpd) ? G.exSpd : 1);
 function nearestOf(list) { let b = null, bd = 1e30; for (const o of list) { const d = Math.hypot(dx(o.x, G.x), dy(o.y, G.y)); if (d < bd) { bd = d; b = o; } } return b; }
 /* Educational step strings: f:a,b,c fetch list · i:#id|text find one place/thing · c:type:colour recoloured fetch · m:op a sum */
 const COLOURS = { yellow: '#ffd60a', red: '#e53935', blue: '#1e88e5', green: '#43a047', purple: '#8e24aa', orange: '#fb8c00', pink: '#ff6fb5' };
@@ -3671,7 +3680,7 @@ function update(dt) {
   if (G.cine) { if (C.cineUpdate) C.cineUpdate(dt); return; }
   // movement: the floating joystick's drag vector is direction + speed (where you touched never matters);
   // screen-up is stretched by the camera tilt so it moves at the same on-screen speed as sideways
-  const sp = D * (C.spd || SPEED) * UPF.speed(UPL('speed') * (C.upSpd || 1)) * (C.spdAt ? C.spdAt(G.x, G.y) : 1) * (G.run.kind !== 'story' && C.runSpd || 1);   // the Globe: water is faster, speed upgrades count double, quick runs travel faster
+  const sp = D * (C.spd || SPEED) * BASE_X * (G.run.kind === 'explore' ? exSpd() : 1) * UPF.speed(UPL('speed') * (C.upSpd || 1)) * (C.spdAt ? C.spdAt(G.x, G.y) : 1) * (G.run.kind !== 'story' && C.runSpd || 1);   // the Globe: water is faster, speed upgrades count double, quick runs travel faster
   let tvx = 0, tvy = 0;
   const j = G.joy;
   if (j) {
@@ -5980,6 +5989,8 @@ $('b-start').onclick = () => { audioInit(); UI.chapters('story'); };
 $('b-explore').onclick = () => { audioInit(); UI.chapters('explore'); };
 $('b-bigger').onclick = () => { if (G.run.kind === 'explore') MODES.explore.resize(1.6); };
 $('b-smaller').onclick = () => { if (G.run.kind === 'explore') MODES.explore.resize(1 / 1.6); };
+$('b-faster').onclick = () => { if (G.run.kind === 'explore') MODES.explore.speed(1); };
+$('b-slower').onclick = () => { if (G.run.kind === 'explore') MODES.explore.speed(-1); };
 $('b-ispy').onclick = () => { audioInit(); UI.chapters('ispy'); };
 $('b-join').onclick = () => UI.coopJoin(null);
 $('b-join-pick').onclick = () => UI.coopJoin(UI.chKind || null);
@@ -6010,7 +6021,7 @@ initGL(); fit(); makeUpIcons(); syncSoundBtn(); UI.main();
 requestAnimationFrame(frame);
 
 /* test hook for automated checks (harmless in play) */
-window.HH = { get S() { return S; }, G, CH, UI, prep, loadChapter, startChapter, eat, holeD, need, addXP, bankerTransfer, bankerArrive, buyUpgrade, upCost,
+window.HH = { BASE_X, get S() { return S; }, G, CH, UI, prep, loadChapter, startChapter, eat, holeD, need, addXP, bankerTransfer, bankerArrive, buyUpgrade, upCost,
   setHoleD, ringNow, goals, capD, miniRect, syncBeat, solidPush, solidBoxes,
   exportCode, parseImport, persist, normalize, matches, gather, restartRun, questEvent, rollQuests, update, canEat, UPL, compassTargets, setS(d) { S = d; }, qDone, render, paintGround, LAMBERT, V3, MODEL, fits, capture, bump, hidesHole, labelOn, poseOf, sandSet, NET, W8, asMate, objByNid, setHash, get net() { return G.net; }, MODES, genCell, tierOf, mkObj, toScreen, camPlace, dx, dy, mapTap, bigRect, debugAudio, syncMusic };
 </script>

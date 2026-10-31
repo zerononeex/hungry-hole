@@ -224,6 +224,19 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     const ok = def === 0.25 && r0[2] === 190 && after50 === 0.5 && saved === 0.5 && full === 1 && r1[2] !== 190 && back === 0.25 && tapMini && opened && G.joy === steer0;
     return { ok, info: { def, after50, saved, full, back, miniFrame: r0.slice(2), fullFrame: r1.slice(2).map(Math.round), tapOpensMap: opened } };`));
 
+  await T('ADJUST SPEED (v5.2 Part 14) and base speed x2 (Part 7): the Exploration dial slows travel, is session-only, never saved, no effect in Story', new Function(STEP + `
+    const { G, S } = HH; S.ch[2].u = 1; const ls0 = localStorage.getItem('hungry-hole-data-v1');
+    const run = () => { G.x = G.C.start[0]; G.y = G.C.start[1]; G.vx = G.vy = 0; const x0 = G.x; G.joy = { x0: 0, y0: 0, x: 70, y: 0 }; step(30); G.joy = null; return G.x - x0; };
+    HH.startChapter(2, 'explore'); step(2); const v100 = run(), lab0 = document.getElementById('spdval').textContent;
+    for (let i = 0; i < 3; i++) document.getElementById('b-slower').click();
+    const lab = document.getElementById('spdval').textContent, vSlow = run();
+    for (let i = 0; i < 9; i++) document.getElementById('b-slower').click(); const floor = document.getElementById('spdval').textContent;
+    HH.startChapter(2, 'story'); step(2); document.getElementById('b-slower').click(); const vStory = run(), storyLab = document.getElementById('spdval').textContent;
+    HH.persist(); const ls1 = JSON.parse(localStorage.getItem('hungry-hole-data-v1')), leaked = JSON.stringify(ls1).includes('exSpd');
+    G.exSpd = 1; document.getElementById('spdval').textContent = '100%'; HH.startChapter(1); step(1);
+    const ok = HH.BASE_X === 2 && lab0 === '100%' && lab === '35%' && Math.abs(vSlow / v100 - 0.35) < 0.08 && floor === '10%' && !leaked && vStory > v100 * 0.5 && storyLab === '10%';
+    return { ok, info: { BASE_X: HH.BASE_X, lab0, lab, ratio: +(vSlow / v100).toFixed(2), floor, vStory: +vStory.toFixed(2), v100: +v100.toFixed(2), leaked } };`));
+
   await T('upgrade buy spends the chapter wallet only', new Function(`
     const { S } = HH; S.ch[1].w = 100; S.ch[2].w = 77; S.ch[1].up[0] = 0;
     const c = HH.upCost(1, 1), ok = HH.buyUpgrade(1, 0);
@@ -354,6 +367,7 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
   for (const [pole, lon0, lat0] of [['N', -100, 80], ['S', 30, -80]]) {
     const r = await p.evaluate(new Function('a', 'const [pole, lon0, lat0] = a; ' + STEP + `
       const { G, S } = HH; S.ch[4].u = 1; HH.startChapter(4, 'explore'); const C = G.C; G.paused = true;
+      G.exSpd = 0.5;   // v5.2: base speed doubled; the dial halves it back so each frame covers the v5.1 distance (the screen-kink metric is per frame: at double the per-frame step, plain perspective near the screen edge reads as a kink)
       HH.setHoleD(C.sizes[6]); const D = HH.holeD(); [G.x, G.y] = C.P(lon0, lat0); G.cam.x = G.x; G.cam.y = G.y; step(5);
       const up = pole === 'N' ? -120 : 120; G.joy = { x0: 600, y0: 500, x: 600, y: 500 + up };
       const sph = (x, y) => { const [lo, la] = C.ll(((x % C.W) + C.W) % C.W, y); const f = la * Math.PI / 180, l = lo * Math.PI / 180; return [Math.cos(f) * Math.cos(l), Math.cos(f) * Math.sin(l), Math.sin(f)]; };
@@ -381,7 +395,7 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
         if (![a, b, c].every(on)) continue; seen++; const sp = Math.hypot(c[0] - b[0], c[1] - b[1]), acc = Math.hypot(c[0] - 2 * b[0] + a[0], c[1] - 2 * b[1] + a[1]); kink = Math.max(kink, acc - 0.25 * sp); } };
       tr.forEach(check); const pSeen = seen; check(hole);
       const peak = pole === 'N' ? Math.max(...lats) : Math.min(...lats);
-      const yawHeld = G.camYaw; G.joy = null; G.vx = G.vy = 0; step(150); const yawAfter = G.camYaw;
+      const yawHeld = G.camYaw; G.joy = null; G.vx = G.vy = 0; step(150); const yawAfter = G.camYaw; G.exSpd = 1;
       const lonOk = Math.abs(((end[0] - (lon0 + 180)) % 360 + 540) % 360 - 180) < 0.2;
       const ok = G.poleN === 1 && stepOk && Math.abs(peak) > 89.9 && lonOk && Math.abs(end[1] - lat0) < 0.5 && pSeen > 0 && kink < 3 && Math.abs(Math.abs(yawHeld) - Math.PI) < 1e-6 && yawAfter === 0;
       return { ok, info: { pole, from: [lon0, lat0], end: end.map(v => +v.toFixed(3)), peakLat: +peak.toFixed(4), stepsKmAtFold: sF.map(v => +v.toFixed(3)), screenKinkPx: +kink.toFixed(2), probeFramesOnScreen: pSeen, yawHeld: +yawHeld.toFixed(3), yawAfterLift: yawAfter } };`), [pole, lon0, lat0]).catch(e => ({ ok: false, info: e.message }));
