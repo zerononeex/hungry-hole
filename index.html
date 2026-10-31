@@ -941,6 +941,7 @@ const CH = [null];
   const WET = new Set(['seal', 'kayak', 'duck', 'sailboat', 'speedboat', 'yacht', 'tug', 'orca', 'cargo', 'ferry', 'cruise', 'seabus', 'seaplane']);
   const atX = (k, x, y, rng, out) => at(k, x, y, rng, out);
   const SNOW = [[-123.205, 49.396, 1500], [-123.083, 49.378, 900], [-122.95, 49.37, 1400], [-122.95, 50.065, 3600], [-122.895, 50.09, 3600]];
+  const SNOWY = P(-123, 49.9)[1], SNOW_G = '#f2f5f8', SNOW_ROCK = '#d6dce1';   // v5.1 Part 5: Whistler (north of 49.9°N) is snow-white ground
   // it is snowing at Whistler (a flurry over the screen while you're up there)
   const flakes = Array.from({ length: 140 }, (_, i) => [Math.random(), Math.random(), .5 + Math.random()]);
   function snowHud() {
@@ -1068,7 +1069,7 @@ const CH = [null];
       for (const [lo, la, h, r, nm] of [[-123.0815, 49.3805, 1231, 2600, 'Grouse Mountain'], [-123.21, 49.405, 1217, 2600, 'Cypress'], [-122.95, 49.37, 1449, 2800, 'Mount Seymour'],
         [-123.14, 49.457, 1646, 2400, 'The Lions'], [-123.137, 49.684, 702, 1500, 'the Stawamus Chief'], [-123.005, 49.85, 2678, 5200, 'Mount Garibaldi'],
         [-122.95, 50.06, 2182, 4200, 'Whistler Mountain'], [-122.89, 50.09, 2440, 4200, 'Blackcomb'], [-122.6, 49.40, 1700, 6000, 'Golden Ears']])
-        A('peak', lo, la, { deco: 1, fwx: r * 2, hm: h, label: nm, backdrop: 1 });
+        A('peak', lo, la, Object.assign({ deco: 1, fwx: r * 2, hm: h, label: nm, backdrop: 1 }, la > 49.8 ? { pal: { a: '#e9eef3', b: '#d3dbe2' } } : null));   // v5.1: Garibaldi, Whistler, Blackcomb under snow
       for (const [lo0, la0, lo1, la1, nm] of [[-123.1385, 49.3045, -123.1395, 49.3215, 'Lions Gate Bridge'], [-123.0262, 49.2935, -123.0255, 49.3005, 'Ironworkers Memorial Bridge'],
         [-122.8125, 49.214, -122.814, 49.2245, 'Port Mann Bridge'], [-122.6655, 49.1935, -122.6665, 49.2075, 'Golden Ears Bridge'], [-122.8935, 49.2035, -122.8885, 49.2105, 'Pattullo Bridge'],
         [-122.9505, 49.1555, -122.9405, 49.1655, 'Alex Fraser Bridge'], [-123.1235, 49.2675, -123.1265, 49.2745, 'Granville Street Bridge']]) {
@@ -1150,13 +1151,16 @@ const CH = [null];
       const m = map(), x0 = V.x0, y0 = V.y0, x1 = V.x1, y1 = V.y1, px = V.px;
       // land use as soft colour fields (the 100 m grid, smoothed), then crisp water, parks, beaches and roads on top
       if (!m.cv) {
-        const COL = ['#7ea56c', '#5aa9e6', '#d9d6c8', '#cfc8bd', '#bfb9b2', '#c9c4ba', '#8fcf6f', '#dfe3a6', '#c5c8cc', '#e6d7a6', '#a9b0a6', '#d9d6c8', '#8fbf8f', '#e8eef0', '#d6cfbf'];
+        // v5.1: homes sit on green lawns (residential and school land is grass green; beaches stay sand), and Whistler
+        // (north of 49.9°) is under snow: every land cell is snow-white, rocky alpine a cool grey-white; water keeps its blue
+        const COL = ['#7ea56c', '#5aa9e6', '#a8cf86', '#cfc8bd', '#bfb9b2', '#c9c4ba', '#8fcf6f', '#dfe3a6', '#c5c8cc', '#e6d7a6', '#a9b0a6', '#a8cf86', '#8fbf8f', '#e8eef0', '#d6cfbf'];
         const c = document.createElement('canvas'); c.width = m.GW; c.height = m.GH; const cx = c.getContext('2d'), id = cx.createImageData(m.GW, m.GH);
-        for (let i = 0; i < m.grid.length; i++) { const v = m.grid[i], col = COL[v === 0 && Math.floor(i / m.GW) * m.CELL < 70000 ? 10 : v]; id.data[i * 4] = parseInt(col.slice(1, 3), 16); id.data[i * 4 + 1] = parseInt(col.slice(3, 5), 16); id.data[i * 4 + 2] = parseInt(col.slice(5, 7), 16); id.data[i * 4 + 3] = 255; }
+        for (let i = 0; i < m.grid.length; i++) { const v = m.grid[i], gy = Math.floor(i / m.GW) * m.CELL, col = gy < SNOWY && v !== 1 ? (v === 10 || v === 13 || v === 0 ? SNOW_ROCK : SNOW_G) : COL[v === 0 && gy < 70000 ? 10 : v]; id.data[i * 4] = parseInt(col.slice(1, 3), 16); id.data[i * 4 + 1] = parseInt(col.slice(3, 5), 16); id.data[i * 4 + 2] = parseInt(col.slice(5, 7), 16); id.data[i * 4 + 3] = 255; }
         cx.putImageData(id, 0, 0); m.cv = c;
       }
       g.fillStyle = x1 < 0 ? '#5aa9e6' : '#7ea56c'; g.fillRect(x0, y0, x1 - x0, y1 - y0);
-      if (y1 > H) { g.fillStyle = '#d9d6c8'; g.fillRect(x0, H, x1 - x0, y1 - H); }
+      if (y0 < SNOWY && x1 >= 0) { g.fillStyle = SNOW_G; g.fillRect(Math.max(x0, 0), y0, x1 - Math.max(x0, 0), Math.min(y1, SNOWY) - y0); }
+      if (y1 > H) { g.fillStyle = '#a8cf86'; g.fillRect(x0, H, x1 - x0, y1 - H); }
       const sx0 = clamp(x0 / m.CELL - 1, 0, m.GW), sy0 = clamp(y0 / m.CELL - 1, 0, m.GH), sx1 = clamp(x1 / m.CELL + 1, 0, m.GW), sy1 = clamp(y1 / m.CELL + 1, 0, m.GH);
       if (sx1 > sx0 && sy1 > sy0) { g.imageSmoothingEnabled = true; g.drawImage(m.cv, sx0, sy0, sx1 - sx0, sy1 - sy0, sx0 * m.CELL, sy0 * m.CELL, (sx1 - sx0) * m.CELL, (sy1 - sy0) * m.CELL); }
       const fillP = (k, col) => {
@@ -1164,7 +1168,9 @@ const CH = [null];
         for (const p of m.polys(k)) { if (p.b[0] > x1 || p.b[2] < x0 || p.b[1] > y1 || p.b[3] < y0) continue; for (const r of p.r) { g.moveTo(r[0], r[1]); for (let i = 2; i < r.length; i += 2) g.lineTo(r[i], r[i + 1]); g.closePath(); } }
         g.fill('evenodd');
       };
-      fillP('green', '#8fcf6f'); fillP('beach', '#ead9a8'); fillP('water', '#5aa9e6');
+      const band = (a, b, fn) => { if (Math.min(b, y1) <= Math.max(a, y0)) return; g.save(); g.beginPath(); g.rect(x0, a, x1 - x0, b - a); g.clip(); fn(); g.restore(); };
+      band(SNOWY, 1e12, () => fillP('green', '#8fcf6f')); band(-1e12, SNOWY, () => fillP('green', SNOW_G));
+      fillP('beach', '#ead9a8'); fillP('water', '#5aa9e6');
       // roads: true widths, with a minimum on-screen width; small streets only once close enough to matter
       const seen = new Set(), byK = [[], [], [], [], [], [], []];
       for (let c = Math.floor(x0 / HC); c <= Math.floor(x1 / HC); c++) for (let q = Math.floor(y0 / HC); q <= Math.floor(y1 / HC); q++) {
