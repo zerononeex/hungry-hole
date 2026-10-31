@@ -14,8 +14,8 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
   const r = await p.evaluate(() => new Promise(res => {
     const { G } = HH; let n = 0, t0 = performance.now(), worst = 0, last = t0; const rp0 = HH.V3.repaints || 0;
     const f = now => { n++; worst = Math.max(worst, now - last); last = now;
-      const a = (now - t0) / 1600; G.ptr = [590 + Math.cos(a) * 260, 410 + Math.sin(a) * 200];   // keep steering in a loop
-      if (now - t0 < 10000) requestAnimationFrame(f); else { G.ptr = null; res({ fps: n / ((now - t0) / 1000), worstMs: worst, repaints: (HH.V3.repaints || 0) - rp0, pr: HH.V3.ren.getPixelRatio(), vis: G.vis.length, lvl: G.lvl, gl: HH.V3.ren.getContext().getParameter(HH.V3.ren.getContext().RENDERER) }); } };
+      const a = (now - t0) / 1600; G.joy = { id: 1, x0: 640, y0: 360, x: 640 + Math.cos(a) * 120, y: 360 + Math.sin(a) * 120 };   // keep steering in a loop (floating joystick)
+      if (now - t0 < 10000) requestAnimationFrame(f); else { G.joy = null; res({ fps: n / ((now - t0) / 1000), worstMs: worst, repaints: (HH.V3.repaints || 0) - rp0, pr: HH.V3.ren.getPixelRatio(), vis: G.vis.length, lvl: G.lvl, gl: HH.V3.ren.getContext().getParameter(HH.V3.ren.getContext().RENDERER) }); } };
     requestAnimationFrame(f); }));
   // the CPU side on its own (game logic + building the frame), without waiting for the GPU
   const cpu = await p.evaluate(() => { const { G } = HH; const t = performance.now(); for (let i = 0; i < 60; i++) { G.now += 33; G.t += 1 / 30; HH.update(1 / 30); HH.render(); } return (performance.now() - t) / 60; });

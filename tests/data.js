@@ -37,6 +37,38 @@ const { chromium } = require('playwright');
       C.CK.forEach(q => chk(q, 'checklist')); C.Q.forEach(q => chk(q, 'quest'));
       for (const Z of Object.values(C.Z)) for (const L of Z.t) if (L) for (const it of (L.items || L)) { const k = Array.isArray(it) ? it[0] : it; if (!C.T[k]) fails.push('zone type missing ' + k); }
       for (const o of auth) if (!o.T) fails.push('authored object without type ' + o.k);
+      // v4: real scale (Ch1-4 every type has metres), mode pools, Ch3 POIs + quiet labels
+      if (C.metric) for (const k of Object.keys(C.T)) if (k !== 'coin' && !(C.T[k].m && C.T[k].m[0] > 0 && C.T[k].m[1] > 0)) fails.push('no real metres for ' + k);
+      const maxD = C.sizes[C.N] * 1.45, eatMax = o => o.fw <= maxD;
+      const spawnAny = k => zoneTypes.has(k) || Object.values(C.Z).some(Z => !Z.deco && !Z.wet);
+      const specOk = (spec, where) => {
+        const s = spec.split('|')[0];
+        if (s[0] === '#') { const o = auth.find(o => o.id === s.slice(1)); if (!o) fails.push(where + ' missing id ' + s); else if (!eatMax(o) || o.deco) fails.push(where + ' ' + s + ' not eatable at max size'); }
+        else if (!C.T[s]) fails.push(where + ' unknown type ' + s);
+        else if (!spawnAny(s) || HH.mkObj(C, s, 0, 0).fw > maxD) fails.push(where + ' ' + s + ' cannot spawn/eat at max size');
+      };
+      if (!C.ispy || C.ispy.length !== 30 || new Set(C.ispy).size !== 30) fails.push('I Spy pool must be 30 distinct, is ' + (C.ispy || []).length);
+      (C.ispy || []).forEach(s => specOk(s, 'ispy'));
+      if (!(C.ispy || []).includes('hat')) fails.push('I Spy pool has no hat');
+      if (!C.edu || C.edu.length < 4) fails.push('Educational needs >= 4 sets');
+      for (const E of C.edu || []) for (const st of E.s) {
+        const [k, a, b2] = st.split(':');
+        if (k === 'm') { if (!['add', 'sub', 'mul'].includes(a)) fails.push('edu bad op ' + st); }
+        else if (k === 'i') specOk(a.split('|')[0], 'edu ' + E.n);
+        else if (k === 'c') { specOk(a, 'edu ' + E.n); if (!['yellow', 'red', 'blue', 'green', 'purple', 'orange', 'pink'].includes(b2)) fails.push('edu colour ' + st); }
+        else if (k === 'f') a.split(',').forEach(w => specOk(w, 'edu ' + E.n));
+        else fails.push('edu unknown step ' + st);
+      }
+      if (n === 3) {
+        const ids = ['scienceworld', 'aquarium', 'mermaid', 'steamclock', 'canadaplace', 'bcplace', 'ubc', 'sfu', 'nightmarket', 'ikea', 'grouse', 'cypress', 'peacearch', 'whiterock', 'whistler', 'yvr'];
+        for (const id of ids) if (!auth.some(o => o.id === id)) fails.push('Ch3 POI missing: ' + id);
+        const sch = auth.filter(o => o.k === 'school').length, hs = auth.filter(o => o.k === 'highschool').length, cc = auth.filter(o => o.k === 'commcentre').length, cas = auth.filter(o => o.k === 'casino').length;
+        if (sch < 400 || hs < 80 || cc < 40 || cas < 5) fails.push(`Ch3 POI layer thin: schools ${sch} high ${hs} community ${cc} casinos ${cas}`);
+        const q = auth.filter(o => o.quiet && o.label); if (q.length < 500) fails.push('Ch3 quiet POIs ' + q.length);
+        if (q.some(o => HH.labelOn(o))) fails.push('a quiet Ch3 label shows before it is targeted');
+        q[0].tgt = 1; if (!HH.labelOn(q[0])) fails.push('a targeted Ch3 POI shows no label'); q[0].tgt = 0;
+        if (auth.some(o => /langley/i.test(o.label || '') || /langley/i.test(o.nm || ''))) fails.push('Langley is out of bounds but appears');
+      }
       // v3: every type resolves to a 3D recipe with a footprint (w x d) and a real height
       let models = 0;
       for (const k of Object.keys(C.T)) {

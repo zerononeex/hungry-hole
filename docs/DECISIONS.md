@@ -277,3 +277,122 @@ pit on a starry floor with props from every chapter circling in).
   `19-mountain`.
 - `tests/perf.js`: the fps probe (above). It prints CPU and fps numbers and exits non-zero
   while it is below 50 fps.
+
+# v4 — owner feedback batch (judgment calls)
+
+The v4 addendum in `docs/SPEC.md` is the authority. These are the calls the spec left to the builder.
+
+## Flow and progression
+- **Gate = target size.** Reaching the last size completes a chapter, unlocks the next and shows the
+  celebration card; MAIN MENU returns to the menu (no zoom-out, no auto-advance). The 3-item checklist
+  still ticks and pays coins but gates nothing. The one lock that stays is the standing "Sun is last"
+  rule: the Sun now waits for all 8 planets (any order, a `needs` list), not for the in-order checklist.
+- **Growth retune (balance bot, time to target size).** Per-chapter `need`: Ch1 280 (with `needP` 1.2,
+  a flatter curve, because a house has a finite amount of food), Ch2 155, Ch3 280, Ch4 235, Ch5 340,
+  Ch6 215, Ch7 170. Result: every chapter lands in the 8–15 min window for the bot (report below).
+  Ch1 still has a ~3-minute stretch at size 7 while the bot hunts the last furniture across 20 rooms.
+- **Ch1 no-fail door rule (found by the per-room test).** At this pace, 5 small rooms (kids' bathroom,
+  guest bathroom, main bathroom, office, laundry) do not hold enough food to grow from the 8 cm
+  under-door gap to the 85 cm door. Rather than pack bathrooms with clutter (against the density cut)
+  or speed the whole chapter back up to 2 minutes, a shut-in hole that has eaten everything it fits
+  in its rooms gets a kind fix: after 4 seconds the nearest shut door swings open ("Creak! The door
+  swings open for you."). The door stays a door you can eat later. The other rooms have enough food
+  on their own. `tests/reachability.js` reports which rooms rely on the rule and runs the real engine
+  to prove the door opens.
+- **Upgrades are stronger:** Speed and Vacuum +10%/level (was 6), Coin +12% (8), Lucky 4% (3), Payday
+  +20% (15), Wide Eyes +6% (4); Growth x1.0→x2.5. **Prices are flatter:** growth factor 1.38 per level
+  (was 1.45), because runs are now 3–4x longer and earn more.
+- The balance bot itself had a bug in metric chapters: it never moved toward targets closer than
+  1 unit, which is 1 metre in Ch1–4 (an ant-sized hole sat still). Fixed to 2% of the hole size.
+
+## Maps and generation
+- **Metre table (`MT`)**: one table of [fit width, height] in metres; Ch1–4 take every size from it
+  (`metric: 1`). A type may override it (`m:` in the chapter types), e.g. Ch4's dinosaur skeleton
+  (12 m) versus Ch1's toy dinosaur (30 cm). Ch5–7 keep tier ladders (scale doctrine).
+- **Map sizes**, measured as map area / (max hole)² v3→v4: Ch1 0.6x (the house is 28×18 m at true
+  scale; in starting-hole units it is 3.5x), Ch2 1.9x (27x in starting-hole units), Ch3 7.8x,
+  Ch4 47x, Ch5 4x (globe back to 400 units/degree), Ch6 5.7x and Ch7 5.7x (`shrinkMap` deleted).
+  Ch1/Ch2 follow the owner's own expression of the 4–5x rule (20 rooms; 5×5 blocks).
+- **Filler cut:** loose scatter at 30% of v3 (`FILL_K`); things are placed logically through each
+  zone's `at()` (cars in lanes and facing the road, people on sidewalks, boats on water, buildings
+  along streets with setbacks). Buildings keep their own density (`bd`) so streets stay full.
+- **Edges:** every border is invisible (a clamp, or Ch3's real-outline polygon) and every chapter
+  has a non-interactive scenery surround (`C.outside` zones with `deco`), so no map ends in blank.
+  Ch7's red border line was removed; there are no edge messages anywhere.
+
+## Ch1 — The House
+- One floor, 20 rooms, stairs deleted. Doors obey fit/wobble; a hole up to **8 cm** slides under a
+  closed door (`GAP`). Walls collide with a hole radius capped at 0.36 m so a giant hole still fits
+  through every doorway (the v3 "left side unreachable" bug).
+
+## Ch3 — Metro Vancouver from OpenStreetMap
+- The OSM APIs (Overpass, extracts) were blocked from the build container, so the bake reads the
+  **Overture Maps** release on S3, which is OSM-derived and ODbL. `tools/bake-ch3.py` (+
+  `tools/bake-ch3-places.py`) writes `data/ch3-osm.js` (1.16 MB): a 100 m land-use grid, a 40 m water
+  mask, water/park/beach polygons, roads by class, SkyTrain/highway paths, and 897 POIs (697 schools,
+  122 high schools, 62 community centres, 16 casinos). Size was cut from 1.9 MB by per-class packed
+  roads and coarser quantisation.
+- Buildings are the generic library (~22 types) placed along the real streets by land use, not
+  OSM footprints (clarification 8). Landmarks are hand-modelled at their real coordinates.
+- POI labels are quiet: hidden until the place is an I Spy / Educational / quest target
+  (`labelOn`). Named places are `keep` so an eaten landmark stays eaten.
+- Bounds: the border south (Peace Arch, US land as backdrop), Pitt Meadows east, Whistler north,
+  Langley out. Hole ladder 1.5 m → 450 m. Credit "© OpenStreetMap contributors (ODbL), via Overture
+  Maps" is in Settings.
+- **Privacy:** homes are generic map data; nothing marks any real house. Ch2's "Your house" is the
+  game's fictional backyard.
+
+## Ch4 — The Wilderness
+- One west-to-east journey: forest (ant-sized campsite start, 8 mm hole) → greenlands (river + the
+  Big Dam, scaled to a 60 m river dam so it is eatable inside the 64 m ladder) → desert (oasis, mesas,
+  dinosaur dig) → ocean (reefs, whales, wreck) → Antarctic ice (research station, igloos). Mesas
+  (400 m) are scenery-sized on purpose. Water is never eaten. Ice zone penguin density halved.
+
+## Ch5–Ch7
+- **Ch5:** the flat strip map became a **mini-globe** (orthographic, re-rendered only when you move
+  half a degree; visited 10° cells glow gold; the country name underneath). One flag per country
+  (quiet label) is the "find France" target. The Moon finale sky now shows the Sun, Mercury and Mars.
+- **Ch6:** planets sized by one play-unit table in compressed real order (Pluto 14 < Europa < Io <
+  Moon 22 < Callisto < Titan < Ganymede < Mercury 30 < Mars 40 < Venus 56 < Earth 60 < Neptune 110 <
+  Uranus 118 < Saturn 175 < Jupiter 210 < Sun 330), so moons are eaten long before their planets.
+  ISS, Mars rover, Voyager 1, Jupiter's four big moons and Titan are named places. Saturn's ring is an
+  annulus zone full of eatable ice and rock bits.
+- **Ch7:** no scale. Added space whale, flying cars, an original starfighter, a star serpent, a space
+  wizard, space cows, giant rubber ducks, a teapot planet and solar-panel debris fields. All original
+  designs. Ch7 pools never use the ISS or the rover.
+
+## Modes
+- **I Spy:** 30-item pool per chapter; a shuffle-bag deck per chapter in the save deals 5 per run
+  without repeats until the deck is used up. Every pool includes the hat. Win pays
+  `ISPY_BONUS × chapter cost` into that chapter's wallet.
+- **Educational:** 5–8 curriculum sets per chapter (house fetch-lists, colour fetches, Vancouver
+  places, nature, countries/landmarks, planets and moons, silly space). Sums spawn only in your
+  current room/district/biome/country. "Help me find it" sets an arrow that stays until the target is
+  eaten; for a sum it points at the nearest answer tile, never specifically at the right one.
+- **Find-the-answer tiles look identical** (no glow on the right answer); sequence hunts keep their
+  next-tile glow.
+
+## Saves
+- Key stays `hungry-hole-data-v1`. v2/v3 saves keep wallets, upgrades, boards, checklists, passport,
+  eaten landmarks and completed chapters; positions and sizes restart once on the new v4 maps (`mv: 4`).
+
+## Cleanup audit (v4)
+- Deleted: the old point-to-steer touch scheme (`G.ptr`), `shrinkMap` and its calls, the SVG upgrade
+  icons (3D `UPICON` renders instead), stairs, the old Ch1–Ch4 layouts and their Langley geometry,
+  unused v3 types (savanna animals, the treasure set, `university`, `rockies`) and their now-unused
+  recipes, `clearGL`. Evidence: `tests/data.js` resolves every remaining type to a recipe, a search
+  finds no other unreferenced function, and `tests/reachability.js` passes on every map.
+- Kept on purpose: the audio slots (`audio/manifest.js`, MUSIC toggle) — they are wiring, not dead code.
+
+## Tests (v4)
+- `tests/data.js`: every type has a 3D model; Ch1–4 every type has real metres; I Spy pools are 30
+  distinct, include the hat, and every target exists and is eatable at max size; every Educational
+  step resolves; Ch3 POIs present, quiet labels hidden until targeted, no Langley.
+- `tests/reachability.js` (new): flood fill at max size with the game's own collision; Ch1 also checks
+  every set of rooms you can be shut into (just past the under-door gap): either it holds enough food
+  to grow until a door fits, or (5 small rooms) the no-fail rule opens a door once it is eaten out.
+- `tests/behaviour.js`: adds joystick, doors (under-gap / stopped / eaten), checklist-is-bonus,
+  size gate + menu return, HUD upgrades pause/resume, I Spy lifecycle + re-roll, Educational help arrow
+  + local sums + identical tiles, v3 save migration.
+- `tests/balance-bot.js`: now reports time to target size per chapter.
+- `tests/screens.js`: 32 screenshots (menus, 16 chapter scenes, the Ch5 finale sky, each mode).
