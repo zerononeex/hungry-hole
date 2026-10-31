@@ -227,6 +227,7 @@ const SHIM = () => {
     if (!g) return { ok: false, info: 'nothing to eat' };
     for (let i = 0; i < 25; i++) { await B.evaluate(t => { const G = HH.G, o = HH.objByNid(t.nid); if (o && !o.fall && !o.dead) { G.x = t.x; G.y = t.y; G.vx = G.vy = 0; } }, g); await sleep(100); }
     const eaten = await until(A, id => { const o = HH.objByNid(id); return !o || o.dead; }, 3000, g.nid) && await until(B, id => { const o = HH.objByNid(id); return !o || o.dead; }, 3000, g.nid);
+    const h0 = await A.evaluate(() => HH.setHash(HH.net.dead)); await until(B, h => HH.setHash(HH.net.dead) === h, 3000, h0);   // in-flight eats settle
     const [a, bb] = await both(() => ({ n: HH.G.C.n, hash: HH.setHash(HH.net.dead), mate: [+HH.G.mate.x.toFixed(1), +HH.G.mate.y.toFixed(1)], me: [+HH.G.x.toFixed(1), +HH.G.y.toFixed(1)] }));
     await leaveAll();
     return { ok: ok && eaten && a.n === n && bb.n === n && a.hash === bb.hash, info: { key, n, eaten, a, b: bb } };
