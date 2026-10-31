@@ -751,4 +751,4 @@ The world-redo sequence so far: World 1 The Home (floorplan), Metro Vancouver (s
 
 **v5.7 addendum 2 (owner): Prospect Point Lighthouse is IN** (under Lions Gate at Prospect Point, Stanley Park world).
 
-**v5.7 addendum 3 (owner): Beaver Lake is IN** (read as Beaver Lake — Kakashi to confirm the dictation) **and ALL of Stanley Park's parking lots are in**, at their real locations.
+**v5.7 addendum 3 (owner): Beaver Lake is IN** **and ALL of Stanley Park's parking lots are in**, at their real locations.
