@@ -33,7 +33,7 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     return { ok: !HH.fits(bed, D) && !bed.dead && !bed.fall && lean === 0 && still && bed.wob > 0, info: { lvl: G.lvl, type: bed.k, tier: bed.t, ratio: +(D / bed.fw).toFixed(2), lean: +lean.toFixed(3), bumped: bed.wob > 0, still } };`));
 
   await T('no perpetual teeter (v5.1 Part 11): the Stanley Park picnic blanket lies flat and still under the starting hole', new Function(STEP + `
-    const { G, S } = HH; S.ch[3].u = 1; HH.startChapter(3, 'explore'); step(3);
+    const { G, S } = HH; S.ch[2].u = 1; HH.startChapter(2, 'explore'); step(3);
     const bl = G.vis.find(o => o.k === 'blanket'); if (!bl) return { ok: false, info: 'no blanket' };
     const q = [], Q = HH.V3 && null;
     for (let i = 0; i < 60; i++) { G.vx = (i % 2 ? -1 : 1) * 0.3; step(1); HH.poseOf(bl, HH.G.vis.includes(bl) && bl.md, 0, 0, HH.holeD() / 2); q.push((bl.lean || 0) + ',' + (bl.wobble || 0).toFixed(3)); }
@@ -216,11 +216,11 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     const save = { v: 1, settings: { sound: 0, voice: 1, learn: 'full', grade: 3 }, last: 3, journey: 0, ch, passport: {}, learn: {} };
     localStorage.setItem('hungry-hole-data-v1', JSON.stringify(save)); return true; });
   await p.goto(URL); await p.waitForTimeout(400);
-  const v2r = await p.evaluate(() => { const { G, S } = HH; const out = { w1: S.ch[1].w, pts1: S.ch[1].pts, sound: S.settings.sound, w2: S.ch[2].w, board2: S.ch[2].board.filter(Boolean).length };
-    HH.startChapter(2); for (let i = 0; i < 30; i++) { G.now += 33; G.t += 1 / 30; HH.update(1 / 30); }
+  const v2r = await p.evaluate(() => { const { G, S } = HH; const out = { w1: S.ch[1].w, pts1: S.ch[1].pts, sound: S.settings.sound, w2: S.ch[3].w, board2: S.ch[3].board.filter(Boolean).length };
+    HH.startChapter(3); for (let i = 0; i < 30; i++) { G.now += 33; G.t += 1 / 30; HH.update(1 / 30); }
     out.ch2 = [Math.round(G.x), Math.round(G.y), G.lvl]; out.inMap = G.x >= 0 && G.x <= G.C.W && G.y >= 0 && G.y <= G.C.H; out.vis = G.vis.length;
     out.retired4 = S.retired[4] && S.retired[4].check.join('/'); HH.startChapter(1); out.ch1done = S.ch[1].c; out.worlds = Object.keys(S.ch).join(','); return out; });
-  results.push(['v2 save loads and plays (old Vancouver is World 2, retired chapter kept aside)', v2r.w1 === 321 && v2r.pts1 === 1234 && v2r.sound === 0 && v2r.w2 === 50 && v2r.board2 === 5 && v2r.inMap && v2r.vis > 20 && v2r.retired4 === '40/3/0' && v2r.ch1done === 1 && v2r.worlds === '1,2,3,4,5', v2r]);
+  results.push(['v2 save loads and plays (old Vancouver is World 3 since v5.2, retired chapter kept aside)', v2r.w1 === 321 && v2r.pts1 === 1234 && v2r.sound === 0 && v2r.w2 === 50 && v2r.board2 === 5 && v2r.inMap && v2r.vis > 20 && v2r.retired4 === '40/3/0' && v2r.ch1done === 1 && v2r.worlds === '1,2,3,4,5', v2r]);
 
   // a v3-shaped save: wallets, upgrades, boards, eaten landmarks and completed chapters survive
   await p.goto(URL.replace(/index\.html.*$/, 'README.md'));
@@ -229,9 +229,9 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     ch[3].eaten = { scienceworld: 1 };
     localStorage.setItem('hungry-hole-data-v1', JSON.stringify({ v: 1, settings: { sound: 1, voice: 1, learn: 'full', grade: 2 }, last: 3, journey: 0, ch, passport: { FR: 1 }, learn: { math: 4 } })); });
   await p.goto(URL); await p.waitForTimeout(400);
-  const v3r = await p.evaluate(() => { const { G, S } = HH; HH.startChapter(2); const st = S.ch[2];
-    return { w: [S.ch[1].w, S.ch[2].w], up: S.ch[1].up.join(''), board: S.ch[2].board.filter(Boolean).length, done: [S.ch[1].c, S.ch[2].c], unlocked3: S.ch[3].u, passport: S.passport.FR, math: S.learn.math,
-      sciEatenStays: !G.auth.some(o => o.id === 'scienceworld'), atStart: Math.round(G.x) === Math.round(G.C.start[0]), mv: st.mv, voiceDropped: !('voice' in S.settings) }; });
+  const v3r = await p.evaluate(() => { const { G, S } = HH; HH.startChapter(3); const st = S.ch[3];
+    return { w: [S.ch[1].w, S.ch[3].w], up: S.ch[1].up.join(''), board: S.ch[3].board.filter(Boolean).length, done: [S.ch[1].c, S.ch[3].c], unlocked3: S.ch[2].u, passport: S.passport.FR, math: S.learn.math,
+      sciEatenStays: !G.auth.some(o => o.id === 'scienceworld'), atStart: Math.round(G.x) === Math.round((G.C.storyStart || G.C.start)[0]), mv: st.mv, voiceDropped: !('voice' in S.settings) }; });
   results.push(['v3 save migrates (wallets, upgrades, boards, eaten landmarks, completed chapters kept)', v3r.w[0] === 701 && v3r.w[1] === 703 && v3r.up === '3210000001' && v3r.board === 14 && v3r.done.join() === '1,1' && v3r.unlocked3 === 1 && v3r.passport === 1 && v3r.math === 4 && v3r.sciEatenStays && v3r.atStart && v3r.mv === 5 && v3r.voiceDropped, v3r]);
 
   // v5 ground rule: a v4 save that carries progress in the RETIRED worlds (4 Wilderness, 7 Chaos, plus old 2) loads; the
@@ -247,15 +247,15 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     localStorage.setItem('hungry-hole-data-v1', JSON.stringify(save)); return save; });
   await p.goto(URL); await p.waitForTimeout(400);
   const chk = () => p.evaluate(() => { const { S } = HH, c = S.ch;
-    return { worlds: Object.keys(c).join(','), w: [1, 2, 3, 4, 5].map(n => c[n].w), up: [1, 2, 4, 5].map(n => c[n].up.join('')), board: [1, 2, 4, 5].map(n => c[n].board.filter(Boolean).length),
-      done: [1, 2, 4, 5].map(n => c[n].c), u3: c[3].u, eaten2: Object.keys(c[2].eaten).sort().join(','), ispy2: S.ispy[2], edu2: S.edu[2], wins4: S.ispy[4] && S.ispy[4].wins,
+    return { worlds: Object.keys(c).join(','), w: [1, 2, 3, 4, 5].map(n => c[n].w), up: [1, 3, 4, 5].map(n => c[n].up.join('')), board: [1, 3, 4, 5].map(n => c[n].board.filter(Boolean).length),
+      done: [1, 3, 4, 5].map(n => c[n].c), u3: c[2].u, eaten2: Object.keys(c[3].eaten).sort().join(','), ispy2: S.ispy[3], edu2: S.edu[3], wins4: S.ispy[4] && S.ispy[4].wins,
       retired: Object.keys(S.retired).sort().join(','), r4: JSON.stringify(S.retired[4]), r7: JSON.stringify(S.retired[7]), passport: Object.keys(S.passport).sort().join(','), learn: S.learn, music: S.settings.music, last: S.last,
       other: localStorage.getItem('family-other-app') }; });
   const m1 = await chk();
   const play = await p.evaluate(() => { const { G, S } = HH, out = {}; for (const n of [1, 2, 3, 4, 5]) { S.ch[n].u = 1; HH.startChapter(n); for (let i = 0; i < 10; i++) { G.now += 33; G.t += 1 / 30; HH.update(1 / 30); } out[n] = G.C.n === n && G.vis.length > 0; } HH.G.mode = 'menu'; HH.persist(); return out; });
   await p.reload(); await p.waitForTimeout(400);
   const m2 = await chk();
-  const keep = m1.worlds === '1,2,3,4,5' && m1.w.join() === '111,333,0,555,666' && m1.up.join() === '1100000001,3100000000,5100000002,6100000000' && m1.board.join() === [1, 3, 5, 6].map(n => Array(40).fill(0).filter((_, i) => !((i + n) % 4)).length).join()
+  const keep = m1.worlds === '1,2,3,4,5' && m1.w.join() === '111,0,333,555,666' && m1.up.join() === '1100000001,3100000000,5100000002,6100000000' && m1.board.join() === [1, 3, 5, 6].map(n => Array(40).fill(0).filter((_, i) => !((i + n) % 4)).length).join()
     && m1.done.join() === '1,1,1,1' && m1.u3 === 1 && m1.eaten2 === 'canadaplace,scienceworld' && m1.ispy2 && m1.ispy2.wins === 6 && m1.ispy2.pos === 2 && m1.edu2 && m1.edu2.set === 2 && !m1.wins4
     && m1.retired === '2,4,7' && m1.r4 === JSON.stringify(v4save.ch[4]) && m1.r7 === JSON.stringify(v4save.ch[7]) && m1.passport === 'FR,JP' && m1.learn.math === 7 && m1.music === 0 && m1.last === 1 && m1.other === 'keep-me';
   const stable = JSON.stringify(Object.assign({}, m1, { u3: 0, last: 0 })) === JSON.stringify(Object.assign({}, m2, { u3: 0, last: 0 }))   // (playing moved 'last world played');
@@ -280,6 +280,30 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
   const swapOk = s1.names.join() === 'globe,space' && s1.w.join() === '1005,1004' && s1.up.join() === '5,4' && s1.eaten.join() === 'e5,e4' && s1.beat.join() === '5,4' && s1.seen4 === 'globe-trail'
     && s1.wins.join() === '5,4' && s1.edu.join() === '3,1' && s1.last === 5 && s1.u.join() === '1,1' && s1.w51 === 1 && s1.passport === 1 && JSON.stringify(s1) === JSON.stringify(s2);
   results.push(['v5 save -> v5.1 world order (4 = Globe, 5 = Space): each world keeps its own progress, moved once, stable after reload', swapOk, swapOk ? s1 : { s1, s2 }]);
+
+  // v5.2 owner request: the pickers read Home · Stanley Park · Metro Vancouver · Globe · Space. A v5.1 save moves its
+  // Vancouver (old 2) and Stanley Park (old 3) progress across once: wallets, upgrades, boards, eaten sets, ladders, I Spy decks, lessons.
+  await p.goto(URL.replace(/index\.html.*$/, 'README.md'));
+  await p.evaluate(() => {
+    const ch = {}; for (let n = 1; n <= 5; n++) ch[n] = { u: n <= 3 ? 1 : 0, c: n <= 2 ? 1 : 0, x: 10 * n, y: 10 * n, lvl: n, xp: 0, pts: 100 * n, pc: 0, w: 2000 + n, cf: 0, check: [n, 0, 0],
+      board: Array(40).fill(0).map((_, i) => i < n ? 1 : 0), act: [], qi: 0, up: [n, 0, 0, 0, 0, 0, 0, 0, 0, 0], eaten: { ['e' + n]: 1 }, bm: 0, exitOk: 0, beat: n, mv: 5 };
+    ch[2].eaten = { steamclock: 1, chinagate: 1 }; ch[3].eaten = { aquarium: 1 };
+    localStorage.setItem('hungry-hole-data-v1', JSON.stringify({ v: 1, w5: 1, w51: 1, settings: { sound: 1, music: 1, learn: 'full', grade: 2 }, last: 2, journey: 0, ch, passport: {}, learn: { math: 3 },
+      ispy: { 2: { deck: [1, 2], pos: 1, wins: 7 }, 3: { deck: [5], pos: 0, wins: 2 } }, edu: { 2: { set: 4, done: 6 }, 3: { set: 1, done: 1 } }, retired: {} }));
+  });
+  await p.goto(URL); await p.waitForTimeout(400);
+  const per = n => ['w', 'lvl', 'pts', 'beat', 'c'].map(k => HH.S.ch[n][k]).concat([HH.S.ch[n].up.join(''), HH.S.ch[n].board.filter(Boolean).length, Object.keys(HH.S.ch[n].eaten).sort().join('+')]).join('|');
+  const sv52 = () => p.evaluate(per => { const f = new Function('n', 'return (' + per + ')(n)'); const { S } = HH;
+    return { van: f(3), park: f(2), keys: [2, 3].map(n => HH.CH[n].key).join(), mus: [2, 3].map(n => HH.CH[n].mus).join(), ispy: [2, 3].map(n => S.ispy[n] && S.ispy[n].wins).join(), edu: [2, 3].map(n => S.edu[n] && S.edu[n].set).join(),
+      u: [2, 3].map(n => S.ch[n].u).join(), last: S.last, w52: S.w52, other: localStorage.getItem('family-other-app') }; }, per.toString());
+  const t1 = await sv52(); await p.evaluate(() => HH.persist()); await p.reload(); await p.waitForTimeout(400); const t2 = await sv52();
+  await p.evaluate(() => { for (let n = 1; n <= 5; n++) HH.S.ch[n].u = 1; HH.UI.chapters('story'); }); await p.waitForTimeout(300);
+  const pick = await p.evaluate(() => document.body.innerText.match(/The Home|Stanley Park|Metro Vancouver|The Globe|Space/g) || []);
+  const order = pick.filter((v, i) => pick.indexOf(v) === i).join(' · ');
+  const swap52 = t1.van === '2002|2|200|2|1|2000000000|2|chinagate+steamclock' && t1.park === '2003|3|300|3|0|3000000000|3|aquarium' && t1.keys === 'park,van' && t1.mus === 'ch3.mp3,ch2.mp3'
+    && t1.ispy === '2,7' && t1.edu === '1,4' && t1.u === '1,1' && t1.last === 3 && t1.w52 === 1 && JSON.stringify(t1) === JSON.stringify(t2) && order === 'The Home · Stanley Park · Metro Vancouver · The Globe · Space';
+  results.push(['v5.1 save -> v5.2 world order (2 = Stanley Park, 3 = Metro Vancouver): each world keeps its own data and song, moved once, stable after reload, pickers in the new order', swap52, swap52 ? { t1, order } : { t1, t2, order }]);
+  await p.evaluate(() => HH.UI.main());
 
   // v5.1 Part 13: the Globe has no top or bottom edge. Hold the stick straight up from northern Canada: the hole goes
   // over the North Pole and comes down the far side at Russian longitudes, with no jump on the sphere or on screen.

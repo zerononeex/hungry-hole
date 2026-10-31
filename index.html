@@ -824,7 +824,366 @@ const CH = [null];
   });
 })();
 
-/* ---------- CHAPTER 3: METRO VANCOUVER — real geography from OpenStreetMap (baked into data/ch3-osm.js), true scale ----------
+/* ---------- WORLD 2: STANLEY PARK — the real park from OpenStreetMap (baked into data/stanley.js), true scale ----------
+   Inside the red line from the owner's boundary map: the whole park, a ring of water around it, the south half of the
+   Lions Gate Bridge, Coal Harbour to the gas station, and the West End strip west of Cardero Street. Past the line the
+   city, the North Shore and the water carry on as scenery behind invisible barriers. You start ant-sized on a picnic
+   blanket on Ceperley Meadow. Water is never food; totem poles are scenery. Map data (c) OpenStreetMap contributors
+   (ODbL), via Overture Maps. */
+(() => {
+  const D = window.HH_SP || { proj: [-123.172, 49.326, 72620, 111200], W: 5011, H: 5449, water: [], lakes: [], pools: [], forest: [], beach: [], grass: [], rock: [], park: [], lawn: [],
+    field: [], court: [], golf: [], play: [], marina: [], garden: [], res: [], com: [], roads: { hwy: [], main: [], street: [], bike: [], foot: [] }, bld: [], pts: {}, parking: [], piers: [], pierl: [] };
+  const [LON0, LAT0, KX, KY] = D.proj, W = D.W, H = D.H, Q = Math.PI / 2;
+  const P = (lon, lat) => [(lon - LON0) * KX, (LAT0 - lat) * KY];
+  const inv = (x, y) => [x / KX + LON0, LAT0 - y / KY];
+  const poly = a => { const o = []; for (let i = 0; i < a.length; i += 2) o.push(...P(a[i], a[i + 1])); return o; };
+  // the red line (traced from the boundary map; the West End edge follows Cardero Street)
+  const BOUND = poly([-123.14183, 49.28315, -123.1440, 49.2800, -123.1570, 49.2828, -123.1650, 49.2900, -123.1682, 49.3000, -123.1672, 49.3080, -123.1612, 49.3140,
+    -123.1500, 49.3172, -123.1400, 49.3184, -123.1300, 49.3162, -123.1200, 49.3112, -123.1100, 49.3062, -123.1078, 49.3010, -123.1108, 49.2965, -123.1170, 49.2930,
+    -123.1240, 49.2906, -123.12864, 49.29183, -123.12993, 49.29102, -123.13125, 49.29016, -123.13337, 49.28869, -123.1355, 49.28734, -123.13761, 49.28593, -123.13974, 49.28452]);
+  const inPlay = (x, y) => inPoly(x, y, BOUND);
+  /* ---- the land-use raster (3 m cells), painted once from the baked polygons ---- */
+  const ZN = ['res', 'water', 'lake', 'pool', 'beach', 'forest', 'lawn', 'court', 'golf', 'play', 'parking', 'garden', 'marina', 'road', 'path', 'field', 'com'];
+  const CELL = 3; let RA = null, RW = 0, RH = 0;
+  const ringPath = (g, rings) => { for (const r of rings) { g.moveTo(r[0], r[1]); for (let i = 2; i < r.length; i += 2) g.lineTo(r[i], r[i + 1]); g.closePath(); } };
+  const fillAll = (g, list) => { g.beginPath(); for (const p of list) ringPath(g, p); g.fill('evenodd'); };
+  const strokeAll = (g, list, w) => { g.lineWidth = w; g.beginPath(); for (const l of list) { g.moveTo(l[0], l[1]); for (let i = 2; i < l.length; i += 2) g.lineTo(l[i], l[i + 1]); } g.stroke(); };
+  function raster() {
+    if (RA) return RA;
+    RW = Math.ceil(W / CELL); RH = Math.ceil(H / CELL);
+    const c = document.createElement('canvas'); c.width = RW; c.height = RH; const g = c.getContext('2d');
+    const col = i => `rgb(${i * 12 + 6},0,0)`;
+    g.fillStyle = col(0); g.fillRect(0, 0, RW, RH); g.setTransform(1 / CELL, 0, 0, 1 / CELL, 0, 0); g.lineCap = g.lineJoin = 'round';
+    const L = (k, i) => { g.fillStyle = col(i); fillAll(g, D[k] || []); };
+    L('com', 16); L('res', 0); L('park', 6); L('grass', 6); L('forest', 5); L('lawn', 6); L('garden', 11); L('field', 15); L('golf', 8); L('court', 7); L('play', 9);
+    L('parking', 10); L('beach', 4); L('rock', 4); L('water', 1); L('lakes', 2); L('pools', 3); L('marina', 12);
+    g.strokeStyle = col(14); strokeAll(g, D.roads.foot, 2.5); strokeAll(g, D.roads.bike, 3.5);
+    g.strokeStyle = col(13); strokeAll(g, D.roads.street, 8); strokeAll(g, D.roads.main, 11); strokeAll(g, D.roads.hwy, 15);
+    const d = g.getImageData(0, 0, RW, RH).data; RA = new Uint8Array(RW * RH);
+    for (let i = 0; i < RA.length; i++) RA[i] = clamp(Math.round((d[i * 4] - 6) / 12), 0, ZN.length - 1);
+    return RA;
+  }
+  const clsAt = (x, y) => { const a = raster(), i = clamp(Math.floor(x / CELL), 0, RW - 1), j = clamp(Math.floor(y / CELL), 0, RH - 1); return a[j * RW + i]; };
+  const zoneHere = (x, y) => ZN[clsAt(x, y)];
+  const isWater = (x, y) => { const z = zoneHere(x, y); return z === 'water' || z === 'lake' || z === 'marina' || z === 'pool'; };
+  // road crossings (streets and main roads), found per 150 m patch on first need
+  const XS = 150, XSEG = new Map(), XC = new Map();
+  [['main', 14], ['street', 10]].forEach(([k, w], ri) => (D.roads[k] || []).forEach((l, li) => { for (let i = 0; i < l.length - 2; i += 2) {
+    const sg = [l[i], l[i + 1], l[i + 2], l[i + 3], w, ri * 1e5 + li];
+    for (let c = Math.floor(Math.min(sg[0], sg[2]) / XS); c <= Math.floor(Math.max(sg[0], sg[2]) / XS); c++) for (let q = Math.floor(Math.min(sg[1], sg[3]) / XS); q <= Math.floor(Math.max(sg[1], sg[3]) / XS); q++) {
+      const key = c * 4096 + q; let a = XSEG.get(key); if (!a) XSEG.set(key, a = []); a.push(sg); } } }));
+  function xingsNear(x, y) {
+    const c = Math.floor(x / XS), q = Math.floor(y / XS), key = c * 4096 + q;
+    let a = XC.get(key); if (a) return a;
+    a = crossingsOf(XSEG.get(key) || []).filter(o => Math.floor(o.x / XS) === c && Math.floor(o.y / XS) === q);
+    XC.set(key, a); return a;
+  }
+  const [AQX, AQY] = P(-123.1310, 49.3003), AQW = 84, AQD = 56, AQT = 1.2, AQG = 10;
+  const inAqua = (x, y) => Math.abs(x - AQX) < AQW / 2 && Math.abs(y - AQY) < AQD / 2;
+  const zoneAt = (x, y) => x < 0 || y < 0 || x > W || y > H || !inPlay(x, y) ? null : inAqua(x, y) ? 'aqua' : zoneHere(x, y) === 'field' ? 'lawn' : zoneHere(x, y);
+  // v5.1 Part 12: past the map's edge: English Bay and Burrard Inlet to the west and north, the city to the south and east (scenery)
+  const outside = (x, y) => { if (x < 0 || y < 0 || x > W || y > H) return x < 0 || y < 0 ? null : 'xcity'; const z = zoneHere(x, y); return z === 'water' || z === 'marina' || z === 'lake' || z === 'pool' ? null : z === 'forest' ? 'xforest' : z === 'res' || z === 'com' || z === 'road' ? 'xres' : 'xlawn'; };
+  /* ---- road segment hash (cars on roads, people on sidewalks, cyclists on the paths) ---- */
+  const HC = 60; let RH2 = null;
+  function roadHash() {
+    if (RH2) return RH2; RH2 = new Map();
+    for (const [k, w] of [['hwy', 15], ['main', 11], ['street', 8], ['bike', 3.5], ['foot', 2.5]]) for (const l of D.roads[k]) for (let t = 0; t < l.length - 2; t += 2) {
+      const c0 = Math.floor(Math.min(l[t], l[t + 2]) / HC), c1 = Math.floor(Math.max(l[t], l[t + 2]) / HC), r0 = Math.floor(Math.min(l[t + 1], l[t + 3]) / HC), r1 = Math.floor(Math.max(l[t + 1], l[t + 3]) / HC);
+      for (let c = c0; c <= c1; c++) for (let r = r0; r <= r1; r++) { const key = c * 4096 + r; let h = RH2.get(key); if (!h) RH2.set(key, h = []); h.push([l, t, w, k]); }
+    }
+    return RH2;
+  }
+  function nearRoad(x, y, r, kinds) {
+    const h = roadHash(); let best = null, bd = r;
+    for (let c = Math.floor((x - r) / HC); c <= Math.floor((x + r) / HC); c++) for (let q = Math.floor((y - r) / HC); q <= Math.floor((y + r) / HC); q++) for (const [l, t, w, k] of h.get(c * 4096 + q) || []) {
+      if (kinds && !kinds.includes(k)) continue;
+      const ax = l[t], ay = l[t + 1], vx = l[t + 2] - ax, vy = l[t + 3] - ay, l2 = vx * vx + vy * vy || 1, f = clamp(((x - ax) * vx + (y - ay) * vy) / l2, 0, 1), fx = ax + vx * f, fy = ay + vy * f, d = Math.hypot(x - fx, y - fy);
+      if (d < bd) { bd = d; const ln = Math.sqrt(l2); best = { d, fx, fy, tx: vx / ln, ty: vy / ln, w, k }; }
+    }
+    if (best) { let nx = -best.ty, ny = best.tx; if ((x - best.fx) * nx + (y - best.fy) * ny < 0) { nx = -nx; ny = -ny; } best.nx = nx; best.ny = ny; }
+    return best;
+  }
+  /* ---- logical placement (spec A3): cars on roads, parked cars in lots, people on paths, boats on water ---- */
+  const WET = new Set(['duck', 'swan', 'fish', 'seal', 'orca', 'kayak', 'canoe', 'sailboat', 'speedboat', 'yacht', 'heron', 'floatie', 'otter', 'goose']);
+  const SHORE = new Set(['heron', 'goose', 'duck', 'otter', 'seal']);
+  const CARS = new Set(['car', 'taxi', 'van']), WALKERS = new Set(['person', 'jogger', 'kid', 'dog']);
+  function at(k, x, y, rng) {
+    const z = zoneHere(x, y);
+    if (CARS.has(k)) {
+      if (z === 'parking') return [x, y, rng() < .5 ? 0 : Math.PI];
+      const r = nearRoad(x, y, 20, ['street', 'main']); if (!r) return null;
+      const off = r.w / 2 - 1.2;                                   // parked at the kerb
+      return [r.fx + r.nx * off, r.fy + r.ny * off, Math.atan2(r.tx, r.ty)];
+    }
+    if (WALKERS.has(k) && (z === 'res' || z === 'com' || z === 'road')) {
+      const r = nearRoad(x, y, 20, ['street', 'main', 'hwy']); if (!r) return null;
+      const off = r.w / 2 + 1.5 + rng() * 1.5, px = r.fx + r.nx * off, py = r.fy + r.ny * off;   // on the sidewalk
+      return isWater(px, py) ? null : [px, py, Math.atan2(r.tx, r.ty)];
+    }
+    if (SHORE.has(k)) return [x, y];
+    return isWater(x, y) === WET.has(k) ? [x, y] : null;
+  }
+  const atX = (k, x, y, rng) => at(k, x, y, rng);
+  const START = P(-123.1489, 49.2946);                               // the picnic blanket on Ceperley Meadow
+  const RG = [['Ceperley Meadow', -123.1495, 49.2935], ['Second Beach', -123.1508, 49.2948], ['Lost Lagoon', -123.1414, 49.2958], ['Third Beach', -123.1568, 49.3040],
+    ['Prospect Point', -123.1414, 49.3140], ['Beaver Lake', -123.1391, 49.3040], ['Brockton Point', -123.1172, 49.3004], ['Coal Harbour', -123.1290, 49.2940], ['West End', -123.1380, 49.2880]];
+  function regionAt(x, y) { let b = null, bd = 1e18; for (const r of RG) { const [px, py] = P(r[1], r[2]), d = Math.hypot(px - x, py - y); if (d < bd) { bd = d; b = r[0]; } } return b; }
+  // the Aquarium: an open-top hall you can walk into through its front doors (walls stop you until you can eat it)
+  const AQWALLS = [[AQX - AQW / 2, AQY - AQD / 2, AQW, AQT], [AQX - AQW / 2, AQY - AQD / 2, AQT, AQD], [AQX + AQW / 2 - AQT, AQY - AQD / 2, AQT, AQD],
+    [AQX - AQW / 2, AQY + AQD / 2 - AQT, AQW / 2 - AQG / 2, AQT], [AQX + AQG / 2, AQY + AQD / 2 - AQT, AQW / 2 - AQG / 2, AQT]];
+  let aqHall = null;
+  const aqOpen = () => !aqHall || aqHall.dead || holeD() > aqHall.fw * 1.02;
+  function pushRect(r, [x, y, w, h]) {
+    const cx = clamp(G.x, x, x + w), cy = clamp(G.y, y, y + h), ddx = G.x - cx, ddy = G.y - cy, d = Math.hypot(ddx, ddy);
+    if (d >= r) return;
+    if (d > 1e-6) { G.x = cx + ddx / d * r; G.y = cy + ddy / d * r; return; }
+    const l = G.x - x, rr = x + w - G.x, t = G.y - y, b = y + h - G.y, m = Math.min(l, rr, t, b);
+    if (m === l) G.x = x - r; else if (m === rr) G.x = x + w + r; else if (m === t) G.y = y - r; else G.y = y + h + r;
+  }
+  CH.push({
+    n: 2, key: 'park', mus: 'ch3.mp3', name: 'Stanley Park', short: 'Stanley Park', c1: '#8bc34a', c2: '#33691e', bgc: '#5aa9e6', rim: '#8ef08e', metric: 1,
+    W, H, start: START, cost: 2, need: 100, needP: 1.4, xpk: 3, spd: 1.7, pv: .9, view: 13, agridSize: 120, tries: t => t >= 6 ? 10 : 4, fill: .1, fillKeep: new Set(['bigtree', 'pine', 'oak', 'cedar', 'streettree']),
+    sizes: [0, .04, .09, .2, .45, 1, 2.2, 5, 11, 25, 55, 120, 200],
+    tagN: { tree: 'tree' }, regionAt, regionName: r => r, areaKey: regionAt, P, inv, inPlay, isWater,
+    regionPos: rg => { const r = RG.find(r => r[0] === rg); return r && P(r[1], r[2]); },
+    walls3d: { rects: AQWALLS, h: 7 }, wallsGone: () => aqOpen(),
+    types: {
+      // the picnic (ant scale)
+      ant: ['ant', 1], crumb: ['cookie crumb', 1], seed: ['seed', 1], berry: ['blueberry', 1, { pl: 'blueberries' }], chip: ['potato chip', 1, { m: [.04, .005] }],
+      cookie: ['cookie', 1], sandwich: ['sandwich', 1, { m: [.13, .05] }], apple: ['apple', 1, { m: [.08, .08] }], juice: ['juice box', 1, { m: [.06, .1] }], cup: ['paper cup', 1],
+      basket: ['picnic basket', 1, { m: [.45, .35] }], blanket: ['picnic blanket', 1, { m: [2, .02] }], napkin: ['napkin', 1, { m: [.2, .005] }],
+      // little park things
+      leaf: ['maple leaf', 1, { pl: 'maple leaves' }], acorn: ['acorn', 1], pinecone: ['pine cone', 1], feather: ['feather', 1], pebble: ['pebble', 1], shell: ['shell', 1], flower: ['daisy', 1, { pl: 'daisies' }],
+      ladybug: ['ladybug', 1], butterfly: ['butterfly', 1, { mv: 'w' }], snail: ['snail', 1], mushroom: ['mushroom', 1], fern: ['fern', 1], beetle: ['beetle', 1], spider: ['spider', 1],
+      ball: ['ball', 1], frisbee: ['frisbee', 1], crab: ['crab', 1, { mv: 'w' }], sandcastle: ['sandcastle', 1], umbrella: ['beach umbrella', 1], towel: ['beach towel', 1, { m: [1.6, .01] }],
+      floatie: ['pool floatie', 1, { m: [.9, .2] }], flag: ['golf flag', 1, { m: [.4, 2] }], net: ['tennis net', 1, { m: [12, 1] }],
+      // animals
+      squirrel: ['squirrel', 1, { mv: 'w' }], raccoon: ['raccoon', 1, { mv: 'w' }], duck: ['duck', 1, { mv: 'w' }], swan: ['swan', 1, { mv: 'w' }], goose: ['Canada goose', 1, { mv: 'w', pl: 'Canada geese', m: [.9, .8] }],
+      heron: ['great blue heron', 1, { m: [1, 1.1] }], coyote: ['coyote', 1, { mv: 'w', m: [1.1, .6] }], otter: ['river otter', 1, { mv: 'w', m: [1.1, .3] }],
+      seal: ['harbour seal', 1, { mv: 'w' }], orca: ['orca', 1, { mv: 'w' }], fish: ['fish', 1, { mv: 'w', pl: 'fish' }], jelly: ['jellyfish', 1, { pl: 'jellyfish', m: [.4, .5] }],
+      penguin: ['penguin', 1, { mv: 'w', m: [.5, .7] }], turtle: ['sea turtle', 1, { m: [1, .4] }], octopus: ['octopus', 1, { pl: 'octopuses', m: [1, .5] }],
+      // people and wheels
+      person: ['person', 1, { mv: 'w', pl: 'people' }], jogger: ['jogger', 1, { mv: 'w' }], kid: ['kid', 1, { mv: 'w' }], dog: ['dog', 1, { mv: 'w' }], cyclist: ['cyclist', 1, { m: [1.8, 1.8] }],
+      bike: ['parked bike', 1], hat: ['top hat', 1], car: ['car', 1], taxi: ['taxi', 1, { pl: 'taxis' }], van: ['van', 1], tourbus: ['tour bus', 1, { pl: 'tour buses', m: [12, 3.4] }], horsecart: ['horse-drawn tour', 1, { m: [9, 2.6] }],
+      minitrain: ['the miniature train', 1, { m: [14, 1.8] }],
+      kayak: ['kayak', 1, { mv: 'w' }], canoe: ['canoe', 1], sailboat: ['sailboat', 1, { mv: 'w' }], speedboat: ['speedboat', 1, { mv: 'w' }], yacht: ['motor yacht', 1, { mv: 'w' }], seaplane: ['float plane', 1],
+      // the park's furniture
+      bench: ['bench', 1, { pl: 'benches', m: [1.8, .9] }], lamp: ['lamppost', 1, { m: [.4, 4.5] }], stopsign: ['stop sign', 1, { m: [.75, 2.4] }], bin: ['garbage bin', 1], hydrant: ['fire hydrant', 1], fountain2: ['drinking fountain', 1, { m: [.6, 1] }],
+      picnic: ['picnic table', 1, { m: [2, .8] }], slide: ['slide', 1, { m: [2.5, 2] }], swings: ['swing set', 1, { m: [4, 2.4] }], toilets: ['washroom', 1, { m: [8, 3.5] }], art: ['statue', 1, { m: [1.5, 2.5] }],
+      log: ['driftwood log', 1], boulder: ['boulder', 1], bush: ['bush', 1, { pl: 'bushes' }], streettree: ['street tree', 1, { tags: 'tree', sway: 1, m: [5, 9] }],
+      bigtree: ['western red cedar', 1, { tags: 'tree', m: [9, 40] }], pine: ['Douglas fir', 1, { tags: 'tree', m: [6, 30] }], oak: ['maple tree', 1, { tags: 'tree', sway: 1, m: [8, 14] }],
+      // the West End
+      house: ['house', 1, { tags: 'house' }], townhouse: ['row of townhouses', 1, { pl: 'rows of townhouses' }], lowrise: ['apartment building', 1], midrise: ['mid-rise apartments', 1, { pl: 'mid-rise apartments' }],
+      highrise: ['condo tower', 1], shop: ['corner store', 1], gas: ['gas station', 1, { m: [25, 6] }],
+      // the famous places
+      mermaid: ['Girl in a Wetsuit', 1, { m: [2, 3] }], figurehead: ['the Empress of Japan figurehead', 1, { m: [3, 4] }], hollowtree: ['the Hollow Tree', 1, { m: [5, 12] }],
+      lighthouse: ['lighthouse', 1, { m: [6, 10] }], gun: ['the Nine O\'Clock Gun', 1, { m: [4, 2] }], jubilee: ['the Jubilee Fountain', 1, { m: [8, 4] }], arch: ['Lumberman\'s Arch', 1, { m: [14, 8] }],
+      teahouse: ['the Teahouse', 1, { m: [25, 8] }], pavilion: ['the Stanley Park Pavilion', 1, { m: [30, 9] }], rowclub: ['the Vancouver Rowing Club', 1, { m: [40, 12] }],
+      rvyc: ['the Royal Vancouver Yacht Club', 1, { m: [45, 10] }], aquahall: ['the Vancouver Aquarium', 1, { m: [84, 7] }], aquatank: ['aquarium tank', 1, { m: [9, 1.4] }],
+      deadman: ['Deadman\'s Island', 1, { m: [170, 18] }], waterpark: ['the water park', 1, { m: [20, 3] }], siwash: ['Siwash Rock', 1, { m: [12, 15] }], totem: ['totem pole', 1, { m: [1.4, 12] }],
+      inukshuk: ['the Inukshuk', 1, { m: [4, 6] }], beaverlodge: ['beaver lodge', 1, { m: [5, 1.6] }], rosebed: ['rose garden', 1, { m: [6, .8] }], bridge: ['Lions Gate Bridge', 1], station: ['train station', 1, { m: [16, 6] }],
+    },
+    zones: {
+      res: { d: .7, at, t: 'ant:3,leaf:3,cup:2,pebble,flower,squirrel,raccoon:.3,person:5,jogger,kid,dog:2,bike:2,bin:.6,hydrant:.4,car:5,taxi:.5,van' },
+      com: { d: .8, at, t: 'ant:3,cup:4,leaf:2,pebble,person:7,kid,dog,bike:2,bin,car:4,taxi,van' },
+      road: { d: .5, at, t: 'leaf:2,cup,pebble,car:6,taxi,van' },
+      path: { d: .9, at, t: 'ant:4,leaf:4,acorn,pebble:2,cup,feather,squirrel:2,person:3,jogger:2,kid,dog:2,bench:.5' },
+      forest: { d: .8, at, t: 'ant:6,seed:3,acorn:3,pinecone:4,leaf:4,feather,mushroom:3,fern:4,snail:2,beetle:2,spider,squirrel:2,raccoon,coyote:.25,heron:.1,log:1,boulder:.5,bush:2' },
+      lawn: { d: .55, at, t: 'ant:6,seed:4,leaf:3,flower:4,ladybug:2,butterfly:2,feather,pebble,ball:.6,frisbee:.5,squirrel:2,goose:1.5,person:2,kid:1.5,dog:1.2,picnic:.4,umbrella:.2,oak:1.2,bush:.6' },
+      garden: { d: 1, at, t: 'ant:4,flower:8,ladybug:3,butterfly:3,snail,rosebed:.6,bench:.3,oak:.3' },
+      golf: { d: .7, at, t: 'ant:3,seed:2,ball:3,flag:.4,person,goose:.6,oak:.2' },
+      court: { d: .6, at, t: 'ball:4,cup,person:2,kid' },
+      aqua: { d: .5, at: (k, x, y) => [x, y], t: 'cup:2,crumb:2,person:2,kid:2' },
+      play: { d: 1.2, at, t: 'ant:3,crumb:3,ball:3,cup,kid:6,person:2,slide:.5,swings:.4,sandcastle:.6' },
+      parking: { d: .9, at, t: 'cup:2,leaf,pebble,person,car:10,van:2,taxi' },
+      beach: { d: 1, at, t: 'shell:6,pebble:4,crab:3,feather,cup,sandcastle:.6,towel:.5,umbrella:.5,log:3,person:2,kid,dog,heron:.3,goose:.4,seal:.2,boulder:.3' },
+      pool: { d: 1, wet: 1, coin: .1, at, t: 'floatie:3,ball:2,duck:.3' },
+      water: { d: .25, wet: 1, coin: .08, at, t: 'fish:3,duck:2,seal:1.2,otter:.3,kayak:1.2,canoe:.6,sailboat:1.5,speedboat:.8,yacht:.5,orca:.12' },
+      lake: { d: .5, wet: 1, coin: .1, at, t: 'fish:3,duck:4,swan:1.2,goose:1,heron:.4,otter:.2' },
+      marina: { d: .6, wet: 1, coin: .1, at, t: 'fish,duck:2,kayak,sailboat:4,yacht:4,speedboat:2' },
+      // past the red line: the same city, forest and lawns carry on as scenery
+      xres: { d: .4, deco: 1, coin: 0, at: atX, t: 'streettree:3,car:2,person:2' }, xcity: { d: .5, bd: 3, deco: 1, coin: 0, t: 'streettree:3,car:2,midrise:3,highrise:4,lowrise:3,townhouse' }, xforest: { d: .4, deco: 1, coin: 0, at: atX, t: 'bigtree:6,pine:4' }, xlawn: { d: .3, deco: 1, coin: 0, at: atX, t: 'oak:2,bush,person' },
+    },
+    zoneAt, outside,
+    // four streetlights on every street crossing, a stop sign or a bin now and then (v5 A3); streamed with the nearby cells
+    cellExtra(t, gx, gy, cs, out) {
+      const C = this; if (t !== C.T.lamp.t) return;
+      const x0 = gx * cs, y0 = gy * cs, x1 = x0 + cs, y1 = y0 + cs;
+      for (const c of xingsNear(x0, y0)) if (c.x >= x0 && c.x < x1 && c.y >= y0 && c.y < y1)
+        furnishCrossing(c, (k, x, y, yaw) => { const z = zoneAt(x, y); if (z && !isWater(x, y)) out.push(mkObj(C, k, x, y, { zn: z, yaw })); });
+    },
+    collide(r) {
+      if (!aqOpen()) for (const w of AQWALLS) pushRect(r, w);       // the Aquarium's walls are absolute until it fits
+      if (inPlay(G.x, G.y)) { G.okX = G.x; G.okY = G.y; return; }
+      if (G.okX === undefined) return;
+      G.x = G.okX; G.y = G.okY; G.vx *= -0.2; G.vy *= -0.2;            // the red line: an invisible barrier
+    },
+    build(add, rng) {
+      const A = (k, lon, lat, o) => add(k, ...P(lon, lat), Object.assign({ quiet: 1 }, o && o.id ? { keep: 1 } : null, o));
+      const inside = (x, y) => inPlay(x, y);
+      const near = (x, y) => inPlay(x, y) || inPlay(x + 220, y) || inPlay(x - 220, y) || inPlay(x, y + 220) || inPlay(x, y - 220);   // scenery only where you can see it
+      const pts = D.pts || {};
+      const each = (k, f) => { const a = pts[k] || []; for (let i = 0; i < a.length; i += 2) f(a[i], a[i + 1], i / 2); };
+      // the picnic blanket you start on, and its picnic (ant scale)
+      const [bx, by] = START;
+      add('blanket', bx, by, { nosolid: 1, under: 1, yaw: .3, label: 'Picnic blanket' });
+      add('sandwich', bx + .25, by - .1, { keep: 1, id: 'sandwich', label: 'the picnic sandwich', yaw: .4 });
+      add('basket', bx - .55, by + .35, { keep: 1, id: 'basket', label: 'the picnic basket', yaw: .3 });
+      for (const [k, ox, oy] of [['apple', .5, .3], ['juice', -.1, .45], ['juice', .05, .52], ['cookie', .3, .45], ['cookie', .38, .4], ['berry', -.3, -.2], ['berry', -.26, -.25], ['berry', -.33, -.15],
+        ['napkin', .6, -.3], ['cup', -.5, -.4], ['chip', .1, -.35], ['chip', .15, -.3], ['chip', .2, -.42]]) add(k, bx + ox, by + oy, { yaw: rng() * 6 });
+      for (let i = 0; i < 40; i++) { const a = rng() * 6.28, r = rng() * 1.1; add(i % 3 ? 'crumb' : 'ant', bx + Math.cos(a) * r, by + Math.sin(a) * r * .8, { yaw: rng() * 6 }); }
+      for (let i = 0; i < 14; i++) { const a = rng() * 6.28, r = 1.4 + rng() * 2.5; add(rng() < .5 ? 'ant' : rng() < .5 ? 'seed' : 'berry', bx + Math.cos(a) * r, by + Math.sin(a) * r, { yaw: rng() * 6 }); }
+      // the real benches, lamps, bins, fountains, washrooms, artworks and trees
+      each('bench', (x, y) => inside(x, y) && add('bench', x, y, { yaw: rng() * 6.28 }));
+      each('lamp', (x, y) => inside(x, y) && !xingsNear(x, y).some(c => Math.hypot(c.x - x, c.y - y) < 16) && add('lamp', x, y, {}));   // (crossings get their own four)
+      each('bin', (x, y) => inside(x, y) && add('bin', x, y, {}));
+      each('hydrant', (x, y) => inside(x, y) && add('hydrant', x, y, {}));
+      each('fountain', (x, y) => inside(x, y) && add('fountain2', x, y, {}));
+      each('toilets', (x, y) => inside(x, y) && add('toilets', x, y, { yaw: rng() * 6.28 }));
+      each('art', (x, y) => inside(x, y) && add('art', x, y, { yaw: rng() * 6.28 }));
+      each('tree', (x, y) => { if (!isWater(x, y) && near(x, y)) add(inside(x, y) ? 'streettree' : 'streettree', x, y, Object.assign({ yaw: rng() * 6.28, s: .8 + rng() * .5 }, inside(x, y) ? null : { deco: 1 })); });
+      // the forest itself: a real stand of cedars and firs over every forest polygon (dense, spec D/E), maples at the edges
+      for (const p of D.forest) {
+        const r = p[0]; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (let i = 0; i < r.length; i += 2) { x0 = Math.min(x0, r[i]); x1 = Math.max(x1, r[i]); y0 = Math.min(y0, r[i + 1]); y1 = Math.max(y1, r[i + 1]); }
+        const S = 21;
+        for (let y = y0 + S / 2; y < y1; y += S) for (let x = x0 + S / 2; x < x1; x += S) {
+          const tx = x + (rng() - .5) * S * .8, ty = y + (rng() - .5) * S * .8;
+          if (!inPoly(tx, ty, r) || isWater(tx, ty) || !near(tx, ty) || nearRoad(tx, ty, 6)) continue;
+          const v = rng(), k = v < .5 ? 'bigtree' : v < .85 ? 'pine' : 'oak';
+          add(k, tx, ty, Object.assign({ yaw: rng() * 6.28, s: .7 + rng() * .6 }, inside(tx, ty) ? null : { deco: 1 }));
+        }
+      }
+      // the West End's real buildings (outside the line they're scenery)
+      for (const [x, y, w, d, yaw, h] of D.bld) {
+        if (!near(x, y)) continue;
+        const k = h < 9 ? (w * d < 160 ? 'house' : 'shop') : h < 16 ? 'lowrise' : h < 40 ? 'midrise' : 'highrise';
+        const ob = add(k, x, y, { yaw, deco: inside(x, y) ? undefined : 1, quiet: 1 });
+        if (ob) { ob.fw = Math.max(w, d) * .95; ob.hm = h; ob.sv = 1; ob.t = tierOf(G.C, ob.fw); ob.r = ob.fw / 2; }
+      }
+      // parked cars filling the real lots
+      for (const p of D.parking) {
+        const r = p[0]; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (let i = 0; i < r.length; i += 2) { x0 = Math.min(x0, r[i]); x1 = Math.max(x1, r[i]); y0 = Math.min(y0, r[i + 1]); y1 = Math.max(y1, r[i + 1]); }
+        if (!inside((x0 + x1) / 2, (y0 + y1) / 2)) continue;
+        const n = Math.min(24, Math.floor((x1 - x0) * (y1 - y0) / 60));
+        for (let i = 0; i < n; i++) { const x = x0 + rng() * (x1 - x0), y = y0 + rng() * (y1 - y0); if (inPoly(x, y, r)) add(rng() < .85 ? 'car' : 'van', x, y, { yaw: rng() < .5 ? 0 : Math.PI }); }
+      }
+      // the famous places, at their real spots
+      A('hat', -123.1455, 49.2933, { label: 'a top hat', sub: 'left on a bench', id: 'tophat' });
+      A('mermaid', -123.12597, 49.30262, { label: 'Girl in a Wetsuit', id: 'mermaid', fact: 'A bronze statue of a diver sitting on a rock just off the seawall.' });
+      A('figurehead', -123.12649, 49.30267, { label: 'the Empress of Japan figurehead', id: 'empress', fact: 'A copy of the dragon figurehead from a steamship that sailed to Asia.' });
+      A('hollowtree', -123.15357, 49.30688, { label: 'the Hollow Tree', id: 'hollowtree', fact: 'A giant old cedar stump so hollow that people stand inside it.' });
+      A('siwash', -123.1563, 49.30872, { label: 'Siwash Rock', id: 'siwash', deco: 1, fact: 'A tall sea stack standing in the water by the seawall.' });
+      A('lighthouse', -123.14141, 49.31403, { label: 'the Prospect Point lighthouse', id: 'prospectlh', fact: 'It guards the narrows under the Lions Gate Bridge.' });
+      A('lighthouse', -123.11708, 49.3008, { label: 'the Brockton Point lighthouse', id: 'brocktonlh' });
+      A('gun', -123.1176, 49.2981, { label: 'the Nine O\'Clock Gun', id: 'gun', fact: 'A cannon that fires every night at nine o\'clock.' });
+      A('jubilee', -123.1428, 49.2953, { label: 'the Jubilee Fountain', id: 'jubilee', sub: 'Lost Lagoon', fact: 'A fountain in the middle of Lost Lagoon.' });
+      A('arch', -123.13072, 49.30226, { label: 'Lumberman\'s Arch', id: 'arch', yaw: .6 });
+      A('waterpark', -123.13148, 49.29776 + .0045, { label: 'the water park', id: 'waterpark', sub: 'Lumberman\'s Arch' });
+      A('teahouse', -123.15722, 49.30123, { label: 'the Teahouse', id: 'teahouse', sub: 'Ferguson Point', yaw: .4 });
+      A('pavilion', -123.13405, 49.29959, { label: 'the Stanley Park Pavilion', id: 'pavilion', yaw: .2 });
+      A('rowclub', -123.13429, 49.29662, { label: 'the Vancouver Rowing Club', id: 'rowclub', yaw: -.5 });
+      A('rvyc', -123.12695, 49.29599, { label: 'the Royal Vancouver Yacht Club', id: 'rvyc', yaw: -.4 });
+      A('deadman', -123.1228, 49.2952, { label: 'Deadman\'s Island', id: 'deadman', nosolid: 1, fact: 'A small wooded island in Coal Harbour, home to a navy base.' });
+      A('inukshuk', -123.14376, 49.28432, { label: 'the Inukshuk', id: 'inukshuk', sub: 'English Bay' });
+      A('beaverlodge', -123.1395, 49.3043, { label: 'the beaver lodge', id: 'beaverlake', sub: 'Beaver Lake' });
+      A('rosebed', -123.13611, 49.29869, { label: 'the Rose Garden', id: 'rosegarden' }); for (let i = 0; i < 8; i++) A('rosebed', -123.1366 + (i % 4) * .00012, 49.2985 + Math.floor(i / 4) * .0001, {});
+      A('gas', -123.13187, 49.2914, { label: 'the gas station', sub: 'Coal Harbour', yaw: .55 });
+      // the Brockton Point totem poles: scenery only
+      for (let i = 0; i < 9; i++) A('totem', -123.12135 + (i % 5) * .00009, 49.29915 + Math.floor(i / 5) * .00007, { deco: 1, label: i === 2 ? 'Totem poles' : '', sub: 'Brockton Point' });
+      // tennis courts, the pitch & putt, playgrounds and pools (on their real polygons)
+      const mid = p => { const r = p[0]; let x = 0, y = 0; for (let i = 0; i < r.length; i += 2) { x += r[i]; y += r[i + 1]; } return [x / (r.length / 2), y / (r.length / 2)]; };
+      let ti = 0; for (const p of D.court) { const [x, y] = mid(p); if (inside(x, y)) add('net', x, y, ti++ ? { yaw: Q } : { yaw: Q, label: 'the tennis courts', id: 'tennis' }); }
+      let gi = 0; for (const p of D.golf) { const [x, y] = mid(p); if (inside(x, y)) add('flag', x, y, gi++ ? {} : { label: 'the pitch & putt', id: 'pitchputt' }); }
+      const plays = D.play.map(mid).filter(([x, y]) => inside(x, y)).sort((a, b) => Math.hypot(a[0] - START[0], a[1] - START[1]) - Math.hypot(b[0] - START[0], b[1] - START[1]));
+      plays.forEach(([x, y], pi) => add(pi % 2 ? 'swings' : 'slide', x, y, Object.assign({ yaw: rng() * 6 }, pi === 0 ? { keep: 1, id: 'ceperleyslide', label: 'the Ceperley playground slide' } : null)));
+      // the Aquarium: tanks with their animals inside the open-top hall
+      aqHall = A('aquahall', -123.1310, 49.3003, { label: 'the Vancouver Aquarium', id: 'aquarium', nosolid: 1, fact: 'Sea otters, jellyfish, penguins and fish from all over the world live here.' });
+      const tank = (dx, dy, kind, n) => { const x = AQX + dx, y = AQY + dy; add('aquatank', x, y, { quiet: 1, nosolid: 1 }); for (let i = 0; i < n; i++) add(kind, x + (rng() - .5) * 6, y + (rng() - .5) * 5, { quiet: 1, yaw: rng() * 6 }); };
+      tank(-28, -16, 'jelly', 6); tank(-14, -16, 'fish', 6); tank(0, -16, 'octopus', 2); tank(14, -16, 'turtle', 2); tank(28, -16, 'fish', 6);
+      tank(-26, 6, 'otter', 3); tank(-10, 6, 'penguin', 5); tank(10, 6, 'seal', 2); tank(26, 6, 'fish', 6);
+      for (let i = 0; i < 10; i++) add(i % 3 ? 'person' : 'kid', AQX + (rng() - .5) * 70, AQY + 14 + rng() * 8, { quiet: 1 });
+      // Lions Gate Bridge (the south half is inside the line), the miniature train
+      { const [x0, y0] = P(-123.1385, 49.3150), [x1, y1] = P(-123.1395, 49.3215); add('bridge', (x0 + x1) / 2, (y0 + y1) / 2, { deco: 1, quiet: 1, label: 'Lions Gate Bridge', fwx: Math.hypot(x1 - x0, y1 - y0), hm: 60, yaw: Math.atan2(x1 - x0, y1 - y0) }); }
+      A('station', -123.1373, 49.3007, { label: 'the miniature train station', yaw: .3 });
+      A('minitrain', -123.1373, 49.3007, { path: poly([-123.1373, 49.3007, -123.1385, 49.3020, -123.1400, 49.3015, -123.1395, 49.2998, -123.1380, 49.2995, -123.1373, 49.3007]), spd: 2.2, loop: 1, face: 1, label: 'the miniature train', id: 'minitrain' });
+      // movers: cars and tour buses on the park drive and the causeway, cyclists on the bike paths, people on the seawall
+      const lens = l => { let s = 0; for (let i = 2; i < l.length; i += 2) s += Math.hypot(l[i] - l[i - 2], l[i + 1] - l[i - 1]); return s; };
+      const inLine = l => { let n = 0; for (let i = 0; i < l.length; i += 2) if (inside(l[i], l[i + 1])) n++; return n > l.length / 4; };
+      const pick = (list, minL) => list.filter(l => inLine(l) && lens(l) > minL);
+      for (const l of pick(D.roads.hwy, 120)) for (let j = 0; j < 3; j++) add(['car', 'van', 'car', 'taxi'][j], 0, 0, { path: l, spd: 11 + rng() * 3, ph: rng(), face: 1, lane: (j % 2 ? 1 : -1) * 3 });
+      const mains = pick(D.roads.main, 150);
+      mains.forEach((l, i) => { add(i % 3 ? 'car' : 'tourbus', 0, 0, { path: l, spd: i % 3 ? 8 + rng() * 2 : 5, ph: rng(), face: 1, lane: (i % 2 ? 1 : -1) * 2.5, label: i % 3 ? '' : (i ? '' : 'the park tour bus') }); });
+      for (const [i, l] of pick(D.roads.main, 300).slice(0, 2).entries()) add('horsecart', 0, 0, { path: l, spd: 1.6, ph: rng(), face: 1, lane: 2.5, label: i ? '' : 'the horse-drawn tour' });
+      pick(D.roads.bike, 80).forEach((l, i) => { for (let j = 0; j < 2; j++) add('cyclist', 0, 0, { path: l, spd: 4 + rng() * 2, ph: rng(), face: 1, lane: j ? .8 : -.8 }); });
+      pick(D.roads.foot, 200).slice(0, 70).forEach((l, i) => add(i % 3 ? 'person' : 'jogger', 0, 0, { path: l, spd: i % 3 ? 1.2 : 2.6, ph: rng(), face: 1 }));
+      // boats out on the water, float planes by Coal Harbour, seals and orcas
+      const W8 = [[-123.163, 49.296, -123.160, 49.306, -123.155, 49.312, -123.162, 49.300], [-123.150, 49.284, -123.158, 49.288, -123.152, 49.291, -123.146, 49.287],
+        [-123.115, 49.3045, -123.120, 49.308, -123.130, 49.312, -123.122, 49.307], [-123.112, 49.299, -123.118, 49.2935, -123.125, 49.2925, -123.116, 49.297]];
+      W8.forEach((w, i) => { for (const [k, sp] of [['sailboat', 2.5], ['speedboat', 7], ['kayak', 1.2], ['yacht', 4]]) add(k, 0, 0, { path: poly([...w, w[0], w[1]]), spd: sp, ph: rng(), loop: 1, face: 1 }); });
+      for (let i = 0; i < 4; i++) A('seaplane', -123.1185 + i * .0006, 49.2925, { yaw: Q });
+      for (let i = 0; i < 3; i++) A('orca', -123.163 + i * .003, 49.31 - i * .002, { path: poly([-123.165 + i * .002, 49.296, -123.162, 49.312, -123.15, 49.3165, -123.162, 49.304]), spd: 3, ph: i / 3, loop: 1, face: 1, label: i ? '' : 'Orcas', id: i ? undefined : 'orca' });
+      for (let i = 0; i < 8; i++) { const [x, y] = P(-123.158 + rng() * .045, 49.284 + rng() * .03); if (isWater(x, y) && inside(x, y) && zoneHere(x, y) === 'water') add('seal', x, y, { quiet: 1 }); }
+      for (let i = 0; i < 6; i++) A('swan', -123.1435 + i * .0006, 49.2958 + (i % 2) * .0003, {});
+    },
+    hint: w => w === 'tree' ? P(-123.145, 49.302) : null,
+    words: ['PARK', 'TREE', 'SEAL', 'DUCK', 'SWAN', 'BIKE', 'BOAT', 'ORCA', 'BEACH', 'SAND'],
+    // the objective ladder (story): the picnic → Second Beach → the west side → the whole park → Coal Harbour
+    beats: ['sandwich', 'basket', 'ceperleyslide', 'hollowtree', 'prospectlh', 'arch', 'teahouse', 'rowclub', 'aquarium', 'deadman'],
+    rings: (() => { const r = (a, b, c, d) => [...P(a, b), ...P(c, d)], [sx, sy] = START, pic = [sx - 14, sy - 14, sx + 14, sy + 14], sb = r(-123.1545, 49.2968, -123.1440, 49.2905),
+      west = r(-123.163, 49.312, -123.138, 49.2885), park = r(-123.166, 49.318, -123.112, 49.2875);
+      return [pic, pic, sb, west, park, park, park, null, null, null]; })(),
+    check: ['c:tree:20', 'b:mermaid||Find the Girl in a Wetsuit', 'b:orca||Eat an orca'],
+    quests: [
+      'c:ant:8', 't:25', 'c:leaf:5', 'x:5', 'c:squirrel:3', 'a:ant:15', 'c:bench:3', 'c:duck:3|c', 'c:goose:3|c', 'c:cyclist:2|c',
+      'c:car:3', 'c:sailboat:2|c', 'x:8', 'c:seal:2|c', 'b:minitrain|c|Eat the miniature train', 'c:tree:10', 'b:tourbus|c|Eat a park tour bus', 't:200',
+      'f:add', 'f:sub', 'f:mul', 'f:miss', 'f:mul', 'f:add', 'f:sub', 'q:5,10,15,20,25',
+      'q:PARK|s|Eat P-A-R-K in order', 'l:S', 'l:B', 'f:word', 'q:SEAL', 'l:T',
+      'p:bench,lamp,bench,lamp', 'p:duck,swan,duck,swan', 'p:person,dog,person,dog', 'p:sailboat,kayak,sailboat,kayak',
+      'r:4', 's:5000', 'r:7', 's:30000',
+    ],
+    ispy: ['#mermaid', '#empress', '#hollowtree', '#prospectlh', '#brocktonlh', '#gun', '#jubilee', '#arch', '#waterpark', '#teahouse', '#pavilion', '#rowclub', '#rvyc',
+      '#aquarium', '#deadman', '#inukshuk', '#beaverlake', '#rosegarden', '#tennis', '#pitchputt', '#minitrain', 'heron', 'raccoon', 'coyote', 'otter', 'swan', 'seal', 'orca', 'penguin', 'hat'],
+    eduSubj: 'geography',
+    edu: [
+      { n: 'Around the seawall', s: ['i:#mermaid|Find the Girl in a Wetsuit', 'i:#empress|Find the Empress of Japan figurehead', 'i:#brocktonlh|Find the Brockton Point lighthouse'] },
+      { n: 'The west side', s: ['i:#teahouse|Find the Teahouse', 'i:#hollowtree|Find the Hollow Tree', 'i:#prospectlh|Find the Prospect Point lighthouse'] },
+      { n: 'Lakes and lagoons', s: ['i:#jubilee|Find the fountain in Lost Lagoon', 'i:#beaverlake|Find the beaver lodge in Beaver Lake', 'f:duck,swan,goose'] },
+      { n: 'Fun and games', s: ['i:#waterpark|Find the water park', 'i:#tennis|Find the tennis courts', 'i:#pitchputt|Find the pitch & putt'] },
+      { n: 'On the water', s: ['i:#rowclub|Find the Vancouver Rowing Club', 'i:#rvyc|Find the Royal Vancouver Yacht Club', 'i:#deadman|Find Deadman\'s Island'] },
+      { n: 'Ocean animals', s: ['i:#aquarium|Find the Vancouver Aquarium', 'f:seal,otter,orca', 'f:jelly,penguin,octopus'] },
+      { n: 'Park maths', s: ['m:add', 'm:sub', 'm:mul'] },
+    ],
+    doneTxt: 'From a crumb on a picnic blanket to Deadman\'s Island: Stanley Park is in your belly!',
+    bg(g, V) {
+      const x0 = V.x0, y0 = V.y0, x1 = V.x1, y1 = V.y1, px = V.px;
+      const box = p => { const r = p[0]; let a = 1e9, b = 1e9, c = -1e9, d = -1e9; for (let i = 0; i < r.length; i += 2) { a = Math.min(a, r[i]); c = Math.max(c, r[i]); b = Math.min(b, r[i + 1]); d = Math.max(d, r[i + 1]); } return [a, b, c, d]; };
+      const vis = k => (D['_v' + k] || (D['_v' + k] = (D[k] || []).map(p => [box(p), p])));
+      const F = (k, col) => { g.fillStyle = col; g.beginPath(); for (const [b, p] of vis(k)) if (!(b[0] > x1 || b[2] < x0 || b[1] > y1 || b[3] < y0)) ringPath(g, p); g.fill('evenodd'); };
+      g.fillStyle = '#d9d6c8'; g.fillRect(x0, y0, x1 - x0, y1 - y0);
+      if (x0 < 0 || y0 < 0) { g.fillStyle = '#5aa9e6'; if (x0 < 0) g.fillRect(x0, y0, Math.min(x1, 0) - x0, y1 - y0); if (y0 < 0) g.fillRect(x0, y0, x1 - x0, Math.min(y1, 0) - y0); }   // v5.1: the sea past the west and north edges
+      if (x1 > W || y1 > H) { g.strokeStyle = '#b9b5ad'; g.lineWidth = 9; g.beginPath();                    // and city streets carrying on past the south and east edges
+        for (let x = Math.ceil(x0 / 120) * 120; x < x1; x += 120) { if (y1 > H) { g.moveTo(x, Math.max(y0, H)); g.lineTo(x, y1); } if (x > W) { g.moveTo(x, Math.max(y0, 0)); g.lineTo(x, Math.min(y1, H)); } }
+        for (let y = Math.ceil(y0 / 100) * 100; y < y1; y += 100) { if (y > H) { g.moveTo(Math.max(x0, 0), y); g.lineTo(x1, y); } else if (y > 0 && x1 > W) { g.moveTo(Math.max(x0, W), y); g.lineTo(x1, y); } }
+        g.stroke(); }
+      F('com', '#d3cdc2'); F('res', '#dcd7cb'); F('park', '#8fcf6f'); F('grass', '#8fcf6f'); F('forest', '#4f8a3c'); F('lawn', '#9fd87c'); F('garden', '#a7d98a'); F('field', '#7fcf62');
+      F('golf', '#76d46a'); F('court', '#c8704a'); F('play', '#f2c27a'); F('parking', '#a3a5a8'); F('beach', '#ead9a8'); F('rock', '#b9b2a6');
+      // water with a gentle shimmer of light bands (idle life), then lakes, pools and marinas
+      F('water', '#5aa9e6'); F('lakes', '#4f9fe0'); F('pools', '#7fd3f0'); F('marina', '#4f9fdb');
+      // the seawall's stone edge, piers and docks
+      g.strokeStyle = '#efe9dc'; g.lineCap = 'round'; g.lineJoin = 'round';
+      g.fillStyle = '#b08a5a'; g.beginPath(); for (const p of D.piers) ringPath(g, p); g.fill(); g.strokeStyle = '#b08a5a'; strokeAll(g, D.pierl, 2);
+      const lines = (k, w, col, minPx) => { if (w / px < (minPx || 0)) return; g.strokeStyle = col; strokeAll(g, D.roads[k].filter(l => true), Math.max(w, px * .6)); };
+      lines('foot', 2.5, '#efe6d2', .15); lines('bike', 3.2, '#d9a07a', .1);
+      g.strokeStyle = '#d9d5cc'; strokeAll(g, D.roads.street, 10); strokeAll(g, D.roads.main, 13); strokeAll(g, D.roads.hwy, 17);
+      lines('street', 8, '#8e9196'); lines('main', 11, '#83868c'); lines('hwy', 15, '#7d8087');
+      if (1 / px > 1.5) { g.setLineDash([3, 6]); g.strokeStyle = '#e8c64a'; g.lineWidth = .25; g.beginPath(); for (const l of D.roads.main.concat(D.roads.hwy)) { g.moveTo(l[0], l[1]); for (let i = 2; i < l.length; i += 2) g.lineTo(l[i], l[i + 1]); } g.stroke(); g.setLineDash([]); }
+      // the Aquarium's floor
+      g.fillStyle = '#e7e2d6'; g.fillRect(AQX - AQW / 2, AQY - AQD / 2, AQW, AQD);
+    },
+  });
+})();
+
+/* ---------- WORLD 3: METRO VANCOUVER — real geography from OpenStreetMap (baked into data/ch3-osm.js), true scale ----------
    Roads, coastline, rivers, lakes, parks and land use are real; buildings are a generic library placed along the real
    streets (spec clarification 8); every school, community centre and casino sits at its real spot, and the famous
    places are modelled with their own shapes. Names stay hidden unless a place is an active target. Private homes are
@@ -932,7 +1291,7 @@ const CH = [null];
   const VEH = new Set(['car', 'taxi', 'bus', 'van', 'truck', 'bigtruck', 'foodtruck']);
   const WALK = { person: 2, jogger: 2, kid: 2, dog: 2.5, bike: 1, bin: 3, hydrant: 3.2, lamp: 3.5, light: 1, newspaper: 2.8, cone: -1.2, drain: -.4, streettree: 4.5, bench: 3 };
   function at(k, x, y, rng, out) {
-    const T = CH[2].T[k], fw = T.m ? T.m[0] : 2;
+    const T = CH.find(c => c && c.key === 'van').T[k], fw = T.m ? T.m[0] : 2;
     if (BLD.has(k)) {
       const r = nearRoad(x, y, 50); if (!r || r.k === 6) return null;
       const off = r.w / 2 + 4 + fw / 2, px = r.fx + r.nx * off, py = r.fy + r.ny * off;
@@ -968,7 +1327,7 @@ const CH = [null];
     g.restore();
   }
   CH.push({
-    n: 2, key: 'van', mus: 'ch2.mp3', name: 'Metro Vancouver', short: 'Vancouver', c1: '#2d9cdb', c2: '#145a86', bgc: '#cfd8b8', rim: '#6ad1ff', metric: 1,
+    n: 3, key: 'van', mus: 'ch2.mp3', name: 'Metro Vancouver', short: 'Vancouver', c1: '#2d9cdb', c2: '#145a86', bgc: '#cfd8b8', rim: '#6ad1ff', metric: 1,
     W, H, start: P(-123.1185, 49.2835), storyStart: P(-123.1128, 49.2864), cost: 1.8,   // v5.2: Story opens at Canada Place, a hop from the Steam Clock
     need: 25, needP: 1.6, xpk: 3, spd: 3.6, pv: 0.6, view: 13, agridSize: 900, bld: BLD, tries: t => t >= 5 ? 16 : 4,
     fill: .3, fillKeep: new Set(['streettree', 'bigtree', ...BLD]),           // v5 density: filler cut 70%, trees and streets of buildings stay
@@ -1252,365 +1611,6 @@ const CH = [null];
       // the SkyTrain guideway: a concrete beam (with its shadow) over the streets
       g.lineCap = 'butt'; for (const key of ['expo', 'mill', 'canada']) { const a = D3.paths[key]; if (!a) continue; g.beginPath(); g.moveTo(a[0], a[1]); for (let i = 2; i < a.length; i += 2) g.lineTo(a[i], a[i + 1]);
         g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = Math.max(10, px * 2.5); g.save(); g.translate(4, 4); g.stroke(); g.restore(); g.strokeStyle = '#e4e1da'; g.lineWidth = Math.max(8, px * 2); g.stroke(); g.strokeStyle = '#b9b5ad'; g.lineWidth = Math.max(1, px * .4); g.stroke(); }
-    },
-  });
-})();
-
-/* ---------- WORLD 3: STANLEY PARK — the real park from OpenStreetMap (baked into data/stanley.js), true scale ----------
-   Inside the red line from the owner's boundary map: the whole park, a ring of water around it, the south half of the
-   Lions Gate Bridge, Coal Harbour to the gas station, and the West End strip west of Cardero Street. Past the line the
-   city, the North Shore and the water carry on as scenery behind invisible barriers. You start ant-sized on a picnic
-   blanket on Ceperley Meadow. Water is never food; totem poles are scenery. Map data (c) OpenStreetMap contributors
-   (ODbL), via Overture Maps. */
-(() => {
-  const D = window.HH_SP || { proj: [-123.172, 49.326, 72620, 111200], W: 5011, H: 5449, water: [], lakes: [], pools: [], forest: [], beach: [], grass: [], rock: [], park: [], lawn: [],
-    field: [], court: [], golf: [], play: [], marina: [], garden: [], res: [], com: [], roads: { hwy: [], main: [], street: [], bike: [], foot: [] }, bld: [], pts: {}, parking: [], piers: [], pierl: [] };
-  const [LON0, LAT0, KX, KY] = D.proj, W = D.W, H = D.H, Q = Math.PI / 2;
-  const P = (lon, lat) => [(lon - LON0) * KX, (LAT0 - lat) * KY];
-  const inv = (x, y) => [x / KX + LON0, LAT0 - y / KY];
-  const poly = a => { const o = []; for (let i = 0; i < a.length; i += 2) o.push(...P(a[i], a[i + 1])); return o; };
-  // the red line (traced from the boundary map; the West End edge follows Cardero Street)
-  const BOUND = poly([-123.14183, 49.28315, -123.1440, 49.2800, -123.1570, 49.2828, -123.1650, 49.2900, -123.1682, 49.3000, -123.1672, 49.3080, -123.1612, 49.3140,
-    -123.1500, 49.3172, -123.1400, 49.3184, -123.1300, 49.3162, -123.1200, 49.3112, -123.1100, 49.3062, -123.1078, 49.3010, -123.1108, 49.2965, -123.1170, 49.2930,
-    -123.1240, 49.2906, -123.12864, 49.29183, -123.12993, 49.29102, -123.13125, 49.29016, -123.13337, 49.28869, -123.1355, 49.28734, -123.13761, 49.28593, -123.13974, 49.28452]);
-  const inPlay = (x, y) => inPoly(x, y, BOUND);
-  /* ---- the land-use raster (3 m cells), painted once from the baked polygons ---- */
-  const ZN = ['res', 'water', 'lake', 'pool', 'beach', 'forest', 'lawn', 'court', 'golf', 'play', 'parking', 'garden', 'marina', 'road', 'path', 'field', 'com'];
-  const CELL = 3; let RA = null, RW = 0, RH = 0;
-  const ringPath = (g, rings) => { for (const r of rings) { g.moveTo(r[0], r[1]); for (let i = 2; i < r.length; i += 2) g.lineTo(r[i], r[i + 1]); g.closePath(); } };
-  const fillAll = (g, list) => { g.beginPath(); for (const p of list) ringPath(g, p); g.fill('evenodd'); };
-  const strokeAll = (g, list, w) => { g.lineWidth = w; g.beginPath(); for (const l of list) { g.moveTo(l[0], l[1]); for (let i = 2; i < l.length; i += 2) g.lineTo(l[i], l[i + 1]); } g.stroke(); };
-  function raster() {
-    if (RA) return RA;
-    RW = Math.ceil(W / CELL); RH = Math.ceil(H / CELL);
-    const c = document.createElement('canvas'); c.width = RW; c.height = RH; const g = c.getContext('2d');
-    const col = i => `rgb(${i * 12 + 6},0,0)`;
-    g.fillStyle = col(0); g.fillRect(0, 0, RW, RH); g.setTransform(1 / CELL, 0, 0, 1 / CELL, 0, 0); g.lineCap = g.lineJoin = 'round';
-    const L = (k, i) => { g.fillStyle = col(i); fillAll(g, D[k] || []); };
-    L('com', 16); L('res', 0); L('park', 6); L('grass', 6); L('forest', 5); L('lawn', 6); L('garden', 11); L('field', 15); L('golf', 8); L('court', 7); L('play', 9);
-    L('parking', 10); L('beach', 4); L('rock', 4); L('water', 1); L('lakes', 2); L('pools', 3); L('marina', 12);
-    g.strokeStyle = col(14); strokeAll(g, D.roads.foot, 2.5); strokeAll(g, D.roads.bike, 3.5);
-    g.strokeStyle = col(13); strokeAll(g, D.roads.street, 8); strokeAll(g, D.roads.main, 11); strokeAll(g, D.roads.hwy, 15);
-    const d = g.getImageData(0, 0, RW, RH).data; RA = new Uint8Array(RW * RH);
-    for (let i = 0; i < RA.length; i++) RA[i] = clamp(Math.round((d[i * 4] - 6) / 12), 0, ZN.length - 1);
-    return RA;
-  }
-  const clsAt = (x, y) => { const a = raster(), i = clamp(Math.floor(x / CELL), 0, RW - 1), j = clamp(Math.floor(y / CELL), 0, RH - 1); return a[j * RW + i]; };
-  const zoneHere = (x, y) => ZN[clsAt(x, y)];
-  const isWater = (x, y) => { const z = zoneHere(x, y); return z === 'water' || z === 'lake' || z === 'marina' || z === 'pool'; };
-  // road crossings (streets and main roads), found per 150 m patch on first need
-  const XS = 150, XSEG = new Map(), XC = new Map();
-  [['main', 14], ['street', 10]].forEach(([k, w], ri) => (D.roads[k] || []).forEach((l, li) => { for (let i = 0; i < l.length - 2; i += 2) {
-    const sg = [l[i], l[i + 1], l[i + 2], l[i + 3], w, ri * 1e5 + li];
-    for (let c = Math.floor(Math.min(sg[0], sg[2]) / XS); c <= Math.floor(Math.max(sg[0], sg[2]) / XS); c++) for (let q = Math.floor(Math.min(sg[1], sg[3]) / XS); q <= Math.floor(Math.max(sg[1], sg[3]) / XS); q++) {
-      const key = c * 4096 + q; let a = XSEG.get(key); if (!a) XSEG.set(key, a = []); a.push(sg); } } }));
-  function xingsNear(x, y) {
-    const c = Math.floor(x / XS), q = Math.floor(y / XS), key = c * 4096 + q;
-    let a = XC.get(key); if (a) return a;
-    a = crossingsOf(XSEG.get(key) || []).filter(o => Math.floor(o.x / XS) === c && Math.floor(o.y / XS) === q);
-    XC.set(key, a); return a;
-  }
-  const [AQX, AQY] = P(-123.1310, 49.3003), AQW = 84, AQD = 56, AQT = 1.2, AQG = 10;
-  const inAqua = (x, y) => Math.abs(x - AQX) < AQW / 2 && Math.abs(y - AQY) < AQD / 2;
-  const zoneAt = (x, y) => x < 0 || y < 0 || x > W || y > H || !inPlay(x, y) ? null : inAqua(x, y) ? 'aqua' : zoneHere(x, y) === 'field' ? 'lawn' : zoneHere(x, y);
-  // v5.1 Part 12: past the map's edge: English Bay and Burrard Inlet to the west and north, the city to the south and east (scenery)
-  const outside = (x, y) => { if (x < 0 || y < 0 || x > W || y > H) return x < 0 || y < 0 ? null : 'xcity'; const z = zoneHere(x, y); return z === 'water' || z === 'marina' || z === 'lake' || z === 'pool' ? null : z === 'forest' ? 'xforest' : z === 'res' || z === 'com' || z === 'road' ? 'xres' : 'xlawn'; };
-  /* ---- road segment hash (cars on roads, people on sidewalks, cyclists on the paths) ---- */
-  const HC = 60; let RH2 = null;
-  function roadHash() {
-    if (RH2) return RH2; RH2 = new Map();
-    for (const [k, w] of [['hwy', 15], ['main', 11], ['street', 8], ['bike', 3.5], ['foot', 2.5]]) for (const l of D.roads[k]) for (let t = 0; t < l.length - 2; t += 2) {
-      const c0 = Math.floor(Math.min(l[t], l[t + 2]) / HC), c1 = Math.floor(Math.max(l[t], l[t + 2]) / HC), r0 = Math.floor(Math.min(l[t + 1], l[t + 3]) / HC), r1 = Math.floor(Math.max(l[t + 1], l[t + 3]) / HC);
-      for (let c = c0; c <= c1; c++) for (let r = r0; r <= r1; r++) { const key = c * 4096 + r; let h = RH2.get(key); if (!h) RH2.set(key, h = []); h.push([l, t, w, k]); }
-    }
-    return RH2;
-  }
-  function nearRoad(x, y, r, kinds) {
-    const h = roadHash(); let best = null, bd = r;
-    for (let c = Math.floor((x - r) / HC); c <= Math.floor((x + r) / HC); c++) for (let q = Math.floor((y - r) / HC); q <= Math.floor((y + r) / HC); q++) for (const [l, t, w, k] of h.get(c * 4096 + q) || []) {
-      if (kinds && !kinds.includes(k)) continue;
-      const ax = l[t], ay = l[t + 1], vx = l[t + 2] - ax, vy = l[t + 3] - ay, l2 = vx * vx + vy * vy || 1, f = clamp(((x - ax) * vx + (y - ay) * vy) / l2, 0, 1), fx = ax + vx * f, fy = ay + vy * f, d = Math.hypot(x - fx, y - fy);
-      if (d < bd) { bd = d; const ln = Math.sqrt(l2); best = { d, fx, fy, tx: vx / ln, ty: vy / ln, w, k }; }
-    }
-    if (best) { let nx = -best.ty, ny = best.tx; if ((x - best.fx) * nx + (y - best.fy) * ny < 0) { nx = -nx; ny = -ny; } best.nx = nx; best.ny = ny; }
-    return best;
-  }
-  /* ---- logical placement (spec A3): cars on roads, parked cars in lots, people on paths, boats on water ---- */
-  const WET = new Set(['duck', 'swan', 'fish', 'seal', 'orca', 'kayak', 'canoe', 'sailboat', 'speedboat', 'yacht', 'heron', 'floatie', 'otter', 'goose']);
-  const SHORE = new Set(['heron', 'goose', 'duck', 'otter', 'seal']);
-  const CARS = new Set(['car', 'taxi', 'van']), WALKERS = new Set(['person', 'jogger', 'kid', 'dog']);
-  function at(k, x, y, rng) {
-    const z = zoneHere(x, y);
-    if (CARS.has(k)) {
-      if (z === 'parking') return [x, y, rng() < .5 ? 0 : Math.PI];
-      const r = nearRoad(x, y, 20, ['street', 'main']); if (!r) return null;
-      const off = r.w / 2 - 1.2;                                   // parked at the kerb
-      return [r.fx + r.nx * off, r.fy + r.ny * off, Math.atan2(r.tx, r.ty)];
-    }
-    if (WALKERS.has(k) && (z === 'res' || z === 'com' || z === 'road')) {
-      const r = nearRoad(x, y, 20, ['street', 'main', 'hwy']); if (!r) return null;
-      const off = r.w / 2 + 1.5 + rng() * 1.5, px = r.fx + r.nx * off, py = r.fy + r.ny * off;   // on the sidewalk
-      return isWater(px, py) ? null : [px, py, Math.atan2(r.tx, r.ty)];
-    }
-    if (SHORE.has(k)) return [x, y];
-    return isWater(x, y) === WET.has(k) ? [x, y] : null;
-  }
-  const atX = (k, x, y, rng) => at(k, x, y, rng);
-  const START = P(-123.1489, 49.2946);                               // the picnic blanket on Ceperley Meadow
-  const RG = [['Ceperley Meadow', -123.1495, 49.2935], ['Second Beach', -123.1508, 49.2948], ['Lost Lagoon', -123.1414, 49.2958], ['Third Beach', -123.1568, 49.3040],
-    ['Prospect Point', -123.1414, 49.3140], ['Beaver Lake', -123.1391, 49.3040], ['Brockton Point', -123.1172, 49.3004], ['Coal Harbour', -123.1290, 49.2940], ['West End', -123.1380, 49.2880]];
-  function regionAt(x, y) { let b = null, bd = 1e18; for (const r of RG) { const [px, py] = P(r[1], r[2]), d = Math.hypot(px - x, py - y); if (d < bd) { bd = d; b = r[0]; } } return b; }
-  // the Aquarium: an open-top hall you can walk into through its front doors (walls stop you until you can eat it)
-  const AQWALLS = [[AQX - AQW / 2, AQY - AQD / 2, AQW, AQT], [AQX - AQW / 2, AQY - AQD / 2, AQT, AQD], [AQX + AQW / 2 - AQT, AQY - AQD / 2, AQT, AQD],
-    [AQX - AQW / 2, AQY + AQD / 2 - AQT, AQW / 2 - AQG / 2, AQT], [AQX + AQG / 2, AQY + AQD / 2 - AQT, AQW / 2 - AQG / 2, AQT]];
-  let aqHall = null;
-  const aqOpen = () => !aqHall || aqHall.dead || holeD() > aqHall.fw * 1.02;
-  function pushRect(r, [x, y, w, h]) {
-    const cx = clamp(G.x, x, x + w), cy = clamp(G.y, y, y + h), ddx = G.x - cx, ddy = G.y - cy, d = Math.hypot(ddx, ddy);
-    if (d >= r) return;
-    if (d > 1e-6) { G.x = cx + ddx / d * r; G.y = cy + ddy / d * r; return; }
-    const l = G.x - x, rr = x + w - G.x, t = G.y - y, b = y + h - G.y, m = Math.min(l, rr, t, b);
-    if (m === l) G.x = x - r; else if (m === rr) G.x = x + w + r; else if (m === t) G.y = y - r; else G.y = y + h + r;
-  }
-  CH.push({
-    n: 3, key: 'park', mus: 'ch3.mp3', name: 'Stanley Park', short: 'Stanley Park', c1: '#8bc34a', c2: '#33691e', bgc: '#5aa9e6', rim: '#8ef08e', metric: 1,
-    W, H, start: START, cost: 2, need: 100, needP: 1.4, xpk: 3, spd: 1.7, pv: .9, view: 13, agridSize: 120, tries: t => t >= 6 ? 10 : 4, fill: .1, fillKeep: new Set(['bigtree', 'pine', 'oak', 'cedar', 'streettree']),
-    sizes: [0, .04, .09, .2, .45, 1, 2.2, 5, 11, 25, 55, 120, 200],
-    tagN: { tree: 'tree' }, regionAt, regionName: r => r, areaKey: regionAt, P, inv, inPlay, isWater,
-    regionPos: rg => { const r = RG.find(r => r[0] === rg); return r && P(r[1], r[2]); },
-    walls3d: { rects: AQWALLS, h: 7 }, wallsGone: () => aqOpen(),
-    types: {
-      // the picnic (ant scale)
-      ant: ['ant', 1], crumb: ['cookie crumb', 1], seed: ['seed', 1], berry: ['blueberry', 1, { pl: 'blueberries' }], chip: ['potato chip', 1, { m: [.04, .005] }],
-      cookie: ['cookie', 1], sandwich: ['sandwich', 1, { m: [.13, .05] }], apple: ['apple', 1, { m: [.08, .08] }], juice: ['juice box', 1, { m: [.06, .1] }], cup: ['paper cup', 1],
-      basket: ['picnic basket', 1, { m: [.45, .35] }], blanket: ['picnic blanket', 1, { m: [2, .02] }], napkin: ['napkin', 1, { m: [.2, .005] }],
-      // little park things
-      leaf: ['maple leaf', 1, { pl: 'maple leaves' }], acorn: ['acorn', 1], pinecone: ['pine cone', 1], feather: ['feather', 1], pebble: ['pebble', 1], shell: ['shell', 1], flower: ['daisy', 1, { pl: 'daisies' }],
-      ladybug: ['ladybug', 1], butterfly: ['butterfly', 1, { mv: 'w' }], snail: ['snail', 1], mushroom: ['mushroom', 1], fern: ['fern', 1], beetle: ['beetle', 1], spider: ['spider', 1],
-      ball: ['ball', 1], frisbee: ['frisbee', 1], crab: ['crab', 1, { mv: 'w' }], sandcastle: ['sandcastle', 1], umbrella: ['beach umbrella', 1], towel: ['beach towel', 1, { m: [1.6, .01] }],
-      floatie: ['pool floatie', 1, { m: [.9, .2] }], flag: ['golf flag', 1, { m: [.4, 2] }], net: ['tennis net', 1, { m: [12, 1] }],
-      // animals
-      squirrel: ['squirrel', 1, { mv: 'w' }], raccoon: ['raccoon', 1, { mv: 'w' }], duck: ['duck', 1, { mv: 'w' }], swan: ['swan', 1, { mv: 'w' }], goose: ['Canada goose', 1, { mv: 'w', pl: 'Canada geese', m: [.9, .8] }],
-      heron: ['great blue heron', 1, { m: [1, 1.1] }], coyote: ['coyote', 1, { mv: 'w', m: [1.1, .6] }], otter: ['river otter', 1, { mv: 'w', m: [1.1, .3] }],
-      seal: ['harbour seal', 1, { mv: 'w' }], orca: ['orca', 1, { mv: 'w' }], fish: ['fish', 1, { mv: 'w', pl: 'fish' }], jelly: ['jellyfish', 1, { pl: 'jellyfish', m: [.4, .5] }],
-      penguin: ['penguin', 1, { mv: 'w', m: [.5, .7] }], turtle: ['sea turtle', 1, { m: [1, .4] }], octopus: ['octopus', 1, { pl: 'octopuses', m: [1, .5] }],
-      // people and wheels
-      person: ['person', 1, { mv: 'w', pl: 'people' }], jogger: ['jogger', 1, { mv: 'w' }], kid: ['kid', 1, { mv: 'w' }], dog: ['dog', 1, { mv: 'w' }], cyclist: ['cyclist', 1, { m: [1.8, 1.8] }],
-      bike: ['parked bike', 1], hat: ['top hat', 1], car: ['car', 1], taxi: ['taxi', 1, { pl: 'taxis' }], van: ['van', 1], tourbus: ['tour bus', 1, { pl: 'tour buses', m: [12, 3.4] }], horsecart: ['horse-drawn tour', 1, { m: [9, 2.6] }],
-      minitrain: ['the miniature train', 1, { m: [14, 1.8] }],
-      kayak: ['kayak', 1, { mv: 'w' }], canoe: ['canoe', 1], sailboat: ['sailboat', 1, { mv: 'w' }], speedboat: ['speedboat', 1, { mv: 'w' }], yacht: ['motor yacht', 1, { mv: 'w' }], seaplane: ['float plane', 1],
-      // the park's furniture
-      bench: ['bench', 1, { pl: 'benches', m: [1.8, .9] }], lamp: ['lamppost', 1, { m: [.4, 4.5] }], stopsign: ['stop sign', 1, { m: [.75, 2.4] }], bin: ['garbage bin', 1], hydrant: ['fire hydrant', 1], fountain2: ['drinking fountain', 1, { m: [.6, 1] }],
-      picnic: ['picnic table', 1, { m: [2, .8] }], slide: ['slide', 1, { m: [2.5, 2] }], swings: ['swing set', 1, { m: [4, 2.4] }], toilets: ['washroom', 1, { m: [8, 3.5] }], art: ['statue', 1, { m: [1.5, 2.5] }],
-      log: ['driftwood log', 1], boulder: ['boulder', 1], bush: ['bush', 1, { pl: 'bushes' }], streettree: ['street tree', 1, { tags: 'tree', sway: 1, m: [5, 9] }],
-      bigtree: ['western red cedar', 1, { tags: 'tree', m: [9, 40] }], pine: ['Douglas fir', 1, { tags: 'tree', m: [6, 30] }], oak: ['maple tree', 1, { tags: 'tree', sway: 1, m: [8, 14] }],
-      // the West End
-      house: ['house', 1, { tags: 'house' }], townhouse: ['row of townhouses', 1, { pl: 'rows of townhouses' }], lowrise: ['apartment building', 1], midrise: ['mid-rise apartments', 1, { pl: 'mid-rise apartments' }],
-      highrise: ['condo tower', 1], shop: ['corner store', 1], gas: ['gas station', 1, { m: [25, 6] }],
-      // the famous places
-      mermaid: ['Girl in a Wetsuit', 1, { m: [2, 3] }], figurehead: ['the Empress of Japan figurehead', 1, { m: [3, 4] }], hollowtree: ['the Hollow Tree', 1, { m: [5, 12] }],
-      lighthouse: ['lighthouse', 1, { m: [6, 10] }], gun: ['the Nine O\'Clock Gun', 1, { m: [4, 2] }], jubilee: ['the Jubilee Fountain', 1, { m: [8, 4] }], arch: ['Lumberman\'s Arch', 1, { m: [14, 8] }],
-      teahouse: ['the Teahouse', 1, { m: [25, 8] }], pavilion: ['the Stanley Park Pavilion', 1, { m: [30, 9] }], rowclub: ['the Vancouver Rowing Club', 1, { m: [40, 12] }],
-      rvyc: ['the Royal Vancouver Yacht Club', 1, { m: [45, 10] }], aquahall: ['the Vancouver Aquarium', 1, { m: [84, 7] }], aquatank: ['aquarium tank', 1, { m: [9, 1.4] }],
-      deadman: ['Deadman\'s Island', 1, { m: [170, 18] }], waterpark: ['the water park', 1, { m: [20, 3] }], siwash: ['Siwash Rock', 1, { m: [12, 15] }], totem: ['totem pole', 1, { m: [1.4, 12] }],
-      inukshuk: ['the Inukshuk', 1, { m: [4, 6] }], beaverlodge: ['beaver lodge', 1, { m: [5, 1.6] }], rosebed: ['rose garden', 1, { m: [6, .8] }], bridge: ['Lions Gate Bridge', 1], station: ['train station', 1, { m: [16, 6] }],
-    },
-    zones: {
-      res: { d: .7, at, t: 'ant:3,leaf:3,cup:2,pebble,flower,squirrel,raccoon:.3,person:5,jogger,kid,dog:2,bike:2,bin:.6,hydrant:.4,car:5,taxi:.5,van' },
-      com: { d: .8, at, t: 'ant:3,cup:4,leaf:2,pebble,person:7,kid,dog,bike:2,bin,car:4,taxi,van' },
-      road: { d: .5, at, t: 'leaf:2,cup,pebble,car:6,taxi,van' },
-      path: { d: .9, at, t: 'ant:4,leaf:4,acorn,pebble:2,cup,feather,squirrel:2,person:3,jogger:2,kid,dog:2,bench:.5' },
-      forest: { d: .8, at, t: 'ant:6,seed:3,acorn:3,pinecone:4,leaf:4,feather,mushroom:3,fern:4,snail:2,beetle:2,spider,squirrel:2,raccoon,coyote:.25,heron:.1,log:1,boulder:.5,bush:2' },
-      lawn: { d: .55, at, t: 'ant:6,seed:4,leaf:3,flower:4,ladybug:2,butterfly:2,feather,pebble,ball:.6,frisbee:.5,squirrel:2,goose:1.5,person:2,kid:1.5,dog:1.2,picnic:.4,umbrella:.2,oak:1.2,bush:.6' },
-      garden: { d: 1, at, t: 'ant:4,flower:8,ladybug:3,butterfly:3,snail,rosebed:.6,bench:.3,oak:.3' },
-      golf: { d: .7, at, t: 'ant:3,seed:2,ball:3,flag:.4,person,goose:.6,oak:.2' },
-      court: { d: .6, at, t: 'ball:4,cup,person:2,kid' },
-      aqua: { d: .5, at: (k, x, y) => [x, y], t: 'cup:2,crumb:2,person:2,kid:2' },
-      play: { d: 1.2, at, t: 'ant:3,crumb:3,ball:3,cup,kid:6,person:2,slide:.5,swings:.4,sandcastle:.6' },
-      parking: { d: .9, at, t: 'cup:2,leaf,pebble,person,car:10,van:2,taxi' },
-      beach: { d: 1, at, t: 'shell:6,pebble:4,crab:3,feather,cup,sandcastle:.6,towel:.5,umbrella:.5,log:3,person:2,kid,dog,heron:.3,goose:.4,seal:.2,boulder:.3' },
-      pool: { d: 1, wet: 1, coin: .1, at, t: 'floatie:3,ball:2,duck:.3' },
-      water: { d: .25, wet: 1, coin: .08, at, t: 'fish:3,duck:2,seal:1.2,otter:.3,kayak:1.2,canoe:.6,sailboat:1.5,speedboat:.8,yacht:.5,orca:.12' },
-      lake: { d: .5, wet: 1, coin: .1, at, t: 'fish:3,duck:4,swan:1.2,goose:1,heron:.4,otter:.2' },
-      marina: { d: .6, wet: 1, coin: .1, at, t: 'fish,duck:2,kayak,sailboat:4,yacht:4,speedboat:2' },
-      // past the red line: the same city, forest and lawns carry on as scenery
-      xres: { d: .4, deco: 1, coin: 0, at: atX, t: 'streettree:3,car:2,person:2' }, xcity: { d: .5, bd: 3, deco: 1, coin: 0, t: 'streettree:3,car:2,midrise:3,highrise:4,lowrise:3,townhouse' }, xforest: { d: .4, deco: 1, coin: 0, at: atX, t: 'bigtree:6,pine:4' }, xlawn: { d: .3, deco: 1, coin: 0, at: atX, t: 'oak:2,bush,person' },
-    },
-    zoneAt, outside,
-    // four streetlights on every street crossing, a stop sign or a bin now and then (v5 A3); streamed with the nearby cells
-    cellExtra(t, gx, gy, cs, out) {
-      const C = this; if (t !== C.T.lamp.t) return;
-      const x0 = gx * cs, y0 = gy * cs, x1 = x0 + cs, y1 = y0 + cs;
-      for (const c of xingsNear(x0, y0)) if (c.x >= x0 && c.x < x1 && c.y >= y0 && c.y < y1)
-        furnishCrossing(c, (k, x, y, yaw) => { const z = zoneAt(x, y); if (z && !isWater(x, y)) out.push(mkObj(C, k, x, y, { zn: z, yaw })); });
-    },
-    collide(r) {
-      if (!aqOpen()) for (const w of AQWALLS) pushRect(r, w);       // the Aquarium's walls are absolute until it fits
-      if (inPlay(G.x, G.y)) { G.okX = G.x; G.okY = G.y; return; }
-      if (G.okX === undefined) return;
-      G.x = G.okX; G.y = G.okY; G.vx *= -0.2; G.vy *= -0.2;            // the red line: an invisible barrier
-    },
-    build(add, rng) {
-      const A = (k, lon, lat, o) => add(k, ...P(lon, lat), Object.assign({ quiet: 1 }, o && o.id ? { keep: 1 } : null, o));
-      const inside = (x, y) => inPlay(x, y);
-      const near = (x, y) => inPlay(x, y) || inPlay(x + 220, y) || inPlay(x - 220, y) || inPlay(x, y + 220) || inPlay(x, y - 220);   // scenery only where you can see it
-      const pts = D.pts || {};
-      const each = (k, f) => { const a = pts[k] || []; for (let i = 0; i < a.length; i += 2) f(a[i], a[i + 1], i / 2); };
-      // the picnic blanket you start on, and its picnic (ant scale)
-      const [bx, by] = START;
-      add('blanket', bx, by, { nosolid: 1, under: 1, yaw: .3, label: 'Picnic blanket' });
-      add('sandwich', bx + .25, by - .1, { keep: 1, id: 'sandwich', label: 'the picnic sandwich', yaw: .4 });
-      add('basket', bx - .55, by + .35, { keep: 1, id: 'basket', label: 'the picnic basket', yaw: .3 });
-      for (const [k, ox, oy] of [['apple', .5, .3], ['juice', -.1, .45], ['juice', .05, .52], ['cookie', .3, .45], ['cookie', .38, .4], ['berry', -.3, -.2], ['berry', -.26, -.25], ['berry', -.33, -.15],
-        ['napkin', .6, -.3], ['cup', -.5, -.4], ['chip', .1, -.35], ['chip', .15, -.3], ['chip', .2, -.42]]) add(k, bx + ox, by + oy, { yaw: rng() * 6 });
-      for (let i = 0; i < 40; i++) { const a = rng() * 6.28, r = rng() * 1.1; add(i % 3 ? 'crumb' : 'ant', bx + Math.cos(a) * r, by + Math.sin(a) * r * .8, { yaw: rng() * 6 }); }
-      for (let i = 0; i < 14; i++) { const a = rng() * 6.28, r = 1.4 + rng() * 2.5; add(rng() < .5 ? 'ant' : rng() < .5 ? 'seed' : 'berry', bx + Math.cos(a) * r, by + Math.sin(a) * r, { yaw: rng() * 6 }); }
-      // the real benches, lamps, bins, fountains, washrooms, artworks and trees
-      each('bench', (x, y) => inside(x, y) && add('bench', x, y, { yaw: rng() * 6.28 }));
-      each('lamp', (x, y) => inside(x, y) && !xingsNear(x, y).some(c => Math.hypot(c.x - x, c.y - y) < 16) && add('lamp', x, y, {}));   // (crossings get their own four)
-      each('bin', (x, y) => inside(x, y) && add('bin', x, y, {}));
-      each('hydrant', (x, y) => inside(x, y) && add('hydrant', x, y, {}));
-      each('fountain', (x, y) => inside(x, y) && add('fountain2', x, y, {}));
-      each('toilets', (x, y) => inside(x, y) && add('toilets', x, y, { yaw: rng() * 6.28 }));
-      each('art', (x, y) => inside(x, y) && add('art', x, y, { yaw: rng() * 6.28 }));
-      each('tree', (x, y) => { if (!isWater(x, y) && near(x, y)) add(inside(x, y) ? 'streettree' : 'streettree', x, y, Object.assign({ yaw: rng() * 6.28, s: .8 + rng() * .5 }, inside(x, y) ? null : { deco: 1 })); });
-      // the forest itself: a real stand of cedars and firs over every forest polygon (dense, spec D/E), maples at the edges
-      for (const p of D.forest) {
-        const r = p[0]; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (let i = 0; i < r.length; i += 2) { x0 = Math.min(x0, r[i]); x1 = Math.max(x1, r[i]); y0 = Math.min(y0, r[i + 1]); y1 = Math.max(y1, r[i + 1]); }
-        const S = 21;
-        for (let y = y0 + S / 2; y < y1; y += S) for (let x = x0 + S / 2; x < x1; x += S) {
-          const tx = x + (rng() - .5) * S * .8, ty = y + (rng() - .5) * S * .8;
-          if (!inPoly(tx, ty, r) || isWater(tx, ty) || !near(tx, ty) || nearRoad(tx, ty, 6)) continue;
-          const v = rng(), k = v < .5 ? 'bigtree' : v < .85 ? 'pine' : 'oak';
-          add(k, tx, ty, Object.assign({ yaw: rng() * 6.28, s: .7 + rng() * .6 }, inside(tx, ty) ? null : { deco: 1 }));
-        }
-      }
-      // the West End's real buildings (outside the line they're scenery)
-      for (const [x, y, w, d, yaw, h] of D.bld) {
-        if (!near(x, y)) continue;
-        const k = h < 9 ? (w * d < 160 ? 'house' : 'shop') : h < 16 ? 'lowrise' : h < 40 ? 'midrise' : 'highrise';
-        const ob = add(k, x, y, { yaw, deco: inside(x, y) ? undefined : 1, quiet: 1 });
-        if (ob) { ob.fw = Math.max(w, d) * .95; ob.hm = h; ob.sv = 1; ob.t = tierOf(G.C, ob.fw); ob.r = ob.fw / 2; }
-      }
-      // parked cars filling the real lots
-      for (const p of D.parking) {
-        const r = p[0]; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (let i = 0; i < r.length; i += 2) { x0 = Math.min(x0, r[i]); x1 = Math.max(x1, r[i]); y0 = Math.min(y0, r[i + 1]); y1 = Math.max(y1, r[i + 1]); }
-        if (!inside((x0 + x1) / 2, (y0 + y1) / 2)) continue;
-        const n = Math.min(24, Math.floor((x1 - x0) * (y1 - y0) / 60));
-        for (let i = 0; i < n; i++) { const x = x0 + rng() * (x1 - x0), y = y0 + rng() * (y1 - y0); if (inPoly(x, y, r)) add(rng() < .85 ? 'car' : 'van', x, y, { yaw: rng() < .5 ? 0 : Math.PI }); }
-      }
-      // the famous places, at their real spots
-      A('hat', -123.1455, 49.2933, { label: 'a top hat', sub: 'left on a bench', id: 'tophat' });
-      A('mermaid', -123.12597, 49.30262, { label: 'Girl in a Wetsuit', id: 'mermaid', fact: 'A bronze statue of a diver sitting on a rock just off the seawall.' });
-      A('figurehead', -123.12649, 49.30267, { label: 'the Empress of Japan figurehead', id: 'empress', fact: 'A copy of the dragon figurehead from a steamship that sailed to Asia.' });
-      A('hollowtree', -123.15357, 49.30688, { label: 'the Hollow Tree', id: 'hollowtree', fact: 'A giant old cedar stump so hollow that people stand inside it.' });
-      A('siwash', -123.1563, 49.30872, { label: 'Siwash Rock', id: 'siwash', deco: 1, fact: 'A tall sea stack standing in the water by the seawall.' });
-      A('lighthouse', -123.14141, 49.31403, { label: 'the Prospect Point lighthouse', id: 'prospectlh', fact: 'It guards the narrows under the Lions Gate Bridge.' });
-      A('lighthouse', -123.11708, 49.3008, { label: 'the Brockton Point lighthouse', id: 'brocktonlh' });
-      A('gun', -123.1176, 49.2981, { label: 'the Nine O\'Clock Gun', id: 'gun', fact: 'A cannon that fires every night at nine o\'clock.' });
-      A('jubilee', -123.1428, 49.2953, { label: 'the Jubilee Fountain', id: 'jubilee', sub: 'Lost Lagoon', fact: 'A fountain in the middle of Lost Lagoon.' });
-      A('arch', -123.13072, 49.30226, { label: 'Lumberman\'s Arch', id: 'arch', yaw: .6 });
-      A('waterpark', -123.13148, 49.29776 + .0045, { label: 'the water park', id: 'waterpark', sub: 'Lumberman\'s Arch' });
-      A('teahouse', -123.15722, 49.30123, { label: 'the Teahouse', id: 'teahouse', sub: 'Ferguson Point', yaw: .4 });
-      A('pavilion', -123.13405, 49.29959, { label: 'the Stanley Park Pavilion', id: 'pavilion', yaw: .2 });
-      A('rowclub', -123.13429, 49.29662, { label: 'the Vancouver Rowing Club', id: 'rowclub', yaw: -.5 });
-      A('rvyc', -123.12695, 49.29599, { label: 'the Royal Vancouver Yacht Club', id: 'rvyc', yaw: -.4 });
-      A('deadman', -123.1228, 49.2952, { label: 'Deadman\'s Island', id: 'deadman', nosolid: 1, fact: 'A small wooded island in Coal Harbour, home to a navy base.' });
-      A('inukshuk', -123.14376, 49.28432, { label: 'the Inukshuk', id: 'inukshuk', sub: 'English Bay' });
-      A('beaverlodge', -123.1395, 49.3043, { label: 'the beaver lodge', id: 'beaverlake', sub: 'Beaver Lake' });
-      A('rosebed', -123.13611, 49.29869, { label: 'the Rose Garden', id: 'rosegarden' }); for (let i = 0; i < 8; i++) A('rosebed', -123.1366 + (i % 4) * .00012, 49.2985 + Math.floor(i / 4) * .0001, {});
-      A('gas', -123.13187, 49.2914, { label: 'the gas station', sub: 'Coal Harbour', yaw: .55 });
-      // the Brockton Point totem poles: scenery only
-      for (let i = 0; i < 9; i++) A('totem', -123.12135 + (i % 5) * .00009, 49.29915 + Math.floor(i / 5) * .00007, { deco: 1, label: i === 2 ? 'Totem poles' : '', sub: 'Brockton Point' });
-      // tennis courts, the pitch & putt, playgrounds and pools (on their real polygons)
-      const mid = p => { const r = p[0]; let x = 0, y = 0; for (let i = 0; i < r.length; i += 2) { x += r[i]; y += r[i + 1]; } return [x / (r.length / 2), y / (r.length / 2)]; };
-      let ti = 0; for (const p of D.court) { const [x, y] = mid(p); if (inside(x, y)) add('net', x, y, ti++ ? { yaw: Q } : { yaw: Q, label: 'the tennis courts', id: 'tennis' }); }
-      let gi = 0; for (const p of D.golf) { const [x, y] = mid(p); if (inside(x, y)) add('flag', x, y, gi++ ? {} : { label: 'the pitch & putt', id: 'pitchputt' }); }
-      const plays = D.play.map(mid).filter(([x, y]) => inside(x, y)).sort((a, b) => Math.hypot(a[0] - START[0], a[1] - START[1]) - Math.hypot(b[0] - START[0], b[1] - START[1]));
-      plays.forEach(([x, y], pi) => add(pi % 2 ? 'swings' : 'slide', x, y, Object.assign({ yaw: rng() * 6 }, pi === 0 ? { keep: 1, id: 'ceperleyslide', label: 'the Ceperley playground slide' } : null)));
-      // the Aquarium: tanks with their animals inside the open-top hall
-      aqHall = A('aquahall', -123.1310, 49.3003, { label: 'the Vancouver Aquarium', id: 'aquarium', nosolid: 1, fact: 'Sea otters, jellyfish, penguins and fish from all over the world live here.' });
-      const tank = (dx, dy, kind, n) => { const x = AQX + dx, y = AQY + dy; add('aquatank', x, y, { quiet: 1, nosolid: 1 }); for (let i = 0; i < n; i++) add(kind, x + (rng() - .5) * 6, y + (rng() - .5) * 5, { quiet: 1, yaw: rng() * 6 }); };
-      tank(-28, -16, 'jelly', 6); tank(-14, -16, 'fish', 6); tank(0, -16, 'octopus', 2); tank(14, -16, 'turtle', 2); tank(28, -16, 'fish', 6);
-      tank(-26, 6, 'otter', 3); tank(-10, 6, 'penguin', 5); tank(10, 6, 'seal', 2); tank(26, 6, 'fish', 6);
-      for (let i = 0; i < 10; i++) add(i % 3 ? 'person' : 'kid', AQX + (rng() - .5) * 70, AQY + 14 + rng() * 8, { quiet: 1 });
-      // Lions Gate Bridge (the south half is inside the line), the miniature train
-      { const [x0, y0] = P(-123.1385, 49.3150), [x1, y1] = P(-123.1395, 49.3215); add('bridge', (x0 + x1) / 2, (y0 + y1) / 2, { deco: 1, quiet: 1, label: 'Lions Gate Bridge', fwx: Math.hypot(x1 - x0, y1 - y0), hm: 60, yaw: Math.atan2(x1 - x0, y1 - y0) }); }
-      A('station', -123.1373, 49.3007, { label: 'the miniature train station', yaw: .3 });
-      A('minitrain', -123.1373, 49.3007, { path: poly([-123.1373, 49.3007, -123.1385, 49.3020, -123.1400, 49.3015, -123.1395, 49.2998, -123.1380, 49.2995, -123.1373, 49.3007]), spd: 2.2, loop: 1, face: 1, label: 'the miniature train', id: 'minitrain' });
-      // movers: cars and tour buses on the park drive and the causeway, cyclists on the bike paths, people on the seawall
-      const lens = l => { let s = 0; for (let i = 2; i < l.length; i += 2) s += Math.hypot(l[i] - l[i - 2], l[i + 1] - l[i - 1]); return s; };
-      const inLine = l => { let n = 0; for (let i = 0; i < l.length; i += 2) if (inside(l[i], l[i + 1])) n++; return n > l.length / 4; };
-      const pick = (list, minL) => list.filter(l => inLine(l) && lens(l) > minL);
-      for (const l of pick(D.roads.hwy, 120)) for (let j = 0; j < 3; j++) add(['car', 'van', 'car', 'taxi'][j], 0, 0, { path: l, spd: 11 + rng() * 3, ph: rng(), face: 1, lane: (j % 2 ? 1 : -1) * 3 });
-      const mains = pick(D.roads.main, 150);
-      mains.forEach((l, i) => { add(i % 3 ? 'car' : 'tourbus', 0, 0, { path: l, spd: i % 3 ? 8 + rng() * 2 : 5, ph: rng(), face: 1, lane: (i % 2 ? 1 : -1) * 2.5, label: i % 3 ? '' : (i ? '' : 'the park tour bus') }); });
-      for (const [i, l] of pick(D.roads.main, 300).slice(0, 2).entries()) add('horsecart', 0, 0, { path: l, spd: 1.6, ph: rng(), face: 1, lane: 2.5, label: i ? '' : 'the horse-drawn tour' });
-      pick(D.roads.bike, 80).forEach((l, i) => { for (let j = 0; j < 2; j++) add('cyclist', 0, 0, { path: l, spd: 4 + rng() * 2, ph: rng(), face: 1, lane: j ? .8 : -.8 }); });
-      pick(D.roads.foot, 200).slice(0, 70).forEach((l, i) => add(i % 3 ? 'person' : 'jogger', 0, 0, { path: l, spd: i % 3 ? 1.2 : 2.6, ph: rng(), face: 1 }));
-      // boats out on the water, float planes by Coal Harbour, seals and orcas
-      const W8 = [[-123.163, 49.296, -123.160, 49.306, -123.155, 49.312, -123.162, 49.300], [-123.150, 49.284, -123.158, 49.288, -123.152, 49.291, -123.146, 49.287],
-        [-123.115, 49.3045, -123.120, 49.308, -123.130, 49.312, -123.122, 49.307], [-123.112, 49.299, -123.118, 49.2935, -123.125, 49.2925, -123.116, 49.297]];
-      W8.forEach((w, i) => { for (const [k, sp] of [['sailboat', 2.5], ['speedboat', 7], ['kayak', 1.2], ['yacht', 4]]) add(k, 0, 0, { path: poly([...w, w[0], w[1]]), spd: sp, ph: rng(), loop: 1, face: 1 }); });
-      for (let i = 0; i < 4; i++) A('seaplane', -123.1185 + i * .0006, 49.2925, { yaw: Q });
-      for (let i = 0; i < 3; i++) A('orca', -123.163 + i * .003, 49.31 - i * .002, { path: poly([-123.165 + i * .002, 49.296, -123.162, 49.312, -123.15, 49.3165, -123.162, 49.304]), spd: 3, ph: i / 3, loop: 1, face: 1, label: i ? '' : 'Orcas', id: i ? undefined : 'orca' });
-      for (let i = 0; i < 8; i++) { const [x, y] = P(-123.158 + rng() * .045, 49.284 + rng() * .03); if (isWater(x, y) && inside(x, y) && zoneHere(x, y) === 'water') add('seal', x, y, { quiet: 1 }); }
-      for (let i = 0; i < 6; i++) A('swan', -123.1435 + i * .0006, 49.2958 + (i % 2) * .0003, {});
-    },
-    hint: w => w === 'tree' ? P(-123.145, 49.302) : null,
-    words: ['PARK', 'TREE', 'SEAL', 'DUCK', 'SWAN', 'BIKE', 'BOAT', 'ORCA', 'BEACH', 'SAND'],
-    // the objective ladder (story): the picnic → Second Beach → the west side → the whole park → Coal Harbour
-    beats: ['sandwich', 'basket', 'ceperleyslide', 'hollowtree', 'prospectlh', 'arch', 'teahouse', 'rowclub', 'aquarium', 'deadman'],
-    rings: (() => { const r = (a, b, c, d) => [...P(a, b), ...P(c, d)], [sx, sy] = START, pic = [sx - 14, sy - 14, sx + 14, sy + 14], sb = r(-123.1545, 49.2968, -123.1440, 49.2905),
-      west = r(-123.163, 49.312, -123.138, 49.2885), park = r(-123.166, 49.318, -123.112, 49.2875);
-      return [pic, pic, sb, west, park, park, park, null, null, null]; })(),
-    check: ['c:tree:20', 'b:mermaid||Find the Girl in a Wetsuit', 'b:orca||Eat an orca'],
-    quests: [
-      'c:ant:8', 't:25', 'c:leaf:5', 'x:5', 'c:squirrel:3', 'a:ant:15', 'c:bench:3', 'c:duck:3|c', 'c:goose:3|c', 'c:cyclist:2|c',
-      'c:car:3', 'c:sailboat:2|c', 'x:8', 'c:seal:2|c', 'b:minitrain|c|Eat the miniature train', 'c:tree:10', 'b:tourbus|c|Eat a park tour bus', 't:200',
-      'f:add', 'f:sub', 'f:mul', 'f:miss', 'f:mul', 'f:add', 'f:sub', 'q:5,10,15,20,25',
-      'q:PARK|s|Eat P-A-R-K in order', 'l:S', 'l:B', 'f:word', 'q:SEAL', 'l:T',
-      'p:bench,lamp,bench,lamp', 'p:duck,swan,duck,swan', 'p:person,dog,person,dog', 'p:sailboat,kayak,sailboat,kayak',
-      'r:4', 's:5000', 'r:7', 's:30000',
-    ],
-    ispy: ['#mermaid', '#empress', '#hollowtree', '#prospectlh', '#brocktonlh', '#gun', '#jubilee', '#arch', '#waterpark', '#teahouse', '#pavilion', '#rowclub', '#rvyc',
-      '#aquarium', '#deadman', '#inukshuk', '#beaverlake', '#rosegarden', '#tennis', '#pitchputt', '#minitrain', 'heron', 'raccoon', 'coyote', 'otter', 'swan', 'seal', 'orca', 'penguin', 'hat'],
-    eduSubj: 'geography',
-    edu: [
-      { n: 'Around the seawall', s: ['i:#mermaid|Find the Girl in a Wetsuit', 'i:#empress|Find the Empress of Japan figurehead', 'i:#brocktonlh|Find the Brockton Point lighthouse'] },
-      { n: 'The west side', s: ['i:#teahouse|Find the Teahouse', 'i:#hollowtree|Find the Hollow Tree', 'i:#prospectlh|Find the Prospect Point lighthouse'] },
-      { n: 'Lakes and lagoons', s: ['i:#jubilee|Find the fountain in Lost Lagoon', 'i:#beaverlake|Find the beaver lodge in Beaver Lake', 'f:duck,swan,goose'] },
-      { n: 'Fun and games', s: ['i:#waterpark|Find the water park', 'i:#tennis|Find the tennis courts', 'i:#pitchputt|Find the pitch & putt'] },
-      { n: 'On the water', s: ['i:#rowclub|Find the Vancouver Rowing Club', 'i:#rvyc|Find the Royal Vancouver Yacht Club', 'i:#deadman|Find Deadman\'s Island'] },
-      { n: 'Ocean animals', s: ['i:#aquarium|Find the Vancouver Aquarium', 'f:seal,otter,orca', 'f:jelly,penguin,octopus'] },
-      { n: 'Park maths', s: ['m:add', 'm:sub', 'm:mul'] },
-    ],
-    doneTxt: 'From a crumb on a picnic blanket to Deadman\'s Island: Stanley Park is in your belly!',
-    bg(g, V) {
-      const x0 = V.x0, y0 = V.y0, x1 = V.x1, y1 = V.y1, px = V.px;
-      const box = p => { const r = p[0]; let a = 1e9, b = 1e9, c = -1e9, d = -1e9; for (let i = 0; i < r.length; i += 2) { a = Math.min(a, r[i]); c = Math.max(c, r[i]); b = Math.min(b, r[i + 1]); d = Math.max(d, r[i + 1]); } return [a, b, c, d]; };
-      const vis = k => (D['_v' + k] || (D['_v' + k] = (D[k] || []).map(p => [box(p), p])));
-      const F = (k, col) => { g.fillStyle = col; g.beginPath(); for (const [b, p] of vis(k)) if (!(b[0] > x1 || b[2] < x0 || b[1] > y1 || b[3] < y0)) ringPath(g, p); g.fill('evenodd'); };
-      g.fillStyle = '#d9d6c8'; g.fillRect(x0, y0, x1 - x0, y1 - y0);
-      if (x0 < 0 || y0 < 0) { g.fillStyle = '#5aa9e6'; if (x0 < 0) g.fillRect(x0, y0, Math.min(x1, 0) - x0, y1 - y0); if (y0 < 0) g.fillRect(x0, y0, x1 - x0, Math.min(y1, 0) - y0); }   // v5.1: the sea past the west and north edges
-      if (x1 > W || y1 > H) { g.strokeStyle = '#b9b5ad'; g.lineWidth = 9; g.beginPath();                    // and city streets carrying on past the south and east edges
-        for (let x = Math.ceil(x0 / 120) * 120; x < x1; x += 120) { if (y1 > H) { g.moveTo(x, Math.max(y0, H)); g.lineTo(x, y1); } if (x > W) { g.moveTo(x, Math.max(y0, 0)); g.lineTo(x, Math.min(y1, H)); } }
-        for (let y = Math.ceil(y0 / 100) * 100; y < y1; y += 100) { if (y > H) { g.moveTo(Math.max(x0, 0), y); g.lineTo(x1, y); } else if (y > 0 && x1 > W) { g.moveTo(Math.max(x0, W), y); g.lineTo(x1, y); } }
-        g.stroke(); }
-      F('com', '#d3cdc2'); F('res', '#dcd7cb'); F('park', '#8fcf6f'); F('grass', '#8fcf6f'); F('forest', '#4f8a3c'); F('lawn', '#9fd87c'); F('garden', '#a7d98a'); F('field', '#7fcf62');
-      F('golf', '#76d46a'); F('court', '#c8704a'); F('play', '#f2c27a'); F('parking', '#a3a5a8'); F('beach', '#ead9a8'); F('rock', '#b9b2a6');
-      // water with a gentle shimmer of light bands (idle life), then lakes, pools and marinas
-      F('water', '#5aa9e6'); F('lakes', '#4f9fe0'); F('pools', '#7fd3f0'); F('marina', '#4f9fdb');
-      // the seawall's stone edge, piers and docks
-      g.strokeStyle = '#efe9dc'; g.lineCap = 'round'; g.lineJoin = 'round';
-      g.fillStyle = '#b08a5a'; g.beginPath(); for (const p of D.piers) ringPath(g, p); g.fill(); g.strokeStyle = '#b08a5a'; strokeAll(g, D.pierl, 2);
-      const lines = (k, w, col, minPx) => { if (w / px < (minPx || 0)) return; g.strokeStyle = col; strokeAll(g, D.roads[k].filter(l => true), Math.max(w, px * .6)); };
-      lines('foot', 2.5, '#efe6d2', .15); lines('bike', 3.2, '#d9a07a', .1);
-      g.strokeStyle = '#d9d5cc'; strokeAll(g, D.roads.street, 10); strokeAll(g, D.roads.main, 13); strokeAll(g, D.roads.hwy, 17);
-      lines('street', 8, '#8e9196'); lines('main', 11, '#83868c'); lines('hwy', 15, '#7d8087');
-      if (1 / px > 1.5) { g.setLineDash([3, 6]); g.strokeStyle = '#e8c64a'; g.lineWidth = .25; g.beginPath(); for (const l of D.roads.main.concat(D.roads.hwy)) { g.moveTo(l[0], l[1]); for (let i = 2; i < l.length; i += 2) g.lineTo(l[i], l[i + 1]); } g.stroke(); g.setLineDash([]); }
-      // the Aquarium's floor
-      g.fillStyle = '#e7e2d6'; g.fillRect(AQX - AQW / 2, AQY - AQD / 2, AQW, AQD);
     },
   });
 })();
@@ -2230,7 +2230,7 @@ function freshCh(n) {
 function freshSave() {
   const ch = {}; for (let n = 1; n <= NW; n++) ch[n] = freshCh(n);
   return { v: 1, settings: { sound: 1, music: 1, learn: 'full', grade: 2 }, last: 1, journey: 0, ch,
-    learn: { math: 0, spelling: 0, science: 0, geography: 0 }, passport: {}, ispy: {}, edu: {}, retired: {}, w5: 1, w51: 1 };
+    learn: { math: 0, spelling: 0, science: 0, geography: 0 }, passport: {}, ispy: {}, edu: {}, retired: {}, w5: 1, w51: 1, w52: 1 };
 }
 /* v5: the roster became five worlds. A save from v4 or earlier (seven chapters) is moved once: Home <- old 1,
    Vancouver <- old 3, Stanley Park is new, Space <- old 6, Globe <- old 5. Retired Backyard (old 2), Wilderness (old 4)
@@ -2272,11 +2272,26 @@ function migrate51(d) {
   o.w51 = 1;
   return o;
 }
+/* v5.2 (owner): the pickers read Home · Stanley Park · Metro Vancouver · Globe · Space. A v5.1 save is moved once: slot 2
+   (Vancouver's wallet, upgrades, eaten set, ladder, I Spy and Educational progress) becomes slot 3 and slot 3 (Stanley
+   Park's) becomes slot 2. Each world keeps its own data and its own song. Unlocks follow the worlds: Stanley Park is now
+   opened by finishing the Home, and Vancouver by finishing Stanley Park, so nothing a child had open is taken away. */
+function migrate52(d) {
+  if (!d || typeof d !== 'object' || !d.w51 || d.w52 || !d.ch || typeof d.ch !== 'object') return d;
+  const o = Object.assign({}, d), sw = m => { if (!m || typeof m !== 'object') return m; const r = Object.assign({}, m), a = m[2], b = m[3]; delete r[2]; delete r[3]; if (b !== undefined) r[2] = b; if (a !== undefined) r[3] = a; return r; };
+  o.ch = sw(d.ch); o.ispy = sw(d.ispy); o.edu = sw(d.edu);
+  const open = n => { if (o.ch[n] && typeof o.ch[n] === 'object') o.ch[n] = Object.assign({}, o.ch[n], { u: 1 }); };
+  if (o.ch[1] && o.ch[1].c) open(2);                 // finishing the Home opens World 2 (now Stanley Park)
+  if (o.ch[2] && o.ch[2].c) open(3);                 // finishing Stanley Park opens Vancouver
+  o.last = d.last === 2 ? 3 : d.last === 3 ? 2 : d.last;
+  o.w52 = 1;
+  return o;
+}
 /* fill any missing fields (additive) and coerce types; idempotent */
 function normalize(d) {
   const f = freshSave();
   if (!d || typeof d !== 'object') return f;
-  d = migrate51(migrate5(d));
+  d = migrate52(migrate51(migrate5(d)));
   const o = Object.assign({}, f, d);
   o.settings = Object.assign({}, f.settings, d.settings || {}); delete o.settings.voice;   // v4.1: the voice is gone
   o.learn = Object.assign({}, f.learn, d.learn || {});
@@ -2300,7 +2315,7 @@ function normalize(d) {
     c.lvl = Math.max(1, c.lvl); c.w = Math.max(0, Math.floor(c.w));
     o.ch[n] = c;
   }
-  o.ch[1].u = 1; o.w5 = 1; o.w51 = 1;
+  o.ch[1].u = 1; o.w5 = 1; o.w51 = 1; o.w52 = 1;
   if (!(o.last >= 1 && o.last <= NW)) o.last = 1;
   return o;
 }
@@ -5850,7 +5865,7 @@ const UI = {
     UI.show('credits'); G.mode = 'menu';
     $('credits-roll').innerHTML = `<div style="font-size:64px;font-weight:900;color:#ffd23f">YOU ARE THE BLACK HOLE</div><br>
       <div>HUNGRY HOLE</div><br><div>From one Lego brick…</div><div>…to the whole world…</div><div>…to the Sun itself.</div><br>
-      <div>The Home · Metro Vancouver · Stanley Park</div><div>The Globe · Space</div><br>
+      <div>The Home · Stanley Park · Metro Vancouver</div><div>The Globe · Space</div><br>
       <div>Thanks for playing!</div><br><div>+5,000 coins added to World 5</div><br><div>Journey COMPLETE</div>
       <div style="font-size:22px;opacity:.85">Every world stays open forever. Go back and finish your Quest Boards!</div><br>
       <button class="btn" id="cr-done">MAIN MENU</button>`;

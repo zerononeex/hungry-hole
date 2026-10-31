@@ -3,7 +3,7 @@
 Family-only, not for sale. A LANDSCAPE browser game: drag a hole around huge places, eat things smaller than you, grow, climb each world's objective ladder, finish Tiny Quests, earn coins, buy per-world upgrades.
 
 - **One public repo** — build and play here. Live: https://zerononeex.github.io/hungry-hole/ (`index.html` + the vendored `three.min.js` at the repo root; merging to `main` publishes).
-- **The worlds (v5):** five — The Home · Metro Vancouver · Stanley Park · Space · The Globe — from one Lego brick to swallowing Everest. Four modes on every world: STORY, I SPY, EDUCATIONAL, EXPLORATION.
+- **The worlds (v5):** five — The Home · Stanley Park · Metro Vancouver · The Globe · Space (v5.2 order) — from one Lego brick to swallowing Everest. Four modes on every world: STORY, I SPY, EDUCATIONAL, EXPLORATION.
 - **Spec:** `docs/SPEC.md` (v2, owner restructure applied). Builders: branch, build, Kakashi verifies BEFORE merge.
 - **v3 (3D):** Three.js r147 vendored as `three.min.js` (no CDN, works offline). Builder decisions in `docs/DECISIONS.md`. Tests: `python3 -m http.server 8765` at the root, then `node tests/{data,behaviour,audio,reachability,ui-flow,balance-bot,screens,perf}.js`.
 - **v4 (owner feedback batch):** true-scale Ch1–4 (metre table), Ch3 baked from OpenStreetMap data (`tools/bake-ch3.py` → `data/ch3-osm.js`, © OpenStreetMap contributors, ODbL), STORY / I SPY / EDUCATIONAL modes, audio slots in `audio/` (prompts in `docs/AUDIO_PROMPTS.md`). Decisions: `docs/DECISIONS.md` (v4 section).
