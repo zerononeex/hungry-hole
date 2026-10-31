@@ -316,7 +316,7 @@ const MT = {
   cabin: [9, 6], campusbld: [60, 20], school: [70, 12], highschool: [100, 14], commcentre: [60, 10], casino: [90, 25], hospital: [80, 30],
   scienceworld: [50, 47], aquarium: [100, 12], bcplace: [230, 60], arena: [130, 40], canadaplace: [300, 30], harbourctr: [30, 147], steamclock: [1.5, 5], chinagate: [10, 12],
   mermaid: [2, 3], library: [90, 30], cauldron: [12, 10], inukshuk: [4, 6], market: [100, 10], ikea: [180, 15], nightmarket: [150, 5], mall: [250, 20], campus: [400, 30],
-  terminal: [400, 25], whiterock: [4, 3], peacearch: [20, 20], pier: [470, 4], lighthouse: [8, 18], coaster: [150, 25], chalet: [40, 15], lodge: [60, 18], rings: [12, 6],
+  parkade: [110, 16], hangar: [70, 22], ctower: [18, 62], terminal: [400, 25], whiterock: [4, 3], peacearch: [20, 20], pier: [470, 4], lighthouse: [8, 18], coaster: [150, 25], chalet: [40, 15], lodge: [60, 18], rings: [12, 6],
   cannery: [80, 15], quay: [100, 12], borderpost: [30, 8], obstower: [40, 15], bridge: [1000, 70], peak: [5000, 1500],
   // wilderness
   ant: [.006, .003], aphid: [.004, .003], gnat: [.005, .004], seed: [.008, .004], crumb: [.012, .006], krill: [.05, .01], beetle: [.02, .01], berry: [.012, .012],
@@ -987,7 +987,7 @@ const CH = [null];
       scienceworld: ['Science World', 1], aquarium: ['the Vancouver Aquarium', 1], bcplace: ['BC Place', 1], arena: ['Rogers Arena', 1], canadaplace: ['Canada Place', 1],
       harbourctr: ['Harbour Centre', 1], steamclock: ['the Gastown Steam Clock', 1], chinagate: ['the Chinatown Millennium Gate', 1], mermaid: ['Girl in a Wetsuit', 1],
       library: ['the Central Library', 1, { pl: 'libraries' }], cauldron: ['the Olympic Cauldron', 1], inukshuk: ['the Inukshuk', 1], market: ['Granville Island Market', 1],
-      ikea: ['IKEA', 1], nightmarket: ['Richmond Night Market', 1], mall: ['shopping mall', 1], campus: ['university', 1, { pl: 'universities' }], terminal: ['airport terminal', 1],
+      ikea: ['IKEA', 1], nightmarket: ['Richmond Night Market', 1], mall: ['shopping mall', 1], campus: ['university', 1, { pl: 'universities' }], terminal: ['airport terminal', 1], parkade: ['parkade', 1], hangar: ['airplane hangar', 1], ctower: ['control tower', 1],
       whiterock: ['THE White Rock', 1], peacearch: ['the Peace Arch', 1], pier: ['White Rock Pier', 1], lighthouse: ['lighthouse', 1], coaster: ['wooden roller coaster', 1],
       chalet: ['mountain chalet', 1], lodge: ['ski lodge', 1], rings: ['the Olympic Rings', 1, { pl: 'Olympic Rings' }], cannery: ['the cannery', 1], quay: ['Lonsdale Quay', 1],
       bridge: ['bridge', 1], peak: ['mountain', 1], borderpost: ['border crossing', 1], obstower: ['observatory', 1], hospital: ['hospital', 1],
@@ -1052,6 +1052,30 @@ const CH = [null];
       [[-123.196, 49.1925], [-123.188, 49.191], [-123.18, 49.1892], [-123.165, 49.1925], [-123.158, 49.1895], [-123.172, 49.187]].forEach(([lo, la], i) =>
         A('airplane', lo, la, { keep: 1, id: 'plane' + i, quiet: i ? 1 : 0, label: i ? 'Airplane' : 'Airplane at YVR', fact: 'YVR is Vancouver\'s big airport, on Sea Island in Richmond.', yaw: Q * (i % 2 ? 1 : -1) }));
       for (let i = 0; i < 3; i++) A('smallplane', -122.705 + i * .002, 49.2115, { label: i ? '' : 'Pitt Meadows Airport' });
+      // v5.1 Part 7: YVR on Sea Island, built out: the two terminals, the control tower, parkades and a parking lot, hangars and
+      // the fuel farm; planes taxi between the gates and the runway, take off and land on both parallel runways, and jets fly over
+      const sea = (lo, la) => { const [x, y] = P(lo, la); return !isWater(x, y); };
+      A('terminal', -123.1842, 49.1941, { label: 'YVR International Terminal', yaw: Q });
+      if (sea(-123.1667, 49.1830)) A('terminal', -123.1667, 49.1830, { label: 'YVR South Terminal', s: .45, yaw: Q });
+      A('ctower', -123.1818, 49.1921, { label: 'YVR control tower', fact: 'Air traffic controllers in the tower tell every plane when it can take off and land.' });
+      A('parkade', -123.1768, 49.1964, { label: 'YVR parkade', yaw: Q }); A('parkade', -123.1796, 49.1966, { label: 'YVR parkade', yaw: Q }); A('parkade', -123.1820, 49.1962, { quiet: 1, yaw: Q });
+      for (let r = 0; r < 6; r++) for (let c = 0; c < 14; c++) if (rng() < .8) { const [x, y] = P(-123.1690 + c * .00028, 49.1962 + r * .00018); if (!isWater(x, y)) add(['car', 'car', 'van', 'taxi', 'car'][(r * 14 + c) % 5], x, y, { quiet: 1, yaw: Q, zn: 'air' }); }
+      for (let i = 0; i < 5; i++) if (sea(-123.2040 + i * .0022, 49.1932)) A('hangar', -123.2040 + i * .0022, 49.1932, { quiet: 1, yaw: 0, label: i ? '' : 'airplane hangars' });
+      for (let i = 0; i < 3; i++) if (sea(-123.1590 + i * .0022, 49.2012)) A('hangar', -123.1590 + i * .0022, 49.2012, { quiet: 1, yaw: Math.PI, label: i ? '' : 'cargo hangars' });
+      for (let i = 0; i < 4; i++) A('tank', -123.1590 + (i % 2) * .0005, 49.1918 + (i >> 1) * .0004, { quiet: 1, label: i ? '' : 'the airport fuel tanks' });
+      const route = (pts) => { const path = [], alts = []; for (let i = 0; i < pts.length; i += 3) { path.push(...P(pts[i], pts[i + 1])); alts.push(pts[i + 2]); } return { path, alts }; };
+      const TAXI = route([-123.1812, 49.1958, 0, -123.1812, 49.1977, 0, -123.2030, 49.1981, 0, -123.2036, 49.1993, 0]);
+      for (let i = 0; i < 3; i++) add('airplane', 0, 0, { path: TAXI.path, spd: 9, ph: i / 3, face: 1, quiet: 1, label: i ? '' : 'a plane taxiing to the runway' });
+      // a circuit: roll, lift off, climb out east, round at height, come down the approach from the west and touch down again
+      const NORTH = route([-123.205, 49.1995, 0, -123.178, 49.1990, 0, -123.160, 49.1986, 40, -123.11, 49.1975, 350, -123.07, 49.215, 700, -123.10, 49.245, 900,
+        -123.25, 49.245, 900, -123.30, 49.225, 700, -123.28, 49.203, 300, -123.235, 49.2002, 80, -123.205, 49.1995, 0]);
+      const SOUTH = route([-123.21, 49.188, 0, -123.185, 49.1843, 0, -123.165, 49.1815, 40, -123.12, 49.175, 350, -123.08, 49.155, 700, -123.12, 49.135, 900,
+        -123.26, 49.14, 900, -123.31, 49.16, 700, -123.28, 49.183, 300, -123.24, 49.1865, 80, -123.21, 49.188, 0]);
+      for (const [R, n, nm] of [[NORTH, 3, 'a plane taking off from YVR'], [SOUTH, 2, 'a plane landing at YVR']])
+        for (let i = 0; i < n; i++) add('airplane', 0, 0, { path: R.path, alts: R.alts, loop: 1, spd: 95, ph: i / n, face: 1, quiet: 1, label: i ? '' : nm, pal: i % 2 ? { b: '#1565c0' } : null });
+      for (const [a, b, c, d, k] of [[-123.32, 49.06, -122.56, 49.42, 0], [-123.32, 49.38, -122.56, 49.04, 1], [-123.25, 49.95, -122.6, 49.15, 2]]) {
+        const R = route([a, b, 1200, c, d, 1200]); add('airplane', 0, 0, { path: R.path, alts: R.alts, spd: 230, ph: k * .37, face: 1, quiet: 1, label: '', pal: { b: ['#2e7d32', '#6a1b9a', '#ef6c00'][k] } });
+      }
       A('whiterock', -122.8034, 49.0187, { keep: 1, id: 'whiterock', quiet: 0, label: 'THE White Rock', sub: 'White Rock, BC', fact: 'A giant white boulder on the beach. The city is named after it!' });
       A('pier', -122.8057, 49.0195, { label: 'White Rock Pier', yaw: 0.05 });
       A('peacearch', -122.7566, 49.0023, { label: 'the Peace Arch', id: 'peacearch', fact: 'A white arch exactly on the Canada-USA border.' });
@@ -2710,6 +2734,7 @@ const fits = (o, D) => o.fw <= (D || holeD()) * 1.000001;          // fit-width 
 function canEat(o) {
   if (o.exit || o.deco || o.dead || o.fall) return false;
   if (o.tile) return o.on;
+  if (o.alts && (o.lift || 0) > o.fw * 0.25) return false;          // a plane in the air flies over the hole; on the ground it can fall in
   if (!fits(o)) return false;
   return !isInactive(o);
 }
@@ -3686,6 +3711,7 @@ function moveOnPath(o, T) {
     if (s <= o.seg[i] || i === n - 1) {
       const f = clamp(s / o.seg[i], 0, 1), ux = (p[i * 2 + 2] - p[i * 2]) / (o.seg[i] || 1), uy = (p[i * 2 + 3] - p[i * 2 + 1]) / (o.seg[i] || 1), ln = (o.lane || 0) * (back ? -1 : 1);
       o.x = lerp(p[i * 2], p[i * 2 + 2], f) - uy * ln; o.y = lerp(p[i * 2 + 1], p[i * 2 + 3], f) + ux * ln;
+      if (o.alts) o.lift = lerp(o.alts[i], o.alts[i + 1], f);   // v5.1: flight paths carry a height per point (take off, climb, land)
       if (o.face) o.yaw = Math.atan2(back ? -ux : ux, back ? -uy : uy);
       return;
     }
@@ -4009,6 +4035,11 @@ const MODEL = (() => {
     pagoda: p => { const o = []; for (let i = 0; i < 4; i++) { o.push(bx(.9 - i * .15, .45, .9 - i * .15, 0, .25 + i * .6, 0, p.a || '#c0392b')); o.push(cy(1.4 - i * .22, .15, 1.4 - i * .22, 0, .55 + i * .6, 0, p.b || '#2d3436', { seg: 4, ry: .785, top: .6 })); } o.push(co(.15, .6, .15, 0, 2.9, 0, GOLD)); return o; },
     stadium: p => [cy(1, .7, 1.4, 0, .35, 0, p.a || '#d8dce0', { seg: 16 }), cy(.8, .72, 1.15, 0, .37, 0, '#4caf50', { seg: 16 }), to(1.02, 1.42, .2, 0, .72, 0, p.b || '#3a6ea5', { rx: 1.5708, tube: .06 })],
     mall: p => [bx(1, .9, 1.8, 0, .45, 0, p.a || '#d6d0c4'), bx(1.02, .3, 1.7, 0, .55, 0, WIN), bx(.6, .5, .8, 0, 1.1, 0, p.b || '#b0a898'), bx(.62, .2, .82, 0, 1.15, 0, WIN)],
+    // v5.1 YVR: a multi-storey parkade (open decks, ramps, parked cars on the roof), a hangar, the control tower
+    parkade: p => [...[0, 1, 2, 3].map(i => bx(1, .06, 1.6, 0, .02 + i * .3, 0, '#b9bec4')), ...[-.46, .46].flatMap(x => [-.75, 0, .75].map(z => bx(.06, .92, .06, x, .46, z, '#a3a8ae'))),
+      bx(1.01, .1, 1.61, 0, .5, 0, '#cfd3d8'), bx(.3, .32, .5, .32, .78, -.4, '#9aa0a6', { rx: .55 }), ...[[-.3, .5, '#e53935'], [-.05, .5, '#1e88e5'], [.2, .5, '#fdd835'], [-.3, -.2, '#fafafa'], [.2, -.6, '#43a047']].map(([x, z, c]) => bx(.14, .07, .26, x, .97, z, c))],
+    hangar: p => [bx(1, .45, 1.4, 0, .22, 0, '#d4d9de'), cy(1, .5, 1.4, 0, .45, 0, '#9aa5b0', { rx: 1.5708, seg: 10, top: 1 }), bx(.7, .5, .02, 0, .3, .71, '#6b7580')],
+    ctower: p => [cy(.28, 2.6, .28, 0, 1.3, 0, '#e3e6ea', { seg: 10 }), cy(.5, .14, .5, 0, 2.62, 0, '#c9cdd2', { seg: 10 }), cy(.62, .36, .62, 0, 2.86, 0, WIN, { seg: 10, top: 1.15 }), cy(.66, .08, .66, 0, 3.08, 0, '#4a5058', { seg: 10 }), cy(.03, .4, .03, 0, 3.32, 0, '#888'), bx(.9, .3, .6, .3, .15, 0, '#d0d4d8')],
     terminal: p => [bx(1, .6, 3, 0, .3, 0, '#c8ced6'), bx(1.02, .3, 2.9, 0, .35, 0, WIN), cy(1.1, .2, 3, 0, .65, 0, '#e8edf2', { rx: 1.5708, seg: 6 }), bx(.3, 1.4, .3, .3, .7, 1.2, '#888'), bx(.6, .4, .6, .3, 1.5, 1.2, WIN)],
     campus: p => [bx(1, .9, 2.4, 0, .45, 0, p.a || '#c9b8a0'), bx(.8, .6, 1.2, 0, 1.2, 0, p.a || '#c9b8a0'), bx(1.02, .2, 2.3, 0, .55, 0, WIN), bx(.4, 1.2, .4, 0, 1.6, .8, '#b0a088'), co(.5, .5, .5, 0, 2.45, .8, '#4a6a8a', { seg: 4, ry: .785 })],
     market: p => [bx(1, .8, 3, 0, .4, 0, p.a || '#c4a484'), pr(1.1, .4, 3.05, 0, 1, 0, '#7a3a2a', { ry: 1.5708 }), bx(1.02, .25, 2.8, 0, .45, 0, WIN)],
@@ -4274,7 +4305,7 @@ const MODEL = (() => {
     bigtree: ['pine', { n: 5, hh: 1.8, a: '#1b5e20', b: '#235f2a' }], barn: ['barn', {}], shop: ['shop', { v: [{ b: '#e74c3c' }, { b: '#27ae60' }, { b: '#2980b9' }] }], school: ['school', {}], church: ['church', {}], hotel: ['hotel', {}],
     smallplane: ['airplane', { a: '#fafafa', b: '#1e88e5' }], yacht: ['boat', { a: '#fafafa', cab: .5, d: 3 }], orca: ['fish', { a: '#111', belly: '#fafafa', fin: .8, d: 2.8, h: 1 }], cabin: ['cabin', {}], seabus: ['ship', { a: '#fafafa', b: '#1565c0', decks: 1, d: 3.2 }],
     whiterock: ['whiterock', {}], quay: ['market', {}], tower: ['tower', { hh: 3.4, v: [{ a: '#9aa6b5', b: '#5d7ea8' }, { a: '#b8c2cc', b: '#3f6f9f' }, { a: '#8090a4', b: '#7fb0d8', spire: .5 }] }],
-    airplane: ['airplane', {}], ferry: ['ship', { a: '#fafafa', b: '#1565c0', decks: 2, stack: '#e53935', d: 4.5 }], mall: ['mall', {}], cargo: ['ship', { a: '#263238', b: '#c62828', box: 1, d: 5 }], stadium: ['stadium', { a: '#e8ecef' }],
+    parkade: ['parkade', {}], hangar: ['hangar', {}], ctower: ['ctower', {}], airplane: ['airplane', {}], ferry: ['ship', { a: '#fafafa', b: '#1565c0', decks: 2, stack: '#e53935', d: 4.5 }], mall: ['mall', {}], cargo: ['ship', { a: '#263238', b: '#c62828', box: 1, d: 5 }], stadium: ['stadium', { a: '#e8ecef' }],
     cruise: ['ship', { a: '#fafafa', b: '#0d47a1', decks: 4, stack: '#0d47a1', d: 5 }], terminal: ['terminal', {}], lodge: ['mountain', { h: .7, chalet: 1, a: '#5f7f4f', b: '#4f6f3f', snow: '#e8eef2' }], totem: ['totem', {}],
     // Ch4 wilderness
     pebble: ['pebble', {}], ant: ['bug', { a: '#3a2a22', b: '#3a2a22' }], berry: ['berry', {}], acorn: ['acorn', {}], feather: ['feather', {}], scorpion: ['lizard', { a: '#8a5a2a', tail: '#5a3a1a' }],
