@@ -815,3 +815,8 @@ The world-redo sequence so far: World 1 The Home (floorplan), Metro Vancouver (s
 **v5.15 addendum 6 (owner, from a screenshot at YVR): THE AIRPORT IS ALIVE** — Vancouver International currently reads as runways on grass with a parked plane. Build the airport's proper buildings (terminals, parking lots/parkades, the airport's real structures) and make planes MOVE: planes flying in the sky here and there, planes taking off (and the landing/taxiing life that goes with it).
 
 **v5.15 addendum 7 (owner, from a screenshot at False Creek): SCIENCE WORLD IS A BALL** — it currently renders as a small purple dome floating in the water. Builder: look up what Science World really looks like — a big geodesic SPHERE with lattice lines all around it, on its real footprint at the east end of False Creek (on land, at the water's edge). Make it a ball, with the lines, and make it BIGGER.
+
+**v5.15 addendum 8 (owner playtest — THE HOME, three fixes):**
+(1) **STAIR ARROWS**: the floor transitions are smooth (owner loves them), but the stairs need a visible arrow cue that reads "go upstairs" / "go downstairs" so a kid knows where the stairs lead.
+(2) **CORRECTION — THERE IS NO GARAGE**: the real house parks its two cars UNDERNEATH THE PORCH (that's how the house was built). The build's two-car "garage" room treatment is wrong for this house: the two cars live under the porch; no garage room.
+(3) **DECK PLANTS BLOCK THE WAY OUT**: two garden plants beside the deck stairs block the route into the backyard when you're not big enough to eat them. Move those two plants a little further north so the deck-to-backyard path is passable at small sizes. (Plants stay; only their position shifts.)
