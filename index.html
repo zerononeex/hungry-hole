@@ -2108,11 +2108,9 @@ const CH = [null];
           if (okAt(o, nx, ny)) { o.x = nx; o.y = ny; o.bx = nx; o.by = ny; } else o.hd += Math.PI * (.6 + Math.random() * .8);
           o.yaw = Math.PI / 2 - o.hd; }
       }
-      // the visited-places glow on the mini globe
+      // (v5.3 fix 2, spec addendum 41: the mini globe no longer glows gold where you have been, so nothing is tracked;
+      //  an old save's st.seen string is simply ignored)
       this.tick = dt => {
-        const st = G.st, i = Math.floor(wrapY(G.y) / H * 18) * 36 + Math.floor(wrapX(G.x) / W * 36);
-        if (!st.seen || st.seen.length !== 648) st.seen = '0'.repeat(648);
-        if (st.seen[i] !== '1') st.seen = st.seen.slice(0, i) + '1' + st.seen.slice(i + 1);
         if ((hwT -= dt) <= 0) { hwT = 1.5; traffic(); }
         if ((anT -= dt) <= 0) { anT = .8; animals(dt); } roam(dt);
       };
@@ -2229,7 +2227,7 @@ const CH = [null];
       x.beginPath(); for (const c of CLIST) for (const q of c.polys) path(q); x.strokeStyle = 'rgba(90,70,40,.5)'; x.lineWidth = .8 / k; x.stroke();
     },
     /* the mini globe (bottom-left): an orthographic Earth that turns under you; you are the pulsing dot in the middle,
-       targets are stars (on the far side they wait at the rim), places you have been glow gold */
+       targets are stars (on the far side they wait at the rim) */
     miniGlobe: (() => {
       let tpx = null, globe = null, gkey = '';
       return (X, Y, Wd) => {
@@ -2239,7 +2237,7 @@ const CH = [null];
           CH[4].miniPaint(x, 360 / W); tpx = x.getImageData(0, 0, 360, 180).data;
           globe = document.createElement('canvas'); globe.width = globe.height = GSZ;
         }
-        const st = G.st, seen = st.seen || '', [lon0, lat0] = ll(wrapX(G.x), wrapY(G.y)), key = Math.round(lon0 * 2) + ',' + Math.round(lat0 * 2) + seen;
+        const [lon0, lat0] = ll(wrapX(G.x), wrapY(G.y)), key = Math.round(lon0 * 2) + ',' + Math.round(lat0 * 2);
         const p0 = lat0 * Math.PI / 180, sp0 = Math.sin(p0), cp0 = Math.cos(p0);
         if (key !== gkey) {
           gkey = key;
@@ -2251,8 +2249,8 @@ const CH = [null];
             let lon = lon0 + (rho ? Math.atan2(nx * sc, rho * cp0 * cc - ny * sp0 * sc) * 180 / Math.PI : 0);
             lon = ((lon + 180) % 360 + 360) % 360;
             const tx = Math.min(359, lon | 0), ty = clamp((90 - lat) | 0, 0, 179), s = (tx + ty * 360) * 4, o = (i + j * GSZ) * 4;
-            const lit = 0.5 + 0.5 * Math.sqrt(1 - r2), gold = seen[Math.floor(ty / 10) * 36 + Math.floor(tx / 10)] === '1' ? .3 : 0;
-            d[o] = (tpx[s] * (1 - gold) + 255 * gold) * lit; d[o + 1] = (tpx[s + 1] * (1 - gold) + 215 * gold) * lit; d[o + 2] = (tpx[s + 2] * (1 - gold) + 64 * gold) * lit; d[o + 3] = 255;
+            const lit = 0.5 + 0.5 * Math.sqrt(1 - r2);       // the Earth looks the same everywhere, visited or not
+            d[o] = tpx[s] * lit; d[o + 1] = tpx[s + 1] * lit; d[o + 2] = tpx[s + 2] * lit; d[o + 3] = 255;
           }
           gx.putImageData(im, 0, 0);
         }
@@ -3453,12 +3451,24 @@ function stepUp(C, D) {
    size, and when the list holds fewer than five of that size it is filled with other things that size from the world
    itself (things that live there, never water, scenery or a totem pole). Different hands, different sizes. */
 function ispyTier(C, spec) { return tierOf(C, specFw(C, spec)); }
+/* v5.3 fix 1: a hand is never a one-thing hunt. A size whose hand cannot reach two targets, even after filling from
+   the world's kinds and from the things already standing there (placed landmarks included), is not dealt: the bag
+   moves on to the next anchor. That only ever happens at sizes the world truly holds one of (the Globe's Eiffel Tower
+   and Pyramids are the only things their size on Earth). The skip happens at deal time; the saved deck's shape never changes. */
+function ispyAvail(C, T, specs) {
+  const f = ispyFill(C, T, specs, 99, Math.random), all = specs.concat(f);
+  return all.length + ispyFound(C, T, all, 99, Math.random).length;
+}
 function ispyDeal(D, rng) {
   const C = G.C, n = C.ispy.length;
-  if (!Array.isArray(D.deck) || D.deck.length !== n || !(D.pos < n)) { D.deck = shuffle(Array.from({ length: n }, (_, i) => i), rng); D.pos = 0; }
-  const T = ispyTier(C, C.ispy[D.deck[D.pos]]), hand = [D.deck[D.pos++]];
-  for (let j = D.pos; j < n && hand.length < 5; j++) if (ispyTier(C, C.ispy[D.deck[j]]) === T) { [D.deck[D.pos], D.deck[j]] = [D.deck[j], D.deck[D.pos]]; hand.push(D.deck[D.pos++]); }
-  return hand;
+  let hand;
+  for (let tries = 0; tries < 2 * n + 2; tries++) {
+    if (!Array.isArray(D.deck) || D.deck.length !== n || !(D.pos < n)) { D.deck = shuffle(Array.from({ length: n }, (_, i) => i), rng); D.pos = 0; }
+    const T = ispyTier(C, C.ispy[D.deck[D.pos]]); hand = [D.deck[D.pos++]];
+    for (let j = D.pos; j < n && hand.length < 5; j++) if (ispyTier(C, C.ispy[D.deck[j]]) === T) { [D.deck[D.pos], D.deck[j]] = [D.deck[j], D.deck[D.pos]]; hand.push(D.deck[D.pos++]); }
+    if (hand.length >= 2 || ispyAvail(C, T, hand.map(i => C.ispy[i])) >= 2) return hand;
+  }
+  return hand;                                          // (a world with no size holding two things: never true of a shipped world)
 }
 const NOT_ISPY = /totem|coin|tile|animal|flag|hill|door|wall|gate|stair|cloud|fence/;
 function ispyFill(C, T, have, k, rng) {
@@ -3697,7 +3707,9 @@ const NET = (() => {
     const J = { done: false, cancel() { J.done = true; } };
     if (test === 'bc') {
       const ch = new BroadcastChannel('hh-room-' + c), me = 'g' + Math.random().toString(36).slice(2);
-      const t = setTimeout(() => { if (!J.done) { J.done = true; ch.close(); cb.fail('noroom'); } }, 3000);
+      // (v5.3 fix 3: as patient as the PeerJS join below, 15 s. It gave up after 3 s, so on a busy machine a host already
+      //  running a game answered the third and fourth friends' "join" too late, and they quietly fell out of the room)
+      const t = setTimeout(() => { if (!J.done) { J.done = true; ch.close(); cb.fail('noroom'); } }, 15000);
       ch.onmessage = e => { const v = e.data; if (J.done || !v || v.to !== me) return;
         if (v.k === 'full') { J.done = true; clearTimeout(t); ch.close(); cb.fail('full'); return; }
         if (v.k !== 'ok') return; J.done = true; clearTimeout(t); cb.link(bcLink(ch, me, v.from)); };
@@ -3935,7 +3947,7 @@ function netSession(role, opts) {
     // the guest's own start size (its own dial from there).
     if (G.run.kind === 'explore') asMate(() => { [G.lvl, G.xp] = startSize(G.st); }, M);
     M.D = asMate(holeD, M);
-    P.phase = 'play'; N.on = true; N.phase = 'play';
+    P.phase = 'play'; N.on = true; N.phase = 'play'; P.loading = 1;
     N.sendTo(P, Object.assign({ t: 'start', n: G.C.n, kind: G.run.kind }, N.snapshot(P)));
   };
   N.lobbyTxt = () => `${N.peers.map(P => P.name).join(', ')} ${N.peers.length > 1 ? 'are' : 'is'} here!`;
@@ -4015,7 +4027,12 @@ function netSession(role, opts) {
   N.ups = () => { if (role === 'guest') N.send({ t: 'ups', ups: effUps() }); };
   /* ---- every frame ---- */
   N.tick = () => {
-    const t = now(); N.last = t;
+    const t = now();
+    /* v5.3 fix 3: "lost" means six seconds of OUR running time with no word from the other side. A frame gap is time
+       this page itself was frozen (building a world on a slow iPad, a busy machine): whatever the friend sent meanwhile
+       is still waiting to be read, so the gap is not held against them. */
+    const gap = t - N.last; N.last = t;
+    if (gap > 1000) { N.heard += gap; for (const P of N.peers) P.heard += gap; }
     const paused = (G.mode !== 'play' && !G.upLive) || !!G.paused;    // v5.3 Part 3: Upgrades in multiplayer pauses nobody
     if (role === 'guest') {
       if (N.link && N.link.open && t - N.sentAt > 1000) N.send({ t: 'hb' });
@@ -4029,7 +4046,9 @@ function netSession(role, opts) {
     }
     for (const P of [...N.peers]) {
       if (P.link && P.link.open && t - P.sentAt > 1000) N.sendTo(P, { t: 'hb' });
-      if (t - P.heard > 6000) N.drop(P, 'lost');
+      // (a friend who was just sent the world is building it, and a big world on a slow iPad is seconds of silence:
+      //  20 s of patience until their first move from inside it, then the usual 6 s)
+      if (t - P.heard > (P.loading ? 20000 : 6000)) N.drop(P, 'lost');
     }
     if (N.ended || !N.on) return;
     if (paused !== N.paused) { N.paused = paused; }
@@ -4103,6 +4122,7 @@ const HOSTRX = {
     if (!C.wrap) { x = clamp(x, 0, C.W); y = clamp(y, 0, C.H); }
     else { const q = { x, y }; wrapXY(C, q); x = q.x; y = q.y; }
     const rg = ringNow(); if (rg) { if (!C.wrap) x = clamp(x, rg[0], rg[2]); y = clamp(y, rg[1], rg[3]); }    // (none in multiplayer: v5.3 Part 4)
+    P.loading = 0;                                     // (moving: they have the world)
     M.tx = x; M.ty = y; M.tvx = W8.num(m.vx, -1e9, 1e9) ? m.vx : 0; M.tvy = W8.num(m.vy, -1e9, 1e9) ? m.vy : 0;
     M.tfl = C.layered && (m.fl === 0 || m.fl === 1) ? m.fl : 0;
   },
@@ -4136,6 +4156,7 @@ const GUESTRX = {
     N.snap = { dead: m.dead, eaten: m.eaten, adds: m.adds, beat: m.beat, c: m.c ? 1 : 0, run: m.run, T: m.T, h: { x: m.h.x, y: m.h.y, fl: m.h.fl === 1 ? 1 : 0, D: m.h.D }, g, ps: m.ps };
     const first = N.phase !== 'play';
     audioInit(); UI.closeModal(); loadChapter(m.n, m.kind); UI.show('game'); G.mode = 'play'; G.paused = false;
+    N.heard = now(); N.last = now(); N.send({ t: 'hb' });   // (straight back to the host after the load)
     if (first) toast(`Playing with ${N.mate}!`, '#4ff0d8');
   },
   st(N, m) {

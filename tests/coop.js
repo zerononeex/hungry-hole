@@ -26,7 +26,7 @@ const SHIM = () => {
 (async () => {
   const b = await chromium.launch();
   const pages = {}, ctxs = {}, errs = [], results = [];
-  const queues = {}, lat = { n: 0, sum: 0, max: 0 }, pend = {};
+  const queues = {}, lat = { n: 0, sum: 0, max: 0 }, pend = {}, ids = {};   // ids: a transport id (the 'from' a page signs with) -> that page
   const deliver = (other, ch, json) => {
     if (!pages[other] || pages[other].isClosed()) return;
     const q = pend[other]; q.push([ch, json, Date.now()]);
@@ -44,8 +44,19 @@ const SHIM = () => {
     // Messages to a page are delivered in order, in batches: whatever piled up while the last delivery ran goes over in ONE
     // evaluate. (v5.1 sent one evaluate per message; at ~25 messages a second each way a busy page fell seconds behind, so
     // tests read stale positions, late coins and late answers. A real data channel streams; so does this now.)
-    await ctx.exposeFunction('__bcOut', (ch, json) => { for (const other of Object.keys(pages)) if (other !== who) deliver(other, ch, json); });
+    // v5.3 fix 3: a message addressed to one player goes to that player's page only, the way the shipping transport (one
+    // PeerJS data channel per guest) carries it. Until then every page got every page's traffic: with four pages each one
+    // parsed three times the messages a real iPad ever sees, the host's page fell seconds behind, and the later guests'
+    // join handshakes and heartbeats timed out. Broadcasts (a guest's "join", which names no one yet) still go to all.
+    await ctx.exposeFunction('__bcOut', (ch, json) => {
+      let to = null, from = null; try { const v = JSON.parse(json); to = v && v.to; from = v && v.from; } catch (e) { /* not ours */ }
+      if (typeof from === 'string') ids[from] = who;
+      const dest = typeof to === 'string' && ids[to];
+      for (const other of Object.keys(pages)) if (other !== who && (!dest || other === dest)) deliver(other, ch, json);
+    });
     const p = await ctx.newPage();
+    // HH_THROTTLE=4 slows every page's CPU 4x (Chrome DevTools throttling), like a busy machine running four iPads at once
+    if (+process.env.HH_THROTTLE > 1) { const cdp = await ctx.newCDPSession(p); await cdp.send('Emulation.setCPUThrottlingRate', { rate: +process.env.HH_THROTTLE }); }
     p.on('pageerror', e => errs.push(who + ' PAGEERR ' + e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(who + ' ' + m.text()); });
     await p.goto(URL); await p.waitForTimeout(400);
     await p.evaluate(nm => { HH.S.settings.name = nm; HH.S.ch[2].u = HH.S.ch[3].u = 1; HH.persist(); localStorage.setItem('family-other-app', 'keep-me'); }, name);
@@ -355,11 +366,12 @@ const SHIM = () => {
       for (const o of G.vis) if (n < 6 && !o.dead && !o.fall && !o.coin && !o.tile && !o.tgt && o.fw < D * 0.6 && HH.canEat(o)) { HH.eat(o); n++; }
       return { n, D: HH.holeD() }; });
     await A.evaluate(() => { HH.G.paused = true; });        // hold the host's world still (its hole would keep eating) while every iPad is read
-    await sleep(1200);
+    await sleep(1200); for (const g of GUESTS) await until(g, d => Math.abs(HH.holeD() - d) < d * 1e-6, 8000, ate.D);
     const grown = await all(() => HH.holeD()), hostSees = await A.evaluate(() => HH.G.mates.map(M => HH.asMate(HH.holeD, M)));
     await A.evaluate(() => { HH.G.paused = false; });
     const same1 = grown.every(d => Math.abs(d - grown[0]) < grown[0] * 1e-6) && hostSees.every(d => Math.abs(d - grown[0]) < grown[0] * 1e-6);
-    await A.evaluate(() => HH.addXP(1e12)); await sleep(800);
+    const hp = await A.evaluate(() => { HH.addXP(1e12); return HH.holeD(); });
+    for (const g of GUESTS) await until(g, d => Math.abs(HH.holeD() - d) < d * 1e-6, 8000, hp);   // (wait for the state message, not a fixed 800 ms: a throttled page reads its mail late)
     const parked = await all(() => ({ D: HH.holeD(), cap: HH.capD() }));
     const same2 = parked.every(p => Math.abs(p.D - parked[0].D) < parked[0].D * 1e-6 && p.D <= p.cap * 1.0001) && Math.abs(parked[0].D - parked[0].cap) < parked[0].cap * 1e-3;
     return { ok: ate.n > 0 && grown[0] > d0[0] * 1.0001 && d0.every(d => Math.abs(d - d0[0]) < d0[0] * 1e-6) && same1 && same2, info: { ate, before: d0, grown, hostSees, parked } };
@@ -372,6 +384,7 @@ const SHIM = () => {
     const bp = await B.evaluate(() => [HH.G.x, HH.G.y]); let n = 0; const skip = [];
     for (let i = 0; i < 4; i++) { const s = await snack(bp[0], bp[1], skip); if (!s) break; skip.push(s.nid); if (await feed(B, s.nid, 6000)) n++; }
     await sleep(800);
+    const hd1 = await A.evaluate(() => HH.holeD()); for (const g of GUESTS) await until(g, d => Math.abs(HH.holeD() - d) < d * 1e-6, 8000, hd1);
     const d1 = await all(() => HH.holeD());
     return { ok: n > 0 && d1[0] > d0[0] * 1.0001 && d1.every(d => Math.abs(d - d1[0]) < d1[0] * 1e-6), info: { guestAte: n, before: d0, after: d1 } };
   });
@@ -382,11 +395,12 @@ const SHIM = () => {
       const o = G.auth.filter(o => !o.deco && !o.path && o.fw < 1.5 && !(o.T && o.T.mv)).sort((a, b) => Math.hypot(b.x - s[0], b.y - s[1]) - Math.hypot(a.x - s[0], a.y - s[1]))[0]; return [o.x + o.fw, o.y + o.fw, Math.round(Math.hypot(o.x - s[0], o.y - s[1]))]; });
     // drive (a real joystick, real frames) across the first ring's east edge, where solo Story would stop it
     await B.evaluate(r => { const G = HH.G; G.x = r[2] - HH.holeD() * 2; G.y = (r[1] + r[3]) / 2; G.vx = G.vy = 0; G.joy = { x0: 300, y0: 300, x: 420, y: 300 }; }, r0);
-    const crossed = await until(B, r => HH.G.x > r[2] + HH.holeD() * 2, 8000, r0);
+    const crossed = await until(B, r => HH.G.x > r[2] + HH.holeD() * 2, 20000, r0);   // (frames, not seconds, move a hole: a throttled page needs longer)
     await B.evaluate(() => { HH.G.joy = null; });
     // and on to the far corner of the world's playable area
     for (let i = 0; i < 15; i++) { await B.evaluate(f => { HH.G.x = f[0]; HH.G.y = f[1]; HH.G.vx = HH.G.vy = 0; }, far); await sleep(100); }
     await sleep(1500);
+    await until(B, f => { const G = HH.G; G.x = f[0]; G.y = f[1]; G.vx = G.vy = 0; return Math.hypot(G.cam.x - G.x, G.cam.y - G.y) < HH.holeD() * 5; }, 10000, far);   // (the camera eases over by frames)
     const there = await B.evaluate(f => { const G = HH.G, rg = HH.V3.reg; const near = G.vis.filter(o => !o.dead && !o.deco && Math.hypot(o.x - G.x, o.y - G.y) < HH.holeD() * 40);
       return { at: Math.hypot(G.x - f[0], G.y - f[1]) < 1, d: Math.hypot(G.x - f[0], G.y - f[1]), things: near.length, ground: !!rg && rg.n === G.C.n && rg.x0 < G.x + HH.holeD() * 25 && rg.x0 + rg.w > G.x - HH.holeD() * 25 && rg.y0 < G.y + HH.holeD() * 25 && rg.y0 + rg.h > G.y - HH.holeD() * 25 && Math.hypot(G.cam.x - G.x, G.cam.y - G.y) < HH.holeD() * 25, D: HH.holeD(), reg: rg && [rg.n, rg.x0, rg.y0, rg.w, rg.h].map(v => +(+v).toFixed(1)), cam: [G.cam.x, G.cam.y] }; }, far);
     const hostSees = await A.evaluate(f => { const M = HH.G.mates.find(M => M.id === 1); return M ? Math.hypot(M.x - f[0], M.y - f[1]) : -1; }, far);
@@ -439,7 +453,7 @@ const SHIM = () => {
     const who = [B, Cp, A]; let found = 0;
     for (let i = 0; i < tg.length; i++) if (await feed(who[i % 3], tg[i], 8000)) found++;
     const done = await until(A, () => HH.G.run.tg.every(t => t.done), 4000);
-    await sleep(2200);
+    await sleep(2200); for (const [i, g] of [B, Cp].entries()) await until(g, w => ((HH.S.ispy[2] && HH.S.ispy[2].wins) || 0) > w, 8000, w0[i + 1].wins);   // (the win message, however late it arrives)
     const wins1 = await all(() => ({ wins: (HH.S.ispy[2] && HH.S.ispy[2].wins) || 0, w: HH.S.ch[2].w, disk: (JSON.parse(localStorage.getItem('hungry-hole-data-v1')).ispy[2] || {}).wins || 0 }));
     // the wire repeating the win message changes nothing
     await B.evaluate(() => HH.net && HH.net.recv({ t: 'win', k: 'ispy', bonus: 1, h: [...(HH.net.wonH || [])][0] }));

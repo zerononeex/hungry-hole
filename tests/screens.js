@@ -90,6 +90,10 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html', OUT = proc
   await p.waitForTimeout(1600); await shot(p, '80-edu-speed-dial-fixed-size');
   await p.evaluate(() => { const { G, S } = HH, C = HH.CH[4]; S.edu[4] = { set: C.edu.findIndex(e => /Animal hunt: Africa/.test(e.n)), done: 0 }; HH.startChapter(4, 'edu'); const o = G.run.steps[0].t[1].o; G.x = o.x + HH.holeD() * 1.2; G.y = o.y + HH.holeD() * .8; G.cam.x = G.x; G.cam.y = G.y; });
   await p.waitForTimeout(2600); await shot(p, '81-w4-animal-hunt-kenya');
+  // v5.3 fix 2 (addendum 41): a long trip round the Globe, and a save that says every place was visited: the mini globe stays plain
+  await p.evaluate(() => { const { G } = HH; HH.startChapter(4, 'explore'); G.st.seen = '1'.repeat(648); });
+  for (let i = 0; i < 12; i++) { await p.evaluate(i => { const { G } = HH, C = G.C; G.x = C.W * ((i * 0.37) % 1); G.y = C.H * (0.25 + 0.5 * ((i * 0.61) % 1)); G.cam.x = G.x; G.cam.y = G.y; }, i); await p.waitForTimeout(250); }
+  await p.waitForTimeout(1200); await shot(p, '86-w4-mini-globe-no-glow');
   const ph = await page(844, 390); await shot(ph, '40-phone-main');
   await ph.evaluate(() => HH.startChapter(2)); await ph.waitForTimeout(1200); await shot(ph, '41-phone-game');
   console.log('screens done; console errors:', errs.length, errs.slice(0, 3)); await b.close();

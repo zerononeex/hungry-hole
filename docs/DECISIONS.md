@@ -1099,3 +1099,94 @@ this batch does not touch solo Story's pace. At ×1 the same worlds land at abou
 - Frame rate on a real iPad (the headless numbers have no GPU). The host now simulates up to three guests' holes.
 - I Spy hands in a size with very few things in its world are shorter than five (Space's biggest size has only Saturn and
   Jupiter); the rule "one size per hand" was kept over "five per hand".
+
+## v5.3 fix round 1 (Kakashi's verification)
+
+### Fix 1: an I Spy hand is never one target
+- **What Kakashi saw:** `tests/behaviour.js` failed 1 run in 2 with `4:10!`. About 1 Globe hand in 10 was a single target:
+  the Eiffel Tower alone, or the Pyramids alone. The bag is unseeded, so my three runs never dealt those anchors.
+- **Root cause, confirmed:** half of the suggested diagnosis was wrong. The filler does already look at placed landmarks:
+  `ispyFound` walks every authored object in the world, landmarks included. It found nothing because the Globe holds nothing
+  else at those sizes. I listed every authored object by size tier: the Eiffel Tower is the only thing at tier 10 and the
+  Pyramids the only thing at tier 11. The Statue of Liberty is alone at tier 9 too, but an ambient kind of that size fills it.
+  So route 1 (fill from same-size landmarks) has nothing to draw on at those two sizes.
+- **Route chosen: skip the size (route 2), at deal time.** `ispyDeal` builds the hand as before, then counts what the hand
+  could reach: the list items it took, plus other kinds of that size that live in the world, plus things of that size
+  already standing there. If that count is under 2, the anchor is passed over and the bag deals from the next anchor,
+  reshuffling as usual when it runs out. Route 1 is still in place: wherever a world has more same-size landmarks, they
+  fill the hand. The Globe's tier-12 hand (the Great Wall and Everest) is one example.
+- **Kept the same:**
+  - The deck in the save keeps the same shape. Skipping only moves `pos` forward, as dealing always has, so existing saves
+    load and play as before.
+  - One size per hand, and the hole's fixed size.
+  - Solo and multiplayer behave alike, because both deal through `ispyDeal`.
+  - The team win on short hands.
+  - Space: its hands never fell below 2, so the check never fires there.
+- **Cost:** the Eiffel Tower and the Pyramids are never I Spy anchors on the Globe, because a hunt for one thing is not a
+  hunt. They are still in Story, Exploration and Educational.
+- **Regression test** in `tests/behaviour.js`: 60 Globe hands and then 60 Space hands, each from a fresh deck and running
+  through reshuffles. Every hand must have 2 to 5 targets, all one tier.
+  - On the old code it fails: 8 of 60 Globe hands had one target (`#eiffel@10`, `#pyramids@11`).
+  - On the new code the Globe deals 2-target hands about 10 times and 5-target hands about 50 times. Space deals hands of
+    2, 3, 4 and 5 targets, never fewer than 2. Both runs go through 4 reshuffles.
+
+### Fix 2: the mini globe no longer glows gold where you have been (addendum 41)
+- The gold mix is gone from `miniGlobe`, so the Earth is drawn the same everywhere.
+- The visited-cell tracking (`st.seen`) is gone with it. An old save that carries a `seen` string still loads, and the field
+  is ignored. The v5.1 save-migration test still carries one through unchanged.
+- Nothing else on the mini globe changed, and no other world's map was touched.
+- Screenshot `86-w4-mini-globe-no-glow` loads a save that marks every cell visited and then travels across the Earth. The
+  globe shows no tint.
+
+### Fix 3: four players under load: the later guests were not starved, they were dropped
+- **Reproduced:** I ran `HH_THROTTLE=5 node tests/coop.js`, which applies Chrome DevTools CPU throttling at 5× to each of
+  the four pages. It scored 21/28 with the same failures Kakashi reported.
+  - Guest 2 stayed at its join size (`0.0635`).
+  - The ladder stayed at `beats [0,0,0,0]`.
+  - The upgrades check read `back [true,true,false,…]`.
+  - The guest-drop test failed with `TypeError … null`.
+- **Diagnosis:** I logged each page's session state every second, plus every `end` and `drop` with its reason. In that log
+  guests 2 and 3 were not slow to receive state. They had left the session (`HH.net` was null), so every later four-player
+  test ran with a missing player. There were two ways out, and both are the game's own timers:
+  1. **The test transport's join timeout (3 s).** With the host already running a game for guest 1, the host's answer to the
+     third and fourth "join" took longer than 3 s on the loaded machine, so those guests gave up (`noroom`). PeerJS waits
+     15 s. Now the `?nettest=bc` join waits 15 s too. This one is test-transport only.
+  2. **The heartbeat counted a guest's own freeze as the host's silence. This is the real game bug.** A joining guest builds
+     the whole world in one synchronous `loadChapter` when `start` arrives, and at 5× that took more than 6 s. On its first
+     frame afterwards, `t - N.heard > 6000` fired before the messages queued during the freeze were read. The log showed
+     `end:lost` at the guest about one second after `ready`. The host then dropped the silent guest the same way. A slow real
+     iPad loading the Globe could do exactly this. The fix:
+     - Both sides now subtract their own frame stalls (a gap over 1 s) from the silence clock. "Lost" means 6 s of this
+       page's running time with no word.
+     - A guest pings the host right after its load.
+     - The host allows a guest it has just sent the world 20 s until that guest's first move, then the usual 6 s.
+     - The "closing the guest iPad is noticed" test still passes, so a guest who really leaves is still dropped.
+- **Harness:** the stand-in BroadcastChannel delivered every message to every page. With four pages, each page parsed about
+  three times the traffic a real iPad sees, because PeerJS gives each guest its own data channel. It now delivers an
+  addressed message only to the page it names. Only a guest's first "join", which names no one yet, still goes to every
+  page. That cut deliveries from 11,303 to about 3,500 per throttled run. It did not fix the drops on its own: with only
+  this change and the 15 s join, the throttled run still scored 21/28, with `end:lost` right after the load. The
+  heartbeat fix is what turned the run green.
+- **Two test waits now count frames, not seconds:** under 5× throttling a hole moves fewer times per second.
+  - The open-world test's drive across the ring now waits up to 20 s.
+  - Its camera check waits for the camera to arrive instead of sleeping a fixed time.
+- **Verdict:** mostly game-side. The heartbeat freeze is a real-device risk and is fixed in the game. The 3 s test-transport
+  join is a game-file setting that only the tests use. The fan-out was harness load, and is fixed in the harness.
+- **Fixed waits replaced:** the first set of three throttled runs scored 28, 28 and 27. The miss was the team-size test
+  reading every page 800 ms after the host's level-up, while a throttled guest was still holding the message (the run's
+  worst wire wait was 6.3 s). Every page had the right size once it arrived. That read, the reverse team-size read and the
+  four-player I Spy win read now wait until the message has arrived, for up to 8 s, instead of sleeping a fixed time.
+
+### Fix round 1 results
+| Suite | Result |
+| --- | --- |
+| `tests/behaviour.js` | **45/45 three times in a row**. The new test is the 60 Globe and 60 Space hands check |
+| `tests/data.js` | PASS |
+| `tests/coop.js`, throttled 5× (`HH_THROTTLE=5`) | **28/28 three times in a row**. Wire wait averaged 185–198 ms, worst 5.4–5.9 s. Before the fix: 21/28 twice |
+| `tests/coop.js`, unthrottled | 28/28. Wire wait averaged 59 ms, worst 3.4 s |
+| `tests/globe-school.js` | 6/6 |
+| `tests/ui-flow.js` | clean, 0 console errors |
+| `tests/audio.js` | 9/9 |
+| `tests/screens.js` | all shots refreshed, 0 console errors. New: 86, the mini globe with no glow |
+
+The owner's test on real iPads is still the real-device check for four players.

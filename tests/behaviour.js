@@ -507,6 +507,21 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     HH.startChapter(1); step(1);
     return { ok, info: rows.join(' ') };`));
 
+  await T('I Spy hands are never one target (v5.3 fix 1): 60 consecutive Globe hands and 60 Space hands from a fresh deck, through reshuffles, every hand 2-5 targets all one size', new Function(STEP + `
+    const { G, S } = HH; const out = []; let ok = true;
+    for (const n of [4, 5]) { S.ch[n].u = 1; S.ispy[n] = { deck: [], pos: 0, wins: 0 }; const len = {}, bad = []; let shuffles = 0, last = -1;
+      for (let h = 0; h < 60; h++) {
+        HH.startChapter(n, 'ispy'); const C = G.C, R = G.run, D = S.ispy[n]; if (D.pos <= last) shuffles++; last = D.pos;
+        const tiers = R.tg.map(t => t.o ? HH.tierOf(C, t.o.fw) : -1);
+        len[R.tg.length] = (len[R.tg.length] || 0) + 1;
+        if (R.tg.length < 2 || R.tg.length > 5 || !tiers.every(t => t === tiers[0] && t > 0)) bad.push(h + ':' + R.tg.map(t => t.spec).join(',') + '@' + tiers.join(''));
+      }
+      if (bad.length || !shuffles) ok = false;
+      out.push('w' + n + ' lengths ' + JSON.stringify(len) + ' reshuffles ' + shuffles + (bad.length ? ' BAD ' + bad.slice(0, 4).join(' ') : ''));
+    }
+    HH.startChapter(1); step(1);
+    return { ok, info: out.join(' | ') };`));
+
   await T('I Spy and Educational have unlimited upgrades (v5.3 Parts 6-7): a free 0-10 sandbox starting at 10, coin upgrades at your own level, nothing written back; Story still sees the real levels', new Function(STEP + `
     const { G, S } = HH; S.ch[2].u = 1; S.ch[2].w = 321; S.ch[2].up = [1, 0, 2, 3, 0, 0, 1, 2, 0, 0]; HH.persist();
     const save0 = JSON.stringify(S.ch[2].up) + S.ch[2].w;
