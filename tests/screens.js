@@ -1,4 +1,4 @@
-// Screenshots for review (v5, v5.1, v5.2): menus, scenes in each of the five worlds, the big map, the finale, and each mode. node tests/screens.js <outdir>
+// Screenshots for review (v5 to v5.3; the four-player co-op shots come from HH_SHOTS=docs/screenshots node tests/coop.js): menus, scenes in each of the five worlds, the big map, the finale, and each mode. node tests/screens.js <outdir>
 const { chromium } = require('playwright');
 const URL = process.env.HH_URL || 'http://localhost:8765/index.html', OUT = process.argv[2] || 'docs/screenshots';
 (async () => {
@@ -81,6 +81,15 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html', OUT = proc
     await p.waitForTimeout(2600); await shot(p, file);
   }
   await p.evaluate(() => { HH.UI.closeModal(); HH.UI.chapters('story'); }); await p.waitForTimeout(300); await shot(p, '63-play-together-picker');
+  // v5.3: I Spy hands are one size (and play at it), Educational has the speed dial and no size control, both have every
+  // upgrade unlocked, and the Globe's animal hunts
+  await p.evaluate(() => { const { G } = HH; HH.UI.closeModal(); HH.startChapter(1, 'ispy'); const t = G.run.tg[0].o; if (t) { G.x = t.x + HH.holeD() * 2.5; G.y = t.y + HH.holeD(); } G.cam.x = G.x; G.cam.y = G.y; });
+  await p.waitForTimeout(1800); await shot(p, '78-ispy-one-size-hand-w1');
+  await p.evaluate(() => document.getElementById('b-up-hud').click()); await p.waitForTimeout(400); await shot(p, '79-ispy-everything-unlocked');
+  await p.evaluate(() => { document.querySelector('#s-upgrades [data-back]').click(); const { G, S } = HH; S.edu[2] = { set: 0, done: 0 }; HH.startChapter(2, 'edu'); G.helpOn = HH.MODES.edu.target(); });
+  await p.waitForTimeout(1600); await shot(p, '80-edu-speed-dial-fixed-size');
+  await p.evaluate(() => { const { G, S } = HH, C = HH.CH[4]; S.edu[4] = { set: C.edu.findIndex(e => /Animal hunt: Africa/.test(e.n)), done: 0 }; HH.startChapter(4, 'edu'); const o = G.run.steps[0].t[1].o; G.x = o.x + HH.holeD() * 1.2; G.y = o.y + HH.holeD() * .8; G.cam.x = G.x; G.cam.y = G.y; });
+  await p.waitForTimeout(2600); await shot(p, '81-w4-animal-hunt-kenya');
   const ph = await page(844, 390); await shot(ph, '40-phone-main');
   await ph.evaluate(() => HH.startChapter(2)); await ph.waitForTimeout(1200); await shot(ph, '41-phone-game');
   console.log('screens done; console errors:', errs.length, errs.slice(0, 3)); await b.close();

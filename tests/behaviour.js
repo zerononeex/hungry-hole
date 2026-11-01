@@ -131,8 +131,8 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     const w0 = S.ch[2].w; R.tg.forEach(t => HH.eat(t.o)); const allDone = R.tg.every(t => t.done);
     return new Promise(res => setTimeout(() => {
       const paid = S.ch[2].w > w0, again = document.getElementById('i-again'); if (again) again.click();
-      const h2 = G.run.hand.slice(), fresh = h2.every(i => !h1.includes(i)) && G.run.tg.length === 5;
-      res({ ok: h1.length === 5 && placed && allDone && paid && !!again && fresh && S.ch[2].x === sx && S.ch[2].lvl === sl, info: { hand1: h1, hand2: h2, placed, paid: S.ch[2].w - w0, storyKept: S.ch[2].x === sx } });
+      const h2 = G.run.hand.slice(), fresh = h2.every(i => !h1.includes(i)) && G.run.tg.length >= 2;
+      res({ ok: R.tg.length >= 2 && placed && allDone && paid && !!again && fresh && S.ch[2].x === sx && S.ch[2].lvl === sl, info: { hand1: h1, hand2: h2, placed, paid: S.ch[2].w - w0, storyKept: S.ch[2].x === sx } });
     }, 1300));`));
 
   await T('Educational: help arrow stays until eaten; sums spawn only in your own area', new Function(STEP + `
@@ -211,8 +211,8 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
     S.ch[3].u = 1; HH.startChapter(3, 'ispy'); step(2); const R = G.run, tg = R.tg.map(t => t.o).filter(Boolean), t0 = tg.map(pos);
     for (const o of tg) { const D = HH.holeD(); for (const [x, y] of [[o.x + D * 12, o.y], [o.x + D * 3, o.y], [o.x + D * 1.1, o.y]]) { G.x = x; G.y = y; G.vx = G.vy = 0; step(100); } }
     out.ispyAlive = tg.filter((o, i) => R.tg[i].o === o && (R.tg[i].done || (!o.dead && (pos(o) === t0[i] || o.path || (o.T && o.T.mv))))   /* (a ferry or an orca keeps moving: it must stay alive, the same one) */).length;   // (eaten for the hunt counts: the hole was big enough)
-    if (out.ispyAlive !== tg.length || tg.length !== 5) { ok = false; out.ispy = R.tg.map((t, i) => [t.o && t.o.k, t.o === tg[i], !!t.done, t.o && !!t.o.dead, t.o && pos(t.o) === t0[i], t.o && !!t.o.fall]); }
-    let got = 0; for (const t of R.tg) { if (!t.done) HH.eat(t.o); if (t.done) got++; } out.ispyEaten = got; if (got !== 5) ok = false;
+    if (out.ispyAlive !== tg.length || tg.length < 2 || tg.length !== R.tg.length) { ok = false; out.ispy = R.tg.map((t, i) => [t.o && t.o.k, t.o === tg[i], !!t.done, t.o && !!t.o.dead, t.o && pos(t.o) === t0[i], t.o && !!t.o.fall]); }
+    let got = 0; for (const t of R.tg) { if (!t.done) HH.eat(t.o); if (t.done) got++; } out.ispyEaten = got; if (got !== R.tg.length) ok = false;
     return { ok, info: out };`));
 
   await T('corner minimap zoom (v5.2 Part 6): 25% by default and following the hole; 25/50/100 chosen on the big map, remembered in the save', new Function(STEP + `
@@ -487,6 +487,107 @@ const URL = process.env.HH_URL || 'http://localhost:8765/index.html';
       return { ok, info: { pole, from: [lon0, lat0], end: end.map(v => +v.toFixed(3)), peakLat: +peak.toFixed(4), stepsKmAtFold: sF.map(v => +v.toFixed(3)), screenKinkPx: +kink.toFixed(2), probeFramesOnScreen: pSeen, yawHeld: +yawHeld.toFixed(3), yawAfterLift: yawAfter } };`), [pole, lon0, lat0]).catch(e => ({ ok: false, info: e.message }));
     results.push([`the Globe over the ${pole === 'N' ? 'North' : 'South'} Pole (v5.1 Part 13): a straight drive comes down the far side (longitude +180), no jump on the sphere or on screen`, r.ok, r.info]);
   }
+
+  // ---------------- v5.3 (spec addenda 35, 38, 39) ----------------
+  await T('I Spy is a fixed-size hunt (v5.3 Part 6): every hand is one size; the hole starts at exactly the size that fits it and eating never moves it', new Function(STEP + `
+    const { G, S } = HH; const rows = []; let ok = true;
+    for (const n of [1, 2, 3, 4, 5]) { S.ch[n].u = 1;
+      for (let h = 0; h < 4; h++) {
+        HH.startChapter(n, 'ispy'); step(1); const C = G.C, R = G.run;
+        const tiers = R.tg.map(t => t.o ? HH.tierOf(C, t.o.fw) : -1), fit = Math.max(...R.tg.map(t => HH.fitD(t.o.fw))), D0 = HH.holeD();
+        const one = tiers.every(t => t === tiers[0] && t > 0) && R.tg.length >= 2 && R.tg.length <= 5;
+        const exact = Math.abs(D0 - Math.min(Math.max(fit, C.sizes[1]), C.sizes[C.N] * 1.45)) < D0 * 1e-6 && Math.abs(HH.capD() - D0) < D0 * 1e-9;
+        // eat one target and a handful of other things, and feed it XP directly: the size never moves
+        HH.eat(R.tg[0].o); let n2 = 0; for (const o of G.vis) if (n2 < 8 && !o.dead && !o.fall && !o.tgt && !o.coin && !o.tile && HH.canEat(o)) { HH.eat(o); n2++; }
+        HH.addXP(1e9); step(3);
+        const still = Math.abs(HH.holeD() - D0) < D0 * 1e-9, fits = R.tg.every(t => HH.fits(t.o, HH.holeD()));
+        if (!(one && exact && still && fits)) ok = false;
+        rows.push(n + ':' + tiers.join('') + (one && exact && still && fits ? '' : '!'));
+      } }
+    HH.startChapter(1); step(1);
+    return { ok, info: rows.join(' ') };`));
+
+  await T('I Spy and Educational have unlimited upgrades (v5.3 Parts 6-7): a free 0-10 sandbox starting at 10, coin upgrades at your own level, nothing written back; Story still sees the real levels', new Function(STEP + `
+    const { G, S } = HH; S.ch[2].u = 1; S.ch[2].w = 321; S.ch[2].up = [1, 0, 2, 3, 0, 0, 1, 2, 0, 0]; HH.persist();
+    const save0 = JSON.stringify(S.ch[2].up) + S.ch[2].w;
+    const out = {};
+    for (const kind of ['ispy', 'edu']) {
+      HH.startChapter(2, kind); step(1);
+      const eff = HH.effUps().join('');
+      document.getElementById('b-up-hud').click();
+      const sand = document.getElementById('s-upgrades').classList.contains('sand'), steppers = document.querySelectorAll('#up-grid [data-sd]').length;
+      for (let i = 0; i < 4; i++) document.querySelector('[data-sd="0:-1"]').click();
+      const sp = HH.UPL('speed'), coinTry = HH.sandSet(3, 10), coin = HH.UPL('coin');
+      const pausedSolo = HH.G.paused;
+      document.querySelector('#s-upgrades [data-back]').click(); step(1);
+      out[kind] = { eff, sand, steppers, sp, coinTry, coin, pausedSolo };
+    }
+    HH.UI.main(); HH.startChapter(2, 'story'); step(1); const story = HH.effUps().join('');
+    const same = JSON.stringify(S.ch[2].up) + S.ch[2].w === save0;
+    HH.startChapter(1); step(1);
+    const good = o => o.sand && o.steppers === 12 && o.sp === 6 && o.coinTry === false && o.coin === 3 && o.pausedSolo === true;
+    const effOk = out.ispy.eff === [10, 10, 2, 3, 10, 10, 1, 2, 10, 10].join('');
+    return { ok: good(out.ispy) && good(out.edu) && effOk && story === '1023001200' && same, info: { out, story, same } };`));
+
+  await T('Educational is fixed-size (v5.3 Part 7): each set plays at the fit of its biggest target plus one size step, never moves while eating, and has no size control', new Function(STEP + `
+    const { G, S } = HH; const rows = []; let ok = true;
+    for (const n of [1, 2, 3, 4, 5]) { S.ch[n].u = 1; HH.startChapter(n, 'edu'); step(1); const C = G.C;
+      for (let s = 0; s < C.edu.length; s++) {
+        G.run.set = s; HH.MODES.edu.startSet(); step(1); const R = G.run;
+        const big = Math.max(0, ...R.steps.flatMap(st => (st.t || []).map(t => HH.specFw(C, t.spec))));
+        let L = 1; const fit = big * 1.04; while (L < C.N && C.sizes[L + 1] <= fit) L++;
+        const want = big ? Math.min(C.sizes[C.N] * 1.45, fit * (L < C.N ? C.sizes[L + 1] / C.sizes[L] : 1.45)) : null;
+        const D0 = HH.holeD(), sizeOk = want === null || Math.abs(D0 - want) < want * 1e-3;
+        const cur = R.steps[R.si]; if (cur.t) for (const t of cur.t) if (t.o && !t.done) HH.eat(t.o);
+        HH.addXP(1e9); step(2);
+        const still = Math.abs(HH.holeD() - D0) < D0 * 1e-9, allFit = R.steps.every(st => !st.t || st.t.every(t => !t.o || HH.fits(t.o, D0)));
+        if (!(sizeOk && still && allFit)) ok = false;
+        rows.push(n + '.' + s + (sizeOk && still && allFit ? '' : '!' + [sizeOk, still, allFit].map(Number).join('')));
+      } }
+    HH.UI.show('game');
+    const noSize = getComputedStyle(document.getElementById('b-bigger')).display === 'none' && getComputedStyle(document.getElementById('b-smaller')).display === 'none';
+    const dial = getComputedStyle(document.getElementById('b-faster')).display !== 'none' && getComputedStyle(document.getElementById('sizebtns')).display !== 'none';
+    const D1 = HH.holeD(); document.getElementById('b-bigger').click(); const noResize = HH.holeD() === D1;
+    HH.startChapter(1); step(1);
+    return { ok: ok && noSize && dial && noResize, info: { rows: rows.join(' '), noSize, dial, noResize } };`));
+
+  await T('Educational speed dial (v5.3 Part 7): ADJUST SPEED measurably changes travel speed mid-set', new Function(STEP + `
+    const { G, S } = HH; S.ch[2].u = 1;
+    const run = () => { G.x = G.C.start[0]; G.y = G.C.start[1]; G.vx = G.vy = 0; const x0 = G.x; G.joy = { x0: 0, y0: 0, x: 70, y: 0 }; step(30); G.joy = null; return G.x - x0; };
+    HH.startChapter(2, 'edu'); HH.UI.show('game'); step(2); G.exSpd = 1;
+    const v100 = run(); for (let i = 0; i < 3; i++) document.getElementById('b-slower').click();
+    const lab = document.getElementById('spdval').textContent, vSlow = run();
+    for (let i = 0; i < 3; i++) document.getElementById('b-faster').click(); const vBack = run();
+    G.exSpd = 1; document.getElementById('spdval').textContent = '100%'; HH.startChapter(1); step(1);
+    return { ok: lab === '35%' && Math.abs(vSlow / v100 - 0.35) < 0.08 && Math.abs(vBack / v100 - 1) < 0.05, info: { v100: +v100.toFixed(2), vSlow: +vSlow.toFixed(2), vBack: +vBack.toFixed(2), lab } };`));
+
+  await T('Globe animal hunts (v5.3 Part 7): every target species spawns in its own country, marked, visible and eatable at the set size; eating one checks it off', new Function(STEP + `
+    const { G, S } = HH; S.ch[4].u = 1; HH.startChapter(4, 'edu'); step(1); const C = G.C, out = []; let ok = true;
+    const hunts = C.edu.map((e, i) => [e, i]).filter(([e]) => /Animal hunt/.test(e.n));
+    for (const [e, i] of hunts) {
+      G.run.set = i; HH.MODES.edu.startSet(); step(1); const R = G.run, D = HH.holeD();
+      for (let si = 0; si < R.steps.length; si++) {
+        R.si = si; if (si) HH.MODES.edu.startStep(); step(1);
+        for (const t of R.steps[si].t) {
+          const o = t.o, cc = t.spec.slice(1, 3), sp = window.HH_AN.c[cc].a[+t.spec.slice(4)];
+          const good = !!o && !o.dead && o.tgt === 1 && o.an && o.label === sp[0] && (sp[2] !== 'land' || C.regionAt(o.x, o.y) === cc) && HH.fits(o, D) && HH.canEat(o) && G.auth.includes(o) && C.labelTier(D) < 2;
+          if (!good) ok = false; out.push(sp[0] + '@' + cc + (good ? '' : '!'));
+          HH.eat(o); if (!t.done) ok = false;
+        }
+        if (Math.abs(HH.holeD() - D) > D * 1e-9) ok = false;
+      }
+      out.push('D=' + D.toFixed(1));
+    }
+    HH.startChapter(1); step(1);
+    return { ok: ok && hunts.length >= 3, info: out.join(', ') };`));
+
+  await T('solo Story keeps its zone rings (v5.3 Part 4 leaves solo alone): a hole driven past the first ring is held inside it', new Function(STEP + `
+    const { G, S } = HH; S.ch[2].u = 1; HH.startChapter(2); HH.restartRun(); step(1);
+    const rg = HH.ringNow(); if (!rg) return { ok: false, info: 'no ring' };
+    G.x = rg[2] + 50; G.y = (rg[1] + rg[3]) / 2; step(2);
+    const held = G.x <= rg[2] && G.x >= rg[0] && !G.run.mp;
+    HH.startChapter(1); step(1);
+    return { ok: held, info: { ring: rg.slice(0, 4).map(v => Math.round(v)), x: Math.round(G.x) } };`));
 
   // Reset Everything (two-tap) keeps other keys
   await p.evaluate(() => HH.UI.settings('main')); await p.waitForTimeout(200);
