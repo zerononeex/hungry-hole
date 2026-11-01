@@ -953,3 +953,240 @@ At ×1 (same build, for comparison): Home 9.4, Stanley Park 8.3, Metro Vancouver
 - Co-op still has not been tried on two real iPads or the live PeerJS broker (unchanged from v5.1).
 - Frame rate on a real iPad: the headless numbers above have no GPU.
 - At Metro Vancouver's maximum size in the north-west corner the Coast Mountains rise steeply round the hole (screenshot 51); it is the real ground, but worth a look on the iPad.
+
+# v5.3 — multiplayer grows up: four players, nobody falls behind (spec v5.15 addenda 32–39)
+Branch `claude/hungry-hole-v53`, built on `main` after the v5.2 merge (b69efa5). The batch rule is addendum 37: in multiplayer no
+player may end up smaller, weaker, shut out or stuck while the others advance. Solo play changes only where Parts 6 and 7 say
+(I Spy and Educational are redesigned for every player); everything else is multiplayer-only. Addendum 40 (Globe animals
+must roam and be animated) is not part of this batch and is not done here.
+
+## Part 1 — up to four players (addendum 32)
+- **Topology: a star through the host.** The host holds one link per guest (`N.peers`, up to `MAXG` = 3); a guest holds one link,
+  to the host. Guests never talk to each other. The host's save is still the session truth, guests still stream their hole
+  (~10 Hz), and the host relays everything else (eats, movers, the ladder, snapshots) plus every hole's position to every guest.
+- **Transport.** `NET.host` now keeps the room open and calls `link` once per friend, for as long as the session lives, so a
+  friend can join a game already going (and a guest who dropped can come back). A fifth player gets "That game already has
+  4 players". The PeerJS host's links no longer destroy the host's Peer when one guest leaves. The test transport's host end is a
+  hub: one channel, links routed by sender. Nothing above the transport knows how bytes travel (unchanged).
+- **Slots and colours.** Each player has a slot (0 = host, 1–3 = guests) that picks a colour: cyan, pink, green, orange. Every
+  player sees, for every other player, their name plate (edged in their colour) or an arrow in their colour with their name,
+  a minimap and mini-globe dot in their colour, and their hole drawn in their colour (the ground shader cuts up to three
+  partner holes). Two friends with the same name are told apart (Ana, Ana2).
+- **The wire.** `cap` carries the eater's slot instead of 'g'/'h'; `st` carries the host's hole (`h`) and the other guests'
+  (`ps`); `hello` gives the guest its slot; `win` carries a hand number. `GAME_V` is 5.3, so a 5.2 iPad is told to update.
+- **Shared ladder, shared pause.** Any player's eat advances everyone. The pause is still shared: the host works out, for each
+  guest, whether someone else paused, and everyone sees who.
+- **Soft disconnects, per player.** A guest who leaves (or goes silent for 6 s) has already banked the coins they earned on their
+  own iPad; their hole fades out on every screen and the session plays on for the rest. When the last guest leaves, the host's
+  run carries on solo. If the host leaves, every guest goes home with their coins. Nobody's own progress is ever touched.
+- **Found while testing (fixed): a guest's eat could credit the wrong player.** The host runs each guest's hole inside a swap of
+  the engine's one-hole state. A fall that ended during that pass was eaten inside the swap, so with more than one guest the
+  coins and the I Spy bonus could land on whichever guest's pass finished it, and the other guests' bonuses were skipped.
+  Falls that end during a guest's pass are now collected and eaten after the swap (`mateStep`).
+
+## Part 2 — I Spy together is won as a team (addendum 33)
+When a multiplayer I Spy hand is finished, the host records the win on its own save and sends every guest still in the game a
+`win` with a hand number; each guest marks that world's I Spy as won on its own save (`S.ispy[n].wins`) once per hand number,
+however many times the wire repeats it. The win bonus is paid into each player's tally on the host and banked into their own
+wallet, once. A guest who left before the finish gets their coins only. Solo I Spy is unchanged.
+
+## Part 3 — Upgrades never pause multiplayer (addendum 34)
+In a multiplayer session the HUD's Upgrades button sets `G.upLive` instead of pausing: the frame loop keeps running the world for
+that player and their iPad never tells the others it is paused, so their hole sits unsteered where it was. This holds for host
+and guests alike. The Educational quest menu (also a personal overlay) gets the same rule. The deliberate Pause button is still
+shared. Solo, Upgrades still pauses the run.
+
+## Part 4 — the whole world is open (addendum 35)
+`ringNow()` returns nothing for a multiplayer run (`G.run.mp`, set when the world is loaded with a session), in every mode, for
+everyone, so neither the hole's own clamp nor the host's check of a guest's position applies a ring. The world's outer border is
+unchanged. Each iPad builds and draws the world round its own hole wherever it is (it always did; nothing streams from the
+host). If the friends all leave, the run stays open until the host loads a world again; snapping a ring shut round someone
+who is outside it would throw them across the map. Solo Story keeps its rings (tested).
+
+## Part 5 — the team grows together (addendum 36)
+In multiplayer Story the host's hole carries the team's one size. Before each guest's hole is run it is set to the team size,
+and after a guest eats, its growth is copied back to the team and to every other guest (`teamFrom`). Every hole is drawn at the
+team size and the cap (the next objective) applies to it. Coins and points stay each player's own.
+
+**The size upgrades, reconciled (recorded as asked):**
+- **Growth Boost** stays personal and still counts: a bite grows the team by what that player's own Growth Boost makes it worth.
+  It speeds the whole team, so nobody is left behind by it.
+- **Head Start** does not apply to a guest joining a multiplayer Story: the team is at the host's current size (the session's
+  truth), and the guest joins at it. A guest's solo save is never written by a session (they play on a scratch copy).
+
+## Part 6 — I Spy is a fixed-size hunt (addendum 38)
+- **One size per hand.** "Size" is the world's size ladder (the HUD's Size 1, 2, 3…). The 30-item I Spy list is still a
+  shuffle-bag (the saved deck format is unchanged): a hand takes the next item, then the other undealt items of that size.
+  When the list has fewer than five of that size, the hand is filled with other kinds of thing of that size that live in the
+  world (never water, scenery, a totem pole, a door or a cloud), then with things that size already standing there (the
+  Home's furniture lives in its rooms). A size with very few things in the whole world (Space's Saturn and Jupiter) deals a
+  shorter hand rather than mixing sizes.
+- **One size per hole.** The hole is set to exactly what fits the hand's biggest thing (the v5.0 fit rule, ×1.04) the moment the
+  hand starts, and `addXP` does nothing in I Spy: eating still pays coins and points, the size never moves. The arrow points
+  at the nearest thing still to find (a hand has no order). Solo I Spy's ring is the smallest ring that holds every thing
+  still to find.
+- **Upgrades are unlimited**, session-only: a sandbox like Exploration's (`G.sandUp`) that starts every upgrade at 10, each
+  settable 0–10 for free, never written back. The exception is the four coin upgrades (Points Boost, Coin Boost, Lucky Coins,
+  Quest Payday): coins earned in I Spy are real, so they pay at the player's own bought level. A free ×2.2 coin boost would
+  make I Spy the best coin farm in the game; the coin upgrades decide no access and no size, so equality is untouched.
+- In multiplayer every hole starts the hand at the identical size, by construction.
+
+## Part 7 — Educational: fixed size, unlimited upgrades, a speed dial, animal hunts (addendum 39)
+- **One size per set:** the fit of the set's biggest target (across all its steps) plus one size step of the world's ladder
+  (`stepUp`). It is set when the set starts, never moves, and there is no size control. A set with no target at all (the
+  sums) uses the lesson size (the Globe's `eduMin`, else the starting size) plus a step.
+- **Unlimited upgrades** on Part 6's terms. **The speed dial:** Educational shows Exploration's ADJUST SPEED stepper (10–100%,
+  session-only) and not its size buttons.
+- **Globe animal hunts:** three new Globe sets (Africa; Asia and Australia; the Americas). A target `@CC.j` is species j of
+  country CC in the owner's dataset, placed on its own habitat in its own country, marked and kept until eaten, and shared in
+  multiplayer like any placed target (its size and model ride the `add` message). Hunt animals are sized from the lesson size,
+  so these sets play at a hole width of 49–57 Globe units (400 to a degree), under the giant tier (100) where animals stop
+  appearing. They stand still: making them roam
+  and animate is addendum 40, not this batch.
+
+## Other
+- Exploration together is unchanged. In multiplayer the Globe's roaming ambient animals stay off (as in v5.2: each iPad would
+  roll its own); hunt animals are placed targets and are shared.
+- A tile is no longer pulled by Magnet Aura. With the sandbox at 10, magnet pulled sum tiles, which have no base position, and
+  sent them to NaN (found by the placed-targets test).
+
+## The no-kid-falls-behind audit (addendum 37) of the finished multiplayer
+Each way a player could fall behind in a multiplayer session, and where it stands now:
+
+| Could a player end up… | Story | I Spy | Educational | Exploration |
+| --- | --- | --- | --- | --- |
+| **smaller** | No: one team size (Part 5) | No: one hand size for all (Part 6) | No: one set size for all (Part 7) | Size is each player's own dial, by design; nothing is earned, and anyone can dial to any size |
+| **weaker** (slower, less reach) | Upgrades stay personal (coins buy comfort), but they gate nothing: size is shared and the whole world is open | No: everything unlocked for everyone | No: everything unlocked, plus the speed dial | Sandbox: everything free for everyone |
+| **shut out** (zone rings, full room) | No rings (Part 4). A late friend can join a game already going, up to four | No rings | No rings | Never had rings |
+| **stuck** (frozen by someone else) | Upgrades and the quest menu pause nobody (Part 3); only the deliberate Pause is shared | Same | Same | Same |
+| **left with nothing** (credit) | Coins they earn are theirs and banked as they go; leaving keeps them | Team win on every save still in the game; the bonus to every wallet once | Each player's right answers count on their own save | Nothing is saved for anyone (unchanged) |
+
+Two things the audit noticed and left as they are, said plainly:
+- **Speed in Story.** A player with more Speed bought moves faster in multiplayer Story. It gates nothing (size is shared, the
+  world is open, any player's eat advances everyone) and it is the "comfort" coins buy, so it stays.
+- **Exploration's size** is personal: that is the mode (each player dials their own size). No one can be held back there,
+  because the dial goes to any size for anyone.
+
+## v5.3 results (tests at hand-off)
+| Suite | Result |
+| --- | --- |
+| `tests/data.js` | PASS ×5, no errors (new: every Globe animal-hunt target names a real species of its country, inside the lesson size) |
+| `tests/behaviour.js` | 44/44. New: I Spy one size per hand, played at exactly its size, never growing (20 hands across all five worlds); I Spy and Educational upgrade sandbox (starts at 10, coin upgrades your own, nothing written back, solo Upgrades still pauses); Educational set size = biggest target + one step for every set of every world, unchanged by eating, no size control; Educational speed dial (35% → 0.35× travel); the three Globe animal hunts (every species in its own country, eatable at the set size, under the giant tier, checked off when eaten); solo Story still held by its ring |
+| `tests/coop.js` | 28/28 in three runs back to back (the first with the balance bot running alongside). The test transport now carries four pages. New four-player tests: three guests join one code and all four holes sync, each seen by name and colour; one guest's eat advances the ladder on all four; team size grows when only the host eats, and when only a guest eats, and parks at the same cap; no rings, a guest drives out through the solo ring and is drawn and populated at the far end of the world; Upgrades pauses nobody (guest on Upgrades: the host's world keeps moving and the host eats; host on Upgrades: a guest keeps playing and eats); a guest drops and the other three play on with the leaver's coins kept; I Spy with four (one size for every hole, the leaver gets no win, the three who finish each get the win on their own save once, even when the message repeats, and the bonus in their wallet); Educational with four (one fixed size, the speed dial and no size control on every iPad). Wire wait 66–96 ms average, 2.4–3.0 s worst, with four SwiftShader pages drawing at once |
+| `tests/reachability.js` | 100% in all five worlds (unchanged) |
+| `tests/audio.js` | 9/9 |
+| `tests/ui-flow.js` | clean, 0 console errors |
+| `tests/globe-school.js` | 6/6 |
+| `tests/screens.js` | refreshed (the I Spy and Educational scenes changed); new 78–81 (a one-size I Spy hand in the Home, I Spy's everything-unlocked Upgrades, Educational's speed dial with no size buttons, a Globe animal hunt in Kenya) and, from `HH_SHOTS=docs/screenshots node tests/coop.js`, 82–85 (a four-player game seen by the host and by a guest, the host's pause with the room code, a guest paused by the host) |
+| `tests/perf.js` | GPU-less headless, exits non-zero as it always has here: Vancouver 15.1, Stanley Park 13.5, Globe 12.5 fps (v5.2: 14.9 / 14.6 / 11.9) |
+
+### Pace bot, v5.3 (`node tests/balance-bot.js 1,2,3,4,5 40`, sim-minutes; solo Story is untouched by this batch)
+| World | Finish | Objectives eaten at (min) |
+| --- | --- | --- |
+| W1 The Home | 7.5 | 1.26 1.83 2.76 4.32 5.28 6.3 7.13 7.46 |
+| W2 Stanley Park | 4.3 | 0.08 0.15 0.39 2.01 3.04 3.61 4 4.23 4.28 4.31 |
+| W3 Metro Vancouver | 4.7 | 1.88 2.19 2.52 2.64 3.27 3.71 4.2 4.66 4.72 4.74 |
+| W4 The Globe | 5.1 | 0.17 0.54 0.63 0.74 1.26 2.54 3.14 4.01 4.48 4.68 4.95 5.09 |
+| W5 Space | 4.4 | 0.07 0.19 0.22 0.29 0.53 2.09 3.52 4.06 4.36 |
+
+These are under the 8–15 minute window, the same as v5.2: the owner chose on 2026-10-31 to keep base speed ×2 (v5.2, P7), and
+this batch does not touch solo Story's pace. At ×1 the same worlds land at about 8.3–9.4 minutes.
+
+### Not verified, said plainly
+- Co-op has still not been tried on real iPads or the live PeerJS broker, now with up to four (the owner's multi-iPad test). The
+  star through the host means the host's iPad sends about three times the traffic it did with one friend: roughly 30 small
+  state messages a second. That is light for WebRTC, but a slow host iPad is the first thing to watch.
+- Frame rate on a real iPad (the headless numbers have no GPU). The host now simulates up to three guests' holes.
+- I Spy hands in a size with very few things in its world are shorter than five (Space's biggest size has only Saturn and
+  Jupiter); the rule "one size per hand" was kept over "five per hand".
+
+## v5.3 fix round 1 (Kakashi's verification)
+
+### Fix 1: an I Spy hand is never one target
+- **What Kakashi saw:** `tests/behaviour.js` failed 1 run in 2 with `4:10!`. About 1 Globe hand in 10 was a single target:
+  the Eiffel Tower alone, or the Pyramids alone. The bag is unseeded, so my three runs never dealt those anchors.
+- **Root cause, confirmed:** half of the suggested diagnosis was wrong. The filler does already look at placed landmarks:
+  `ispyFound` walks every authored object in the world, landmarks included. It found nothing because the Globe holds nothing
+  else at those sizes. I listed every authored object by size tier: the Eiffel Tower is the only thing at tier 10 and the
+  Pyramids the only thing at tier 11. The Statue of Liberty is alone at tier 9 too, but an ambient kind of that size fills it.
+  So route 1 (fill from same-size landmarks) has nothing to draw on at those two sizes.
+- **Route chosen: skip the size (route 2), at deal time.** `ispyDeal` builds the hand as before, then counts what the hand
+  could reach: the list items it took, plus other kinds of that size that live in the world, plus things of that size
+  already standing there. If that count is under 2, the anchor is passed over and the bag deals from the next anchor,
+  reshuffling as usual when it runs out. Route 1 is still in place: wherever a world has more same-size landmarks, they
+  fill the hand. The Globe's tier-12 hand (the Great Wall and Everest) is one example.
+- **Kept the same:**
+  - The deck in the save keeps the same shape. Skipping only moves `pos` forward, as dealing always has, so existing saves
+    load and play as before.
+  - One size per hand, and the hole's fixed size.
+  - Solo and multiplayer behave alike, because both deal through `ispyDeal`.
+  - The team win on short hands.
+  - Space: its hands never fell below 2, so the check never fires there.
+- **Cost:** the Eiffel Tower and the Pyramids are never I Spy anchors on the Globe, because a hunt for one thing is not a
+  hunt. They are still in Story, Exploration and Educational.
+- **Regression test** in `tests/behaviour.js`: 60 Globe hands and then 60 Space hands, each from a fresh deck and running
+  through reshuffles. Every hand must have 2 to 5 targets, all one tier.
+  - On the old code it fails: 8 of 60 Globe hands had one target (`#eiffel@10`, `#pyramids@11`).
+  - On the new code the Globe deals 2-target hands about 10 times and 5-target hands about 50 times. Space deals hands of
+    2, 3, 4 and 5 targets, never fewer than 2. Both runs go through 4 reshuffles.
+
+### Fix 2: the mini globe no longer glows gold where you have been (addendum 41)
+- The gold mix is gone from `miniGlobe`, so the Earth is drawn the same everywhere.
+- The visited-cell tracking (`st.seen`) is gone with it. An old save that carries a `seen` string still loads, and the field
+  is ignored. The v5.1 save-migration test still carries one through unchanged.
+- Nothing else on the mini globe changed, and no other world's map was touched.
+- Screenshot `86-w4-mini-globe-no-glow` loads a save that marks every cell visited and then travels across the Earth. The
+  globe shows no tint.
+
+### Fix 3: four players under load: the later guests were not starved, they were dropped
+- **Reproduced:** I ran `HH_THROTTLE=5 node tests/coop.js`, which applies Chrome DevTools CPU throttling at 5× to each of
+  the four pages. It scored 21/28 with the same failures Kakashi reported.
+  - Guest 2 stayed at its join size (`0.0635`).
+  - The ladder stayed at `beats [0,0,0,0]`.
+  - The upgrades check read `back [true,true,false,…]`.
+  - The guest-drop test failed with `TypeError … null`.
+- **Diagnosis:** I logged each page's session state every second, plus every `end` and `drop` with its reason. In that log
+  guests 2 and 3 were not slow to receive state. They had left the session (`HH.net` was null), so every later four-player
+  test ran with a missing player. There were two ways out, and both are the game's own timers:
+  1. **The test transport's join timeout (3 s).** With the host already running a game for guest 1, the host's answer to the
+     third and fourth "join" took longer than 3 s on the loaded machine, so those guests gave up (`noroom`). PeerJS waits
+     15 s. Now the `?nettest=bc` join waits 15 s too. This one is test-transport only.
+  2. **The heartbeat counted a guest's own freeze as the host's silence. This is the real game bug.** A joining guest builds
+     the whole world in one synchronous `loadChapter` when `start` arrives, and at 5× that took more than 6 s. On its first
+     frame afterwards, `t - N.heard > 6000` fired before the messages queued during the freeze were read. The log showed
+     `end:lost` at the guest about one second after `ready`. The host then dropped the silent guest the same way. A slow real
+     iPad loading the Globe could do exactly this. The fix:
+     - Both sides now subtract their own frame stalls (a gap over 1 s) from the silence clock. "Lost" means 6 s of this
+       page's running time with no word.
+     - A guest pings the host right after its load.
+     - The host allows a guest it has just sent the world 20 s until that guest's first move, then the usual 6 s.
+     - The "closing the guest iPad is noticed" test still passes, so a guest who really leaves is still dropped.
+- **Harness:** the stand-in BroadcastChannel delivered every message to every page. With four pages, each page parsed about
+  three times the traffic a real iPad sees, because PeerJS gives each guest its own data channel. It now delivers an
+  addressed message only to the page it names. Only a guest's first "join", which names no one yet, still goes to every
+  page. That cut deliveries from 11,303 to about 3,500 per throttled run. It did not fix the drops on its own: with only
+  this change and the 15 s join, the throttled run still scored 21/28, with `end:lost` right after the load. The
+  heartbeat fix is what turned the run green.
+- **Two test waits now count frames, not seconds:** under 5× throttling a hole moves fewer times per second.
+  - The open-world test's drive across the ring now waits up to 20 s.
+  - Its camera check waits for the camera to arrive instead of sleeping a fixed time.
+- **Verdict:** mostly game-side. The heartbeat freeze is a real-device risk and is fixed in the game. The 3 s test-transport
+  join is a game-file setting that only the tests use. The fan-out was harness load, and is fixed in the harness.
+- **Fixed waits replaced:** the first set of three throttled runs scored 28, 28 and 27. The miss was the team-size test
+  reading every page 800 ms after the host's level-up, while a throttled guest was still holding the message (the run's
+  worst wire wait was 6.3 s). Every page had the right size once it arrived. That read, the reverse team-size read and the
+  four-player I Spy win read now wait until the message has arrived, for up to 8 s, instead of sleeping a fixed time.
+
+### Fix round 1 results
+| Suite | Result |
+| --- | --- |
+| `tests/behaviour.js` | **45/45 three times in a row**. The new test is the 60 Globe and 60 Space hands check |
+| `tests/data.js` | PASS |
+| `tests/coop.js`, throttled 5× (`HH_THROTTLE=5`) | **28/28 three times in a row**. Wire wait averaged 185–198 ms, worst 5.4–5.9 s. Before the fix: 21/28 twice |
+| `tests/coop.js`, unthrottled | 28/28. Wire wait averaged 59 ms, worst 3.4 s |
+| `tests/globe-school.js` | 6/6 |
+| `tests/ui-flow.js` | clean, 0 console errors |
+| `tests/audio.js` | 9/9 |
+| `tests/screens.js` | all shots refreshed, 0 console errors. New: 86, the mini globe with no glow |
+
+The owner's test on real iPads is still the real-device check for four players.

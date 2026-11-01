@@ -1,9 +1,11 @@
-// v5.1 two-iPad co-op, proven with two real pages. Serve the repo root (python3 -m http.server 8765) then: node tests/coop.js
+// v5.1 two-iPad co-op, v5.3 up to four players, proven with real pages. Serve the repo root (python3 -m http.server 8765)
+// then: node tests/coop.js
 //
-// Each page runs in its OWN browser context, so each has its own save (like two iPads). The game's test transport
+// Each page runs in its OWN browser context, so each has its own save (like separate iPads). The game's test transport
 // (?nettest=bc) talks over BroadcastChannel; a BroadcastChannel cannot cross contexts, so this harness installs a
-// stand-in BroadcastChannel in both pages that forwards each message (JSON, as PeerJS would) to the other page, in order.
-// Everything above the channel is the shipping game code.
+// stand-in BroadcastChannel in every page that forwards each message (JSON, as PeerJS would) to every other page, in
+// order, the way a real BroadcastChannel reaches every listener. Everything above the channel is the shipping game code.
+// A and B live for the whole run; C and D are opened for the four-player tests and closed after them.
 const { chromium } = require('playwright');
 const BASE = process.env.HH_URL || 'http://localhost:8765/index.html';
 const URL = BASE + '?nettest=bc';
@@ -23,31 +25,46 @@ const SHIM = () => {
 
 (async () => {
   const b = await chromium.launch();
-  const pages = {}, errs = [], results = [];
-  const queues = { A: Promise.resolve(), B: Promise.resolve() }, lat = { n: 0, sum: 0, max: 0 }, pend = { A: [], B: [] };
-  const mk = async (who, other, name) => {
-    const ctx = await b.newContext({ viewport: { width: 1180, height: 820 } });
+  const pages = {}, ctxs = {}, errs = [], results = [];
+  const queues = {}, lat = { n: 0, sum: 0, max: 0 }, pend = {}, ids = {};   // ids: a transport id (the 'from' a page signs with) -> that page
+  const deliver = (other, ch, json) => {
+    if (!pages[other] || pages[other].isClosed()) return;
+    const q = pend[other]; q.push([ch, json, Date.now()]);
+    if (q.length > 1) return;                         // a flush is already queued and will carry this one
+    queues[other] = queues[other].then(() => {
+      const batch = q.splice(0), t = Date.now();
+      for (const m of batch) { const d = t - m[2]; lat.n++; lat.sum += d; lat.max = Math.max(lat.max, d); }
+      return pages[other] && !pages[other].isClosed() ? pages[other].evaluate(list => { for (const [c, j] of list) window.__bcIn && window.__bcIn(c, j); }, batch.map(m => [m[0], m[1]])).catch(() => {}) : null;
+    });
+  };
+  const mk = async (who, name) => {
+    const ctx = ctxs[who] = await b.newContext({ viewport: { width: 1180, height: 820 } });
+    queues[who] = Promise.resolve(); pend[who] = [];
     await ctx.addInitScript(SHIM);
     // Messages to a page are delivered in order, in batches: whatever piled up while the last delivery ran goes over in ONE
     // evaluate. (v5.1 sent one evaluate per message; at ~25 messages a second each way a busy page fell seconds behind, so
     // tests read stale positions, late coins and late answers. A real data channel streams; so does this now.)
+    // v5.3 fix 3: a message addressed to one player goes to that player's page only, the way the shipping transport (one
+    // PeerJS data channel per guest) carries it. Until then every page got every page's traffic: with four pages each one
+    // parsed three times the messages a real iPad ever sees, the host's page fell seconds behind, and the later guests'
+    // join handshakes and heartbeats timed out. Broadcasts (a guest's "join", which names no one yet) still go to all.
     await ctx.exposeFunction('__bcOut', (ch, json) => {
-      const q = pend[other]; q.push([ch, json, Date.now()]);
-      if (q.length > 1) return;                       // a flush is already queued and will carry this one
-      queues[other] = queues[other].then(() => {
-        const batch = q.splice(0), t = Date.now();
-        for (const m of batch) { const d = t - m[2]; lat.n++; lat.sum += d; lat.max = Math.max(lat.max, d); }
-        return pages[other] && !pages[other].isClosed() ? pages[other].evaluate(list => { for (const [c, j] of list) window.__bcIn && window.__bcIn(c, j); }, batch.map(m => [m[0], m[1]])).catch(() => {}) : null;
-      });
+      let to = null, from = null; try { const v = JSON.parse(json); to = v && v.to; from = v && v.from; } catch (e) { /* not ours */ }
+      if (typeof from === 'string') ids[from] = who;
+      const dest = typeof to === 'string' && ids[to];
+      for (const other of Object.keys(pages)) if (other !== who && (!dest || other === dest)) deliver(other, ch, json);
     });
     const p = await ctx.newPage();
+    // HH_THROTTLE=4 slows every page's CPU 4x (Chrome DevTools throttling), like a busy machine running four iPads at once
+    if (+process.env.HH_THROTTLE > 1) { const cdp = await ctx.newCDPSession(p); await cdp.send('Emulation.setCPUThrottlingRate', { rate: +process.env.HH_THROTTLE }); }
     p.on('pageerror', e => errs.push(who + ' PAGEERR ' + e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(who + ' ' + m.text()); });
     await p.goto(URL); await p.waitForTimeout(400);
     await p.evaluate(nm => { HH.S.settings.name = nm; HH.S.ch[2].u = HH.S.ch[3].u = 1; HH.persist(); localStorage.setItem('family-other-app', 'keep-me'); }, name);
     pages[who] = p; return p;
   };
-  const A = await mk('A', 'B', 'Ana'), B = await mk('B', 'A', 'Ben');   // A hosts, B joins
-  const T = async (name, fn) => { try { const r = await fn(); results.push([name, !!r.ok, r.info]); } catch (e) { results.push([name, false, e.message.split('\n')[0]]); } };
+  const A = await mk('A', 'Ana'), B = await mk('B', 'Ben');   // A hosts, B joins
+  const ONLY = process.env.ONLY && new RegExp(process.env.ONLY);
+  const T = async (name, fn) => { if (ONLY && !ONLY.test(name)) return; try { const r = await fn(); results.push([name, !!r.ok, r.info]); } catch (e) { results.push([name, false, e.message.split('\n')[0]]); } };
   const until = async (p, fn, ms = 8000, arg) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await p.evaluate(fn, arg)) return true; await sleep(100); } return false; };
 
   // ---- connect: A hosts n/kind from the picker, B joins with the code ----
@@ -97,7 +114,7 @@ const SHIM = () => {
     if (!goal) return null;
     if (who === 'host') await A.evaluate(g => { const G = HH.G; HH.setHoleD(g.fw * 1.02); G.x = g.x; G.y = g.y; G.vx = G.vy = 0; }, goal);
     else {
-      await A.evaluate(g => HH.asMate(() => HH.setHoleD(g.fw * 1.02)), goal);
+      await A.evaluate(g => HH.setHoleD(g.fw * 1.02), goal);      // v5.3 Part 5: Story size is the team's (the host's hole carries it)
       for (let i = 0; i < 30; i++) { await B.evaluate(g => { const G = HH.G; G.x = g.x; G.y = g.y; G.vx = G.vy = 0; }, goal); await sleep(100); }
     }
     return goal;
@@ -187,7 +204,7 @@ const SHIM = () => {
   await T('I SPY together: one hand of 5 from the host\'s deck on both iPads; a guest find counts for both', async () => {
     await A.evaluate(() => HH.UI.show('main')); await sleep(300);
     await connect(2, 'ispy', 'ispy');
-    const ok = await until(A, playing) && await until(B, playing) && await until(B, () => HH.G.run.tg && HH.G.run.tg.length === 5 && HH.G.run.tg.every(t => t.o), 4000);
+    const ok = await until(A, playing) && await until(B, playing) && await until(B, () => HH.G.run.tg && HH.G.run.tg.length >= 2 && HH.G.run.tg.every(t => t.o), 4000);
     const [a, bb] = await both(() => HH.G.run.tg.map(t => t.name).join('|'));
     const t0 = await A.evaluate(() => { const t = HH.G.run.tg.find(t => !t.done && !t.o.path && !(t.o.T && t.o.T.mv)) || HH.G.run.tg.find(t => !t.done); HH.asMate(() => HH.setHoleD(t.o.fw * 1.02)); return { x: t.o.x, y: t.o.y, name: t.name }; });
     for (let i = 0; i < 25; i++) { await B.evaluate(t => { HH.G.x = t.x; HH.G.y = t.y; HH.G.vx = HH.G.vy = 0; }, t0); await sleep(100); }
@@ -209,7 +226,7 @@ const SHIM = () => {
     const sizes = await A.evaluate(() => ({ h: HH.holeD(), g: HH.asMate(HH.holeD), set: HH.G.run.set }));
     const gset = await B.evaluate(() => HH.G.run.set);
     const L0 = await both(() => JSON.stringify(HH.S.learn));
-    await A.evaluate(() => { HH.G.eatBy = 'g'; try { HH.net.learn(Object.keys(HH.S.learn)[0]); } finally { HH.G.eatBy = null; } });
+    await A.evaluate(() => { HH.G.eatBy = HH.G.mate; try { HH.net.learn(Object.keys(HH.S.learn)[0]); } finally { HH.G.eatBy = null; } });
     await until(B, l0 => JSON.stringify(HH.S.learn) !== l0, 4000, L0[1]); await sleep(300);   // (and the host's own save stays put)
     const L1 = await both(() => JSON.stringify(HH.S.learn));
     const gl0 = JSON.parse(L0[1]), gl1 = JSON.parse(L1[1]);
@@ -219,7 +236,7 @@ const SHIM = () => {
   await leaveAll();
 
   await T('EXPLORATION together: both roam, nothing is saved on either iPad', async () => {
-    const s0 = await both(() => localStorage.getItem('hungry-hole-data-v1'));
+    const s0 = await both(() => { HH.persist(); return localStorage.getItem('hungry-hole-data-v1'); });   // (coins the last run's hole earned are saved first)
     await connect(3, 'explore', 'explore');
     const ok = await until(A, playing) && await until(B, playing);
     await A.evaluate(() => { const o = HH.G.vis.find(o => !o.dead && HH.canEat(o)); if (o) { HH.G.x = o.x; HH.G.y = o.y; } });
@@ -228,7 +245,8 @@ const SHIM = () => {
     await leaveAll();
     const s1 = await both(() => localStorage.getItem('hungry-hole-data-v1'));
     const strip = s => { const d = JSON.parse(s); delete d.last; delete d.t; return JSON.stringify(d.ch); };
-    return { ok: ok && n[0] === 3 && n[1] === 3 && strip(s0[0]) === strip(s1[0]) && strip(s0[1]) === strip(s1[1]), info: { n, hostSame: strip(s0[0]) === strip(s1[0]), guestSame: strip(s0[1]) === strip(s1[1]) } };
+    const diff = (a, b) => { const x = JSON.parse(a).ch, y = JSON.parse(b).ch, out = []; for (const k in x) for (const f in x[k]) if (JSON.stringify(x[k][f]) !== JSON.stringify(y[k][f])) out.push(k + '.' + f + ':' + JSON.stringify(x[k][f]).slice(0, 40) + '>' + JSON.stringify(y[k][f]).slice(0, 40)); return out; };
+    return { ok: ok && n[0] === 3 && n[1] === 3 && strip(s0[0]) === strip(s1[0]) && strip(s0[1]) === strip(s1[1]), info: { n, hostSame: strip(s0[0]) === strip(s1[0]), guestSame: strip(s0[1]) === strip(s1[1]), diff: diff(s0[0], s1[0]) } };
   });
 
   for (const key of ['globe', 'space']) await T(`${key.toUpperCase()} together (story): links, syncs both holes and shares an eat`, async () => {
@@ -279,6 +297,184 @@ const SHIM = () => {
     await B.evaluate(() => { if (HH.net) HH.net.end('left'); HH.UI.show('main'); });
     return { ok: solo, info: { solo } };
   });
+
+  // ---------------- v5.3: up to FOUR players (spec addenda 32-37) ----------------
+  const Cp = await mk('C', 'Cai'), Dp = await mk('D', 'Dot');
+  const ALL = [A, B, Cp, Dp], GUESTS = [B, Cp, Dp];
+  const all = (fn, arg) => Promise.all(ALL.map(p => p.evaluate(fn, arg)));
+  const live = () => HH.G.mates.filter(M => !M.gone).length;
+  const connect4 = async (n, kind) => {
+    await A.evaluate(([n, kind]) => { HH.UI.chapters(kind); HH.UI.coopHost(n, kind); }, [n, kind]);
+    await until(A, () => /^[A-Z]{6}$/.test((document.getElementById('coop-code') || {}).textContent || ''), 4000);
+    const code = await A.evaluate(() => document.getElementById('coop-code').textContent);
+    for (const g of GUESTS) { await g.evaluate(k => { HH.UI.chapters(k); HH.UI.coopJoin(k); }, kind); await g.fill('#j-code', code.toLowerCase()); await g.click('#j-go'); }
+    let ok = true; for (const p of ALL) ok = await until(p, playing, 12000) && ok;
+    for (const p of ALL) ok = await until(p, n => HH.G.mates.filter(M => !M.gone).length === n, 8000, 3) && ok;
+    return { code, ok };
+  };
+  const leave4 = async () => { for (const g of GUESTS) await g.evaluate(() => { if (HH.net) HH.net.end('left'); HH.UI.show('main'); }); await A.evaluate(() => HH.UI.show('main')); await sleep(600); };
+  // one page's hole onto an object (by wire id), held there for up to ms, until it is eaten (as the host reports)
+  const feed = async (p, nid, ms = 4000) => {
+    const t0 = Date.now();
+    while (Date.now() - t0 < ms) {
+      const st = await p.evaluate(id => { const o = HH.objByNid(id); if (!o || o.dead) return 'gone'; if (!o.fall) { HH.G.x = o.x; HH.G.y = o.y; HH.G.vx = HH.G.vy = 0; } return 'on'; }, nid);
+      if (st === 'gone') return true; await sleep(100);
+    }
+    return false;
+  };
+  // the host picks something near (x, y) that every hole can eat now
+  const snack = (x, y, skip) => A.evaluate(([x, y, skip]) => { const G = HH.G, D = HH.holeD();
+    const os = []; for (const a of G.cells.values()) for (const o of a) os.push(o);
+    const o = os.concat(G.vis).filter(o => o.nid && !o.dead && !o.fall && !o.coin && !o.tile && !o.path && !o.pool && !o.tgt && !o.deco && !(o.T && o.T.mv) && o.fw < D * 0.5 && !(skip || []).includes(o.nid) && HH.canEat(o))
+      .sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
+    return o ? { nid: o.nid, x: o.x, y: o.y } : null; }, [x, y, skip || []]);
+
+  await T('FOUR players (Part 1): three guests join ONE code; every iPad sees the other three, each by name in its own colour; all four holes sync', async () => {
+    const { code, ok } = await connect4(2, 'story');
+    await all(() => { const N = HH.net, i = N.role === 'host' ? 0 : N.me; HH.G.x += (i - 1.5) * 1.6; HH.G.y += 0.7 * i; HH.G.vx = HH.G.vy = 0; });
+    let views, truth, good = false;
+    for (const t0 = Date.now(); Date.now() - t0 < 5000 && !good;) {
+      await sleep(250);
+      truth = await all(() => ({ id: HH.net.role === 'host' ? 0 : HH.net.me, x: HH.G.x, y: HH.G.y, name: HH.S.settings.name }));
+      views = await all(() => HH.G.mates.filter(M => !M.gone).map(M => ({ id: M.id, x: M.x, y: M.y, name: M.name })));
+      good = views.every((v, i) => v.length === 3 && v.every(m => { const t = truth.find(q => q.id === m.id); return t && t.id !== truth[i].id && Math.hypot(t.x - m.x, t.y - m.y) < 0.5 && t.name === m.name; }));
+    }
+    if (process.env.HH_SHOTS) {          // v5.3 screenshots: the host and a guest in a four-player game (three partner arrows / name plates, three minimap dots)
+      await all(() => { HH.G.cam.x = HH.G.x; HH.G.cam.y = HH.G.y; }); await sleep(800);
+      await A.screenshot({ path: process.env.HH_SHOTS + '/82-coop4-host-view.jpg', type: 'jpeg', quality: 82 }); await Cp.screenshot({ path: process.env.HH_SHOTS + '/83-coop4-guest-view.jpg', type: 'jpeg', quality: 82 });
+      await A.evaluate(() => HH.UI.pause()); await sleep(500); await A.screenshot({ path: process.env.HH_SHOTS + '/84-coop4-pause-room-code.jpg', type: 'jpeg', quality: 82 }); await Cp.screenshot({ path: process.env.HH_SHOTS + '/85-coop4-paused-by-host.jpg', type: 'jpeg', quality: 82 });
+      await A.evaluate(() => HH.UI.resume()); await sleep(500);
+    }
+    const ids = truth.map(t => t.id).sort().join(''), cols = await A.evaluate(() => HH.G.mates.map(M => HH.pcol(M)));
+    return { ok: ok && good && ids === '0123' && new Set(cols).size === 3, info: { code, ids, cols, views: views.map(v => v.map(m => m.name + '#' + m.id).join(' ')) } };
+  });
+  await T('FOUR players (Part 1): one guest\'s eat of the objective advances the shared ladder on all four iPads', async () => {
+    const goal = await A.evaluate(() => { const G = HH.G, g = G.goal; if (!g) return null; HH.setHoleD(g.fw * 1.02); G.x = g.x + g.fw * 30; G.vx = G.vy = 0; return { nid: g.nid, beat: G.st.beat, id: g.id }; });
+    if (!goal) return { ok: false, info: 'no goal' };
+    for (const p of [B, Dp]) await p.evaluate(g => { HH.G.y -= 40; }, goal);    // only Cai is anywhere near it
+    await feed(Cp, goal.nid, 6000);
+    let ok = true; for (const p of ALL) ok = await until(p, b => HH.G.st.beat > b, 6000, goal.beat) && ok;
+    const beats = await all(() => HH.G.st.beat);
+    return { ok: ok && beats.every(b => b === beats[0]), info: { ate: goal.id, beats } };
+  });
+  await T('team size (Part 5): only the HOST eats, and every guest\'s hole grows by the same steps and parks at the same cap', async () => {
+    const hd = await A.evaluate(() => { HH.setHoleD(HH.G.C.sizes[2]); HH.G.paused = true; return HH.holeD(); });      // a small team, under the next objective (held still till all have it)
+    for (const g of GUESTS) await until(g, d => Math.abs(HH.holeD() - d) < d * 1e-6, 8000, hd);
+    const d0 = await all(() => HH.holeD());
+    await A.evaluate(() => { HH.G.paused = false; });
+    const ate = await A.evaluate(() => { const G = HH.G, D = HH.holeD(); let n = 0;
+      for (const o of G.vis) if (n < 6 && !o.dead && !o.fall && !o.coin && !o.tile && !o.tgt && o.fw < D * 0.6 && HH.canEat(o)) { HH.eat(o); n++; }
+      return { n, D: HH.holeD() }; });
+    await A.evaluate(() => { HH.G.paused = true; });        // hold the host's world still (its hole would keep eating) while every iPad is read
+    await sleep(1200); for (const g of GUESTS) await until(g, d => Math.abs(HH.holeD() - d) < d * 1e-6, 8000, ate.D);
+    const grown = await all(() => HH.holeD()), hostSees = await A.evaluate(() => HH.G.mates.map(M => HH.asMate(HH.holeD, M)));
+    await A.evaluate(() => { HH.G.paused = false; });
+    const same1 = grown.every(d => Math.abs(d - grown[0]) < grown[0] * 1e-6) && hostSees.every(d => Math.abs(d - grown[0]) < grown[0] * 1e-6);
+    const hp = await A.evaluate(() => { HH.addXP(1e12); return HH.holeD(); });
+    for (const g of GUESTS) await until(g, d => Math.abs(HH.holeD() - d) < d * 1e-6, 8000, hp);   // (wait for the state message, not a fixed 800 ms: a throttled page reads its mail late)
+    const parked = await all(() => ({ D: HH.holeD(), cap: HH.capD() }));
+    const same2 = parked.every(p => Math.abs(p.D - parked[0].D) < parked[0].D * 1e-6 && p.D <= p.cap * 1.0001) && Math.abs(parked[0].D - parked[0].cap) < parked[0].cap * 1e-3;
+    return { ok: ate.n > 0 && grown[0] > d0[0] * 1.0001 && d0.every(d => Math.abs(d - d0[0]) < d0[0] * 1e-6) && same1 && same2, info: { ate, before: d0, grown, hostSees, parked } };
+  });
+  await T('team size (Part 5), reversed: a GUEST eats and the host (and the other guests) grow with it', async () => {
+    const hd = await A.evaluate(() => { HH.setHoleD(HH.G.C.sizes[2]); HH.G.paused = true; return HH.holeD(); });
+    for (const g of GUESTS) await until(g, d => Math.abs(HH.holeD() - d) < d * 1e-6, 8000, hd);
+    const d0 = await all(() => HH.holeD());
+    await A.evaluate(() => { HH.G.paused = false; });
+    const bp = await B.evaluate(() => [HH.G.x, HH.G.y]); let n = 0; const skip = [];
+    for (let i = 0; i < 4; i++) { const s = await snack(bp[0], bp[1], skip); if (!s) break; skip.push(s.nid); if (await feed(B, s.nid, 6000)) n++; }
+    await sleep(800);
+    const hd1 = await A.evaluate(() => HH.holeD()); for (const g of GUESTS) await until(g, d => Math.abs(HH.holeD() - d) < d * 1e-6, 8000, hd1);
+    const d1 = await all(() => HH.holeD());
+    return { ok: n > 0 && d1[0] > d0[0] * 1.0001 && d1.every(d => Math.abs(d - d1[0]) < d1[0] * 1e-6), info: { guestAte: n, before: d0, after: d1 } };
+  });
+  await T('open world (Part 4): no zone rings for anyone; a guest drives straight out through the solo ring and on to a far corner, fully rendered and populated there', async () => {
+    const rings = await all(() => HH.ringNow());
+    // the far corner: the small authored thing furthest from the start (so the spot is real ground, not the scenery past the border)
+    const r0 = await A.evaluate(() => HH.G.C.rings.filter(Boolean)[0]), far = await A.evaluate(() => { const G = HH.G, s = G.C.storyStart || G.C.start;
+      const o = G.auth.filter(o => !o.deco && !o.path && o.fw < 1.5 && !(o.T && o.T.mv)).sort((a, b) => Math.hypot(b.x - s[0], b.y - s[1]) - Math.hypot(a.x - s[0], a.y - s[1]))[0]; return [o.x + o.fw, o.y + o.fw, Math.round(Math.hypot(o.x - s[0], o.y - s[1]))]; });
+    // drive (a real joystick, real frames) across the first ring's east edge, where solo Story would stop it
+    await B.evaluate(r => { const G = HH.G; G.x = r[2] - HH.holeD() * 2; G.y = (r[1] + r[3]) / 2; G.vx = G.vy = 0; G.joy = { x0: 300, y0: 300, x: 420, y: 300 }; }, r0);
+    const crossed = await until(B, r => HH.G.x > r[2] + HH.holeD() * 2, 20000, r0);   // (frames, not seconds, move a hole: a throttled page needs longer)
+    await B.evaluate(() => { HH.G.joy = null; });
+    // and on to the far corner of the world's playable area
+    for (let i = 0; i < 15; i++) { await B.evaluate(f => { HH.G.x = f[0]; HH.G.y = f[1]; HH.G.vx = HH.G.vy = 0; }, far); await sleep(100); }
+    await sleep(1500);
+    await until(B, f => { const G = HH.G; G.x = f[0]; G.y = f[1]; G.vx = G.vy = 0; return Math.hypot(G.cam.x - G.x, G.cam.y - G.y) < HH.holeD() * 5; }, 10000, far);   // (the camera eases over by frames)
+    const there = await B.evaluate(f => { const G = HH.G, rg = HH.V3.reg; const near = G.vis.filter(o => !o.dead && !o.deco && Math.hypot(o.x - G.x, o.y - G.y) < HH.holeD() * 40);
+      return { at: Math.hypot(G.x - f[0], G.y - f[1]) < 1, d: Math.hypot(G.x - f[0], G.y - f[1]), things: near.length, ground: !!rg && rg.n === G.C.n && rg.x0 < G.x + HH.holeD() * 25 && rg.x0 + rg.w > G.x - HH.holeD() * 25 && rg.y0 < G.y + HH.holeD() * 25 && rg.y0 + rg.h > G.y - HH.holeD() * 25 && Math.hypot(G.cam.x - G.x, G.cam.y - G.y) < HH.holeD() * 25, D: HH.holeD(), reg: rg && [rg.n, rg.x0, rg.y0, rg.w, rg.h].map(v => +(+v).toFixed(1)), cam: [G.cam.x, G.cam.y] }; }, far);
+    const hostSees = await A.evaluate(f => { const M = HH.G.mates.find(M => M.id === 1); return M ? Math.hypot(M.x - f[0], M.y - f[1]) : -1; }, far);
+    await B.evaluate(() => { const G = HH.G; G.x = G.C.storyStart ? G.C.storyStart[0] : G.C.start[0]; G.y = G.C.storyStart ? G.C.storyStart[1] : G.C.start[1]; });
+    return { ok: rings.every(r => r === null) && crossed && there.at && there.things >= 10 && there.ground && hostSees >= 0 && hostSees < 2, info: { rings, crossed, far, there, hostSees } };
+  });
+  await T('Upgrades never pause multiplayer (Part 3): a guest on Upgrades leaves the host\'s world running and eating; then the host on Upgrades leaves the guests playing and eating', async () => {
+    await A.evaluate(() => HH.setHoleD(HH.G.C.sizes[3])); await sleep(300);
+    await B.evaluate(() => document.getElementById('b-up-hud').click());
+    const bOn = await B.evaluate(() => ({ up: document.getElementById('s-upgrades').classList.contains('on'), live: !!HH.G.upLive, paused: !!HH.G.paused }));
+    await sleep(600);
+    const sig = () => ({ t: HH.G.t, mv: HH.G.movers.slice(0, 40).map(o => o.x.toFixed(3) + ',' + o.y.toFixed(3)).join(';'), np: HH.G.netPause });
+    const a0 = await A.evaluate(sig); await sleep(1200); const a1 = await A.evaluate(sig);
+    const hostRuns = a1.t > a0.t + 0.1 && (a1.mv !== a0.mv || !a0.mv) && !a1.np;      // (G.t steps at most 50 ms a frame: four SwiftShader pages draw slowly)
+    const othersRun = (await Promise.all([Cp, Dp].map(p => p.evaluate(() => !HH.G.netPause)))).every(Boolean);
+    const ap = await A.evaluate(() => [HH.G.x, HH.G.y]), s1 = await snack(ap[0], ap[1]); const hostAte = s1 ? await feed(A, s1.nid, 8000) : false;
+    await B.evaluate(() => document.querySelector('#s-upgrades [data-back]').click());
+    await A.evaluate(() => document.getElementById('b-up-hud').click()); await sleep(600);
+    const aOn = await A.evaluate(() => ({ up: document.getElementById('s-upgrades').classList.contains('on'), live: !!HH.G.upLive, paused: !!HH.G.paused }));
+    const g0 = await Cp.evaluate(sig); await sleep(1200); const g1 = await Cp.evaluate(sig);
+    const guestRuns = g1.t > g0.t + 0.1 && !g1.np;
+    const cp = await Cp.evaluate(() => [HH.G.x, HH.G.y]), s2 = await snack(cp[0], cp[1]); const guestAte = s2 ? await feed(Cp, s2.nid, 8000) : false;
+    await A.evaluate(() => document.querySelector('#s-upgrades [data-back]').click()); await sleep(300);
+    const back = await all(() => HH.G.mode === 'play' && !HH.G.paused && !HH.G.netPause);
+    return { ok: bOn.up && bOn.live && !bOn.paused && hostRuns && othersRun && hostAte && aOn.up && aOn.live && !aOn.paused && guestRuns && guestAte && back.every(Boolean), info: { bOn, a0: { t: a0.t, np: a0.np, mv: a0.mv.length }, a1: { t: a1.t, np: a1.np, same: a1.mv === a0.mv }, hostRuns, othersRun, hostAte, aOn, guestRuns, guestAte, back } };
+  });
+  await T('FOUR players (Part 1): one guest drops mid-session; the other three play on together and the one who left keeps their coins', async () => {
+    const dSave0 = await Dp.evaluate(() => ({ w: HH.S.ch[2].w, banked: HH.net.banked, beat: JSON.parse(localStorage.getItem('hungry-hole-data-v1')).ch[2].beat }));
+    await Dp.evaluate(() => HH.UI.show('main'));
+    const hostOn = await until(A, () => HH.net && HH.net.peers.length === 2, 8000);
+    let ok = hostOn; for (const p of [A, B, Cp]) ok = await until(p, () => HH.G.mates.filter(M => !M.gone).length === 2, 6000) && ok;
+    const dSave1 = await Dp.evaluate(() => ({ net: !!HH.net, w: HH.S.ch[2].w, disk: JSON.parse(localStorage.getItem('hungry-hole-data-v1')).ch[2], other: localStorage.getItem('family-other-app') }));
+    const bp = await B.evaluate(() => [HH.G.x, HH.G.y]), s = await snack(bp[0], bp[1]); const ate = s ? await feed(B, s.nid, 8000) : false;
+    const h0 = await A.evaluate(() => HH.setHash(HH.net.dead)); for (const p of [B, Cp]) await until(p, h => HH.setHash(HH.net.dead) === h, 4000, h0);
+    const hashes = await Promise.all([A, B, Cp].map(p => p.evaluate(() => HH.setHash(HH.net.dead))));
+    const kept = !dSave1.net && dSave1.w === dSave0.w && dSave1.disk.w === dSave0.w && dSave1.disk.beat === dSave0.beat && dSave1.other === 'keep-me';
+    return { ok: ok && ate && hashes.every(h => h === hashes[0]) && kept, info: { hostOn, ate, hashes, dSave0, dSave1: { net: dSave1.net, w: dSave1.w, beat: dSave1.disk.beat } } };
+  });
+  await leave4();
+
+  await T('I SPY with four (Parts 2 + 6): one hand, one size for all four holes; a guest who drops early gets no win; the team\'s finish writes the win on EVERY remaining save and pays each wallet once', async () => {
+    const w0 = await all(() => ({ wins: (HH.S.ispy[2] && HH.S.ispy[2].wins) || 0, w: HH.S.ch[2].w }));
+    const { ok } = await connect4(2, 'ispy');
+    await until(Dp, () => HH.G.run.tg && HH.G.run.tg.length > 0 && HH.G.run.tg.every(t => t.o), 4000);
+    await sleep(600);
+    const sizes = await all(() => HH.holeD()), setD = await A.evaluate(() => HH.G.run.setD), tiers = await A.evaluate(() => HH.G.run.tg.map(t => HH.tierOf(HH.G.C, t.o.fw)));
+    const oneSize = sizes.every(d => Math.abs(d - setD) < setD * 1e-6) && tiers.every(t => t === tiers[0]);
+    await Dp.evaluate(() => HH.UI.show('main')); await until(A, () => HH.net && HH.net.peers.length === 2, 6000);   // Dot leaves before the finish
+    const tg = await A.evaluate(() => HH.G.run.tg.filter(t => !t.done).map(t => t.o.nid));
+    const who = [B, Cp, A]; let found = 0;
+    for (let i = 0; i < tg.length; i++) if (await feed(who[i % 3], tg[i], 8000)) found++;
+    const done = await until(A, () => HH.G.run.tg.every(t => t.done), 4000);
+    await sleep(2200); for (const [i, g] of [B, Cp].entries()) await until(g, w => ((HH.S.ispy[2] && HH.S.ispy[2].wins) || 0) > w, 8000, w0[i + 1].wins);   // (the win message, however late it arrives)
+    const wins1 = await all(() => ({ wins: (HH.S.ispy[2] && HH.S.ispy[2].wins) || 0, w: HH.S.ch[2].w, disk: (JSON.parse(localStorage.getItem('hungry-hole-data-v1')).ispy[2] || {}).wins || 0 }));
+    // the wire repeating the win message changes nothing
+    await B.evaluate(() => HH.net && HH.net.recv({ t: 'win', k: 'ispy', bonus: 1, h: [...(HH.net.wonH || [])][0] }));
+    await sleep(300); const bAgain = await B.evaluate(() => HH.S.ispy[2].wins);
+    const bonus = await A.evaluate(() => Math.round(150 * HH.G.C.cost));
+    const each = [0, 1, 2].every(i => wins1[i].wins === w0[i].wins + 1 && wins1[i].disk === wins1[i].wins && wins1[i].w - w0[i].w >= bonus);
+    const dot = wins1[3].wins === w0[3].wins;
+    await leave4();
+    return { ok: ok && oneSize && done && each && dot && bAgain === wins1[1].wins, info: { ok, sizes, setD, tiers, found, of: tg.length, before: w0, after: wins1, bonus, bAgain } };
+  });
+
+  await T('EDUCATIONAL with four (Part 7): every hole at the set\'s one size, which never moves', async () => {
+    const { ok } = await connect4(2, 'edu');
+    await until(Dp, () => HH.G.run.steps && HH.G.run.steps.length > 0, 4000); await sleep(600);
+    const s0 = await all(() => HH.holeD()), setD = await A.evaluate(() => HH.G.run.setD);
+    await A.evaluate(() => { HH.addXP(1e9); HH.G.mates.forEach(M => HH.asMate(() => HH.addXP(1e9), M)); }); await sleep(600);
+    const s1 = await all(() => HH.holeD()), ctl = await all(() => getComputedStyle(document.getElementById('b-bigger')).display === 'none' && getComputedStyle(document.getElementById('b-faster')).display !== 'none');
+    await leave4();
+    return { ok: ok && s0.every(d => Math.abs(d - setD) < setD * 1e-6) && s1.every(d => Math.abs(d - setD) < setD * 1e-6) && ctl.every(Boolean), info: { ok, setD, s0, s1, ctl } };
+  });
+  for (const w of ['C', 'D']) { await pages[w].close(); delete pages[w]; await ctxs[w].close(); }
 
   await T('PeerJS blocked (no ?nettest): the game boots and plays solo with zero errors; only the co-op buttons say "can\'t connect"', async () => {
     const ctx = await b.newContext({ viewport: { width: 1180, height: 820 } });

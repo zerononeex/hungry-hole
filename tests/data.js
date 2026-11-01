@@ -43,7 +43,11 @@ const { chromium } = require('playwright');
       const spawnAny = k => zoneTypes.has(k) || Object.values(C.Z).some(Z => !Z.deco && !Z.wet);
       const specOk = (spec, where) => {
         const s = spec.split('|')[0];
-        if (s[0] === '#') { const o = auth.find(o => o.id === s.slice(1)); if (!o) fails.push(where + ' missing id ' + s); else if (!eatMax(o) || o.deco) fails.push(where + ' ' + s + ' not eatable at max size'); }
+        if (s[0] === '@') {                          // v5.3: a Globe animal hunt: that country's species j in the owner's dataset, inside the lesson size
+          const m = /^@([A-Z]{2})\.(\d)$/.exec(s), L = m && window.HH_AN && window.HH_AN.c[m[1]];
+          if (!L || !L.a[+m[2]] || !C.huntFw || !(C.huntFw(s) > 0) || C.huntFw(s) > maxD) fails.push(where + ' bad animal hunt ' + s);
+        }
+        else if (s[0] === '#') { const o = auth.find(o => o.id === s.slice(1)); if (!o) fails.push(where + ' missing id ' + s); else if (!eatMax(o) || o.deco) fails.push(where + ' ' + s + ' not eatable at max size'); }
         else if (!C.T[s]) fails.push(where + ' unknown type ' + s);
         else if (!spawnAny(s) || HH.mkObj(C, s, 0, 0).fw > maxD) fails.push(where + ' ' + s + ' cannot spawn/eat at max size');
       };
