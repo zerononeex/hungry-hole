@@ -1190,3 +1190,72 @@ this batch does not touch solo Story's pace. At ×1 the same worlds land at abou
 | `tests/screens.js` | all shots refreshed, 0 console errors. New: 86, the mini globe with no glow |
 
 The owner's test on real iPads is still the real-device check for four players.
+
+# Art test — Stanley Park in "Polished Stylized Low-Poly Pop" (2026-11-11)
+
+A visual-only pass from the owner's reference image. The style is our own: the general pastel low-poly pop feel, no other
+game's characters, models or look. Nothing in gameplay, physics, sizes, balance, pacing, co-op, UI flow, audio or the save
+(`hungry-hole-data-v1`) changed. Water is still never eaten, totem poles are still scenery, there is still no speech.
+
+## Scope
+- **Only Stanley Park changes its look.** The park carries one flag, `pop: 1`. Every pop branch in the renderer keys off it,
+  so the other four worlds draw exactly as before, apart from the two shared things the owner asked for: the hole and the
+  eat effects.
+- **Shapes are untouched.** A model's footprint and height decide what fits, so the pop style recolours the existing
+  models and never reshapes them (`popStyle` in the model library, cached separately under a `~pop` key).
+
+## Stanley Park
+- **Colours:** every model colour is lifted to a pastel, greys pick up lavender, and each building takes one of six candy
+  wall and trim pairs chosen from its own recipe, so a street reads pink, mint, sky, peach, butter and lilac.
+- **Gradients:** a top-to-bottom gradient is baked into the vertex colours (warm cream above, cool violet below).
+- **Light:** the same per-vertex bake as before with a different light set: a warm sun and violet shade (`LIGHT_POP`).
+  Hills shade gently so the pastels stay clean.
+- **Shadows:** the same blob shadows, tinted violet and leaning away from the sun by the object's height.
+- **Ground:** the park's painter uses a pastel palette, the city round the park is washed toward it, and a faint triangle
+  mosaic fixed to the world replaces the speckle grain, so the ground reads as soft low-poly facets. It is drawn once per
+  repaint in four fills.
+- **Neon accents:** lamp bulbs, the lighthouse lamps and coins throw a soft glow (one additive batch, one draw call).
+
+## The hole (every world)
+- A shallow glowing purple swirl: three spiral arms with magenta and cyan streaks, a neon rim, a halo and trailing streaks
+  on the ground. All of it is two small shaders; there is no post-processing and no bloom pass.
+- A face on the swirl: two eyes and a mouth that stay upright on screen (also after a pole crossing on the Globe), look
+  where the hole is going, blink, and open wide while something is dropping in.
+- The hole is purple in every world now. Co-op partners keep their own colours, with the same swirl and face.
+- The swirl sits a quarter of a radius down, so things sink into it and vanish. The fall itself is the same as before.
+
+## Eat effects (every world)
+- A ring and a few sparkles where a thing tips over the rim, then a flash, a fountain of sparkles and, for a good mouthful
+  or a real coin, a burst of coins that are pulled back in. The falling thing pops slightly, then stretches as it goes.
+- They are driven from the draw loop by each object's fall, so the host, a guest and all four co-op holes get them with no
+  game or network code involved. The pool is capped at 140 particles and thins itself out when busy. Sparkles and coins
+  ride the existing unlit batch, glows and rings ride the additive batch.
+
+## Frame rate
+Headless Chromium here has no GPU (SwiftShader), so these only compare before and after on the same machine. The 50 fps
+target of `tests/perf.js` has never been reachable here and still needs a real iPad.
+
+| Spot | main (v5.3) | art test |
+| --- | --- | --- |
+| Stanley Park West End | 13.2, 12.8 fps (CPU 2.3–3.3 ms/frame) | 11.8, 12.2 fps (CPU 2.8–3.1 ms/frame) |
+| Vancouver downtown | 13.3, 13.4 fps | 9.3, 11.3 fps |
+| Globe street start | 10.8, 10.2 fps | 10.5, 11.5 fps |
+
+The CPU cost per frame is unchanged. The small drop is the hole's shader being rasterised on the CPU; a real GPU should
+not notice it. Not verified on an iPad, alone or with four players.
+
+## Tests
+| Suite | Result |
+| --- | --- |
+| `tests/data.js` | PASS, all five worlds |
+| `tests/behaviour.js` | 45/45 |
+| `tests/coop.js` | 28/28, and 28/28 throttled 5× (`HH_THROTTLE=5`) |
+| `tests/reachability.js` | 100% in all five worlds |
+| `tests/ui-flow.js` | clean, 0 console errors |
+| `tests/screens.js` | done, 0 console errors |
+| `tests/audio.js` | 9/9 |
+| `tests/globe-school.js` | 6/6 |
+| `tests/balance-bot.js` | pace unchanged from main (W1 7.0, W2 4.3, W3 4.7, W4 5.1, W5 4.5 min; main 6.6, 4.4, 4.7, 5.1, 4.6). It still reports "under window" and exits 1 on both, as it has since the owner kept the ×2 speed in v5.2 |
+| `tests/perf.js` | below its 50 fps target on both main and this branch (no GPU here), see the table above |
+
+Before and after shots: `docs/screenshots/art-test/`.
